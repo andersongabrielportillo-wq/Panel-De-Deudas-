@@ -1,0 +1,27 @@
+PANEL DE DEUDAS — PWA PÚBLICA SEGURA
+
+PRIVACIDAD
+- Esta versión NO contiene deudas, nombres de acreedores/contactos, teléfonos, saldos ni notas precargadas.
+- El código publicado inicia vacío en un navegador nuevo.
+- Los datos que registres después se guardan en el almacenamiento local del navegador y, si el entorno de la app ofrece la sincronización compatible, mediante esa función.
+- No publiques tus archivos JSON de copia de seguridad en GitHub ni dentro de esta carpeta.
+
+ARCHIVOS
+- index.html
+- manifest.webmanifest
+- sw.js
+- icons/icon-192.png
+- icons/icon-512.png
+
+PUBLICACIÓN
+Sube únicamente el contenido de esta carpeta al hosting HTTPS.
+
+PASAR TUS DATOS AL SITIO NUEVO
+1. En tu Panel antiguo: Datos > Descargar copia (.json).
+2. Instala/abre la PWA publicada.
+3. En la PWA: Datos > Restaurar copia.
+4. Selecciona el JSON directamente desde tu teléfono.
+5. NO subas ese JSON a GitHub ni lo compartas públicamente.
+
+IMPORTANTE
+La publicación del código puede ser pública, pero el archivo de backup con tus datos debe permanecer privado.
