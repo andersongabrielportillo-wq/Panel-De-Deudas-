@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Panel de Deudas">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head><body>
+</head><body><div id="lgIntro" aria-hidden="true"><div class="orb"></div></div>
 <div id="authGate"><div class="authCard"><h2>Panel de Deudas</h2><p>Inicia sesión para acceder a la base compartida.</p><input id="authEmail" type="email" autocomplete="username" placeholder="Correo"><input id="authPass" type="password" autocomplete="current-password" placeholder="Contraseña"><button class="b" id="authLogin">Iniciar sesión</button><div class="authErr" id="authErr"></div></div></div>
 <title>Panel De Deudas</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -96,9 +96,9 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
 <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol><symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><div class="app"><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
 <div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
-<div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación"></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
+<div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
 const SEED=[];
@@ -609,7 +609,7 @@ async function mkics(list){
   dl("recordatorios-pagos.ics","BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Control de pagos//ES\r\n"+ev.join("\r\n")+"\r\nEND:VCALENDAR\r\n");
 }
 function confirmD(msg,act,attrs){dlg.dataset.m="c";dlg.innerHTML=`<p>${msg}</p><div class="row"><button class="dn" data-act="${act}" ${attrs}>Confirmar</button><button class="g2" data-act="close">Cancelar</button></div>`;if(!dlg.open)dlg.showModal()}
-document.addEventListener("click",e=>{
+document.addEventListener("click",e=>{if(!APP_READY)return;
   const t=e.target.closest("[data-tab]");if(t){tab=t.dataset.tab;if(dlg.open)dlg.close();render();window.scrollTo(0,0);return}
   const o=e.target.closest("[data-open]");if(o){showDebt(o.dataset.open);return}
   const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act,id=a.dataset.id;
@@ -638,33 +638,37 @@ document.addEventListener("click",e=>{
     SY.pend=true;lsSet("cp_pend","1");SY.known={};schedulePush(300);sv("Guardado en este dispositivo "+hm());dlg.close();render();toast(act==="undook"?"Estado anterior recuperado":"Copia restaurada")}
   else if(act==="undorest"){const p=norm((()=>{try{return JSON.parse(lsGet("cp_prev"))}catch(e){return null}})());if(!p){toast("No hay un estado anterior disponible.",1);return}window.__rest=p;confirmD("Se recuperará el estado anterior ("+p.debts.length+" deudas, "+p.tx.length+" movimientos). El estado actual se guardará por si quieres volver.","undook","")}
 });
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.dataset&&e.target.dataset.open){e.preventDefault();showDebt(e.target.dataset.open)}});
-document.addEventListener("input",e=>{const i=e.target.id||"";
+document.addEventListener("keydown",e=>{if(!APP_READY)return;if((e.key==="Enter"||e.key===" ")&&e.target.dataset&&e.target.dataset.open){e.preventDefault();showDebt(e.target.dataset.open)}});
+document.addEventListener("input",e=>{if(!APP_READY)return;const i=e.target.id||"";
   if(i[0]==="p"&&i[1]==="_"&&document.querySelector("[data-for]"))pvw(document.querySelector("[data-for]").dataset.for);
   if(i==="gq"){F.q=e.target.value;if(tab!=="debts")tab="debts";render();return}
   if(i==="fq"){F.q=e.target.value;const p=e.target.selectionStart;render();const x=$("#fq");x.focus();x.setSelectionRange(p,p)}
 });
-document.addEventListener("change",e=>{const i=e.target.id,v=e.target.value;
+document.addEventListener("change",e=>{if(!APP_READY)return;const i=e.target.id,v=e.target.value;
   if(i==="fc")F.cat=v;else if(i==="fs")F.st=v;else if(i==="fo")F.sort=v;else if(i==="td")TF.debt=v;else if(i==="ts")TF.st=v;else if(i==="tf")TF.from=v;else if(i==="tt")TF.to=v;else if(i==="cf")CF=v;
   else if(i==="rf"){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=norm(JSON.parse(r.result));if(!o)throw 0;window.__rest=o;confirmD("Se reemplazarán los datos actuales por la copia ("+o.debts.length+" deudas, "+o.tx.length+" movimientos). Antes se guarda una copia de lo actual.","restok","")}catch(x){dlg.innerHTML='<p class="red">El archivo no es una copia válida de Panel De Deudas. No se cambió nada.</p><div class="row"><button class="g2" data-act="close">Cerrar</button></div>';dlg.showModal()}};r.readAsText(f);return}
   else return;render();
 });
 $("#th").onclick=()=>{const r=document.documentElement,dk=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=dk?"light":"dark";try{localStorage.setItem("cp_theme",r.dataset.theme)}catch(e){}};
 try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dataset.theme=th}catch(e){}
-S=load();SY.pend=lsGet("cp_pend")==="1";render();sv("Cargado");
-if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300);
+// Los datos privados se cargan y renderizan solo después de autorizar la sesión.
+S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
+let APP_READY=false;
+function loadPrivate(){S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
+function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
+function showPrivate(){document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
-window.addEventListener("storage",e=>{if(e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
+window.addEventListener("storage",e=>{if(!APP_READY||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
 window.addEventListener("online",()=>{SY.fail=0;if(SY.pend)push();else if(SY.doc)sv("Sincronizado "+hm())});
 window.addEventListener("offline",()=>sv("⚠ Sin conexión: los cambios se guardan aquí y se enviarán al reconectar",1));
-setInterval(()=>{if(refreshT())uiRefresh()},60000);
+setInterval(()=>{if(APP_READY&&refreshT())uiRefresh()},60000);
 // Supabase: autenticación + estado compartido. La publishable key es pública; RLS protege los datos.
 const SUPABASE_URL="https://josdmjjbnrugiwlwgjky.supabase.co";
 const SUPABASE_KEY="sb_publishable_0CHw4JtE92-07OMNAnvESA_44sf9dk4";
 const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let SB_UID=null,SB_WID=null,SB_CH=null;
-const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
+const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
   const {data,error}=await SB.from("debts").select("data").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(error)throw error;
@@ -680,19 +684,32 @@ async function cloudSet(payload){
 async function connectCloud(){
   const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
   if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
+  if(!APP_READY)loadPrivate();
   SY.doc={set:cloudSet};
   const first=await cloudSnapshot();onRemote(first);
   if(SB_CH)await SB.removeChannel(SB_CH);
-  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe();
-  gate(false);sv("Sincronizado "+hm());if(SY.pend)schedulePush(0);
+  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
+  showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
 }
 async function startAuth(){
   try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
 }
 document.getElementById("authLogin").onclick=async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPass").value;document.getElementById("authErr").textContent="Entrando…";const {data,error}=await SB.auth.signInWithPassword({email,password});if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}SB_UID=data.user.id;try{await connectCloud()}catch(e){await SB.auth.signOut();gate(true,e.message||"Cuenta sin acceso")}};
 document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("authLogin").click()});
-document.getElementById("logoutBtn").onclick=async()=>{if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;SB_UID=null;SB_WID=null;await SB.auth.signOut();gate(true);sv("Sesión cerrada")};
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT")gate(true);else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+document.getElementById("logoutBtn").onclick=async()=>{
+  // Evita perder cambios locales aún no enviados a la nube.
+  if(SY.pend&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
+  gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
+  SY.doc=null;SB_UID=null;SB_WID=null;
+  const pending=SY.pend;
+  hidePrivate();
+  // Los datos sincronizados no deben permanecer accesibles sin autenticación.
+  // Se conservan únicamente cambios pendientes para evitar pérdida de información.
+  if(!pending){["cp_v2","cp_v2_bak","cp_v2_corrupt","cp_prev","cp_items","cp_pend"].forEach(lsDel)}
+  document.getElementById("authPass").value="";
+  try{await SB.auth.signOut();sv("Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
+};
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
@@ -703,5 +720,91 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service Worker:", err));
   });
 }
+</script>
+<style id="lg2">
+/* ===== Panel de Deudas 2.0 · Liquid Glass (solo capa visual) ===== */
+:root{--bg:#e9f0fa;--card:rgba(255,255,255,.64);--bd:rgba(255,255,255,.75);--in:rgba(20,50,100,.07);--solid:#f6f9fe;--ac:#2a63e8;--ac2:#14b8a6;--tx:#0a1a33;--mut:#5a6b86;--side:rgba(8,24,52,.82);--sh:0 10px 30px rgba(20,50,100,.10),inset 0 1px 0 rgba(255,255,255,.9);--rim:rgba(255,255,255,.8);--blur:blur(16px) saturate(160%)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#060f1e;--card:rgba(24,42,72,.55);--bd:rgba(160,200,255,.14);--in:rgba(255,255,255,.07);--solid:#0f1d33;--side:rgba(5,14,30,.8);--sh:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);--rim:rgba(160,210,255,.18)}}
+:root[data-theme="dark"]{--bg:#060f1e;--card:rgba(24,42,72,.55);--bd:rgba(160,200,255,.14);--in:rgba(255,255,255,.07);--solid:#0f1d33;--side:rgba(5,14,30,.8);--sh:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);--rim:rgba(160,210,255,.18)}
+body{background:radial-gradient(60vmax 50vmax at 8% -10%,rgba(42,99,232,.22),transparent 60%),radial-gradient(50vmax 45vmax at 100% 10%,rgba(20,184,166,.18),transparent 60%),var(--bg) fixed;letter-spacing:-.003em}
+.k,.box,.card,.ev,.alr{border-radius:20px;border:1px solid var(--bd);box-shadow:var(--sh)}
+.k b,.hero .big{font-feature-settings:"tnum"}
+.hero{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(140deg,rgba(9,26,56,.94),rgba(20,72,128,.9));border:1px solid rgba(160,220,255,.22);box-shadow:0 18px 44px rgba(10,40,90,.28),inset 0 1px 0 rgba(255,255,255,.22)}
+.hero::after{content:"";position:absolute;inset:-40% -10% auto 35%;height:90%;background:radial-gradient(closest-side,rgba(45,212,191,.28),transparent);pointer-events:none}
+.prg,.pb{background:rgba(120,160,220,.2)}.prg i,.pb i{background:linear-gradient(90deg,var(--ac),var(--ac2))}
+.card{transition:transform .18s,box-shadow .18s,border-color .18s}.card:hover{transform:translateY(-2px);border-color:var(--ac2)}.card:active{transform:scale(.985)}
+.pill{border:1px solid color-mix(in srgb,currentColor 25%,transparent)}
+.b,.g2,.dn{border-radius:14px;min-height:40px;transition:transform .15s,box-shadow .2s,filter .2s}
+.b{background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 82%,#fff),var(--ac));border-color:rgba(255,255,255,.35);box-shadow:0 6px 16px color-mix(in srgb,var(--ac) 35%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}
+.g2{background:var(--card);border-color:var(--bd);box-shadow:inset 0 1px 0 var(--rim)}
+.b:active,.g2:active,.dn:active{transform:scale(.95)}
+.ib{border-radius:50%}
+.sbox input,.tl input,.tl select,.f input,.f select,.f textarea,.authCard input{background:var(--in);border:1px solid var(--bd);border-radius:14px;min-height:42px}
+th{background:var(--solid)}
+.top{background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.side{background:var(--side);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-right:1px solid rgba(160,200,255,.12)}
+.side button{border-radius:14px}.side button.on{background:linear-gradient(90deg,rgba(91,140,255,.28),rgba(45,212,191,.14));box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.logo{background:linear-gradient(140deg,var(--ac),var(--ac2));box-shadow:0 4px 14px rgba(20,184,166,.4)}
+dialog{border-radius:28px;background:color-mix(in srgb,var(--solid) 78%,transparent);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid var(--rim);box-shadow:0 30px 80px rgba(0,0,0,.4),inset 0 1px 0 var(--rim);animation:lgPop .26s cubic-bezier(.2,.9,.3,1)}
+dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+@keyframes lgPop{from{opacity:0;transform:translateY(16px) scale(.97)}}
+.ts{border-radius:16px;background:rgba(8,24,52,.88);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+/* Indicador de sincronización (solo estilo; el texto lo sigue escribiendo la app) */
+#sv{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;border:1px solid var(--bd);background:var(--card);font-size:12px;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+#sv:empty{display:none}#sv::before,#sv.sp::before{content:"";width:8px;height:8px;border-radius:50%;margin:0;flex:none;background:var(--mut);animation:none}
+#sv[data-st=ok]::before{background:var(--grn)}#sv[data-st=loc]{color:var(--amb)}#sv[data-st=loc]::before{background:var(--amb)}
+#sv[data-st=sp]::before{background:var(--ac);animation:pl 1s infinite}#sv.er,#sv[data-st=er]{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)}#sv[data-st=er]::before{background:var(--red)}
+/* Inicio de sesión */
+#authGate{background:radial-gradient(60vmax 50vmax at 15% 0%,rgba(42,99,232,.35),transparent 60%),radial-gradient(50vmax 45vmax at 90% 100%,rgba(20,184,166,.3),transparent 60%),var(--bg)}
+.authCard{position:relative;border-radius:30px;padding:30px 26px;background:var(--card);border:1px solid var(--rim);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:0 30px 70px rgba(10,30,70,.28),inset 0 1px 0 var(--rim);animation:lgPop .5s cubic-bezier(.2,.9,.3,1)}
+.authCard h2{font-size:24px;letter-spacing:-.02em}.authCard input{padding:12px 14px;margin:6px 0}.authCard .b{min-height:46px;font-size:15px}
+.pw{position:relative}.pw input{padding-right:48px}.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:50%;background:none;cursor:pointer;color:var(--mut);display:grid;place-items:center}
+.pw svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.authErr{font-size:13px}.authErr[data-wait]::before{content:"";display:inline-block;width:11px;height:11px;margin-right:8px;border:2px solid var(--ac2);border-right-color:transparent;border-radius:50%;vertical-align:-1px;animation:lgSp .7s linear infinite}
+@keyframes lgSp{to{transform:rotate(360deg)}}
+/* Entrada escalonada (solo tras abrir la app o cambiar de sección) */
+@keyframes lgRise{from{opacity:0;transform:translateY(12px)}}
+.lg-enter #main>*,.lg-enter #alert>*{animation:lgRise .5s cubic-bezier(.2,.8,.3,1) both}
+.lg-enter #main>*:nth-child(2){animation-delay:.06s}.lg-enter #main>*:nth-child(3){animation-delay:.12s}.lg-enter #main>*:nth-child(4){animation-delay:.18s}.lg-enter #main>*:nth-child(n+5){animation-delay:.24s}
+/* Barra inferior flotante (teléfono) */
+@media(max-width:899px){
+.wrap{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+.bnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:6px;border:1px solid var(--rim);border-radius:28px;background:color-mix(in srgb,var(--solid) 62%,transparent);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 14px 40px rgba(0,0,0,.28),inset 0 1px 0 var(--rim)}
+.bnav button{border-radius:22px;transition:background .25s,color .25s,transform .15s}.bnav button:active{transform:scale(.92)}
+.bnav button.on{background:color-mix(in srgb,var(--ac) 16%,transparent);color:var(--ac);box-shadow:inset 0 1px 0 var(--rim)}
+#toasts{bottom:calc(96px + env(safe-area-inset-bottom,0px))}#sv{max-width:60vw}}
+@media(min-width:900px){.wrap{padding-top:6px}}
+/* Animación de entrada: esfera de cristal líquido, sin texto */
+#lgIntro{position:fixed;inset:0;z-index:10001;pointer-events:none;display:grid;place-items:center;background:radial-gradient(70vmax 70vmax at 50% 45%,#0c2a55,#050d1c 70%);animation:lgOut 1.8s ease-in-out forwards}
+#lgIntro .orb{position:relative;width:min(44vmin,230px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.85),rgba(160,230,255,.25) 22%,rgba(30,110,200,.28) 55%,rgba(10,40,90,.55));border:1px solid rgba(190,240,255,.5);box-shadow:inset 0 -18px 40px rgba(20,200,190,.35),inset 0 10px 30px rgba(255,255,255,.25),0 0 70px rgba(45,212,191,.45);animation:lgOrb 1.8s cubic-bezier(.3,.7,.2,1) forwards}
+#lgIntro .orb::after{content:"";position:absolute;inset:14% 18% 52% 18%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.55),transparent)}
+@keyframes lgOrb{0%{transform:scale(.35);opacity:0;filter:blur(14px)}35%{transform:scale(1);opacity:1;filter:blur(0)}60%{transform:scale(1.04);box-shadow:inset 0 -18px 40px rgba(20,200,190,.6),inset 0 10px 30px rgba(255,255,255,.3),0 0 120px rgba(45,212,191,.8)}100%{transform:scale(1.7);opacity:0;filter:blur(10px)}}
+@keyframes lgOut{0%,70%{opacity:1}100%{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#lgIntro{animation:lgOutR .5s forwards}#lgIntro .orb{animation:none}@keyframes lgOutR{0%,40%{opacity:1}100%{opacity:0;visibility:hidden}}.lg-enter #main>*,.lg-enter #alert>*,dialog,.authCard{animation:none!important}}
+</style>
+<script id="lg2js">
+(function(){
+ var d=document,h=d.documentElement,$=function(s){return d.querySelector(s)};
+ /* Quita la animación de entrada y activa la entrada escalonada */
+ function pulse(){h.classList.add("lg-enter");clearTimeout(pulse.t);pulse.t=setTimeout(function(){h.classList.remove("lg-enter")},900)}
+ var intro=$("#lgIntro"),rm=matchMedia("(prefers-reduced-motion:reduce)").matches;
+ setTimeout(function(){if(intro)intro.remove();pulse()},rm?550:1850);
+ d.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("[data-tab]"))pulse()});
+ /* Clasificación visual del estado de sincronización (no cambia el texto ni la lógica) */
+ var sv=$("#sv");
+ if(sv&&window.MutationObserver){var paint=function(){var t=sv.textContent||"",s="";
+  if(/^⚠|Sin conexión|No se pudo/.test(t))s="er";else if(/^(Sincronizando|Guardando)/.test(t))s="sp";else if(/^Guardado en este dispositivo/.test(t))s="loc";else if(t)s="ok";
+  if(sv.getAttribute("data-st")!==s)s?sv.setAttribute("data-st",s):sv.removeAttribute("data-st")};
+  new MutationObserver(paint).observe(sv,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:["class"]});paint()}
+ /* Mostrar/ocultar contraseña (el input conserva su id y sus eventos) */
+ var p=$("#authPass");
+ if(p&&p.parentNode&&!p.parentNode.classList.contains("pw")){var w=d.createElement("div");w.className="pw";p.parentNode.insertBefore(w,p);w.appendChild(p);
+  var b=d.createElement("button");b.type="button";b.setAttribute("aria-label","Mostrar u ocultar contraseña");
+  b.innerHTML='<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  b.onclick=function(){p.type=p.type==="password"?"text":"password"};w.appendChild(b)}
+ /* Indicador de espera durante el inicio de sesión */
+ var er=$("#authErr");
+ if(er&&window.MutationObserver){var f=function(){/^Entrando/.test(er.textContent)?er.setAttribute("data-wait",""):er.removeAttribute("data-wait")};new MutationObserver(f).observe(er,{childList:true,characterData:true,subtree:true})}
+})();
 </script>
 </body></html>
