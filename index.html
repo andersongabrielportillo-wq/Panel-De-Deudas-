@@ -714,12 +714,49 @@ startAuth();
 </script>
 
 
+<style>
+#pwaUpdate{position:fixed;z-index:10000;bottom:calc(90px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));padding:15px;border:1px solid var(--bd);border-radius:18px;background:var(--solid,var(--card));color:var(--tx);box-shadow:0 14px 44px rgba(0,0,0,.28)}
+#pwaUpdate[hidden]{display:none!important}#pwaUpdate p{margin:5px 0 12px;color:var(--mut);font-size:13px}#pwaUpdate .row{margin:0;justify-content:flex-end}
+</style>
+<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del Panel de Deudas.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
 <script>
-if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service Worker:", err));
+/* Actualizaciones PWA: no recargar con pagos pendientes ni mientras se guarda. */
+(function(){
+  if(!('serviceWorker' in navigator) || !(location.protocol==='https:' || location.hostname==='localhost'))return;
+  const box=document.getElementById('pwaUpdate'),msg=document.getElementById('pwaUpdateText');
+  const apply=document.getElementById('pwaApply'),later=document.getElementById('pwaLater');
+  let reg=null,waiting=null,requested=false,refreshing=false;
+  const pending=()=>typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');
+  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del Panel de Deudas lista para instalar.';apply.disabled=false;}
+  apply.addEventListener('click',()=>{
+    if(pending()){msg.textContent='Hay cambios pendientes. Espera a que aparezca «Sincronizado» y vuelve a intentarlo.';return;}
+    if(!waiting)return;
+    requested=true;apply.disabled=true;msg.textContent='Aplicando actualización…';waiting.postMessage({type:'SKIP_WAITING'});
   });
-}
+  later.addEventListener('click',()=>{box.hidden=true;});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    if(!requested){if(reg&&reg.waiting)show(reg.waiting);return;}
+    if(pending()){requested=false;show(reg&&reg.waiting);msg.textContent='Se detectaron cambios pendientes. Termina de sincronizar antes de recargar.';return;}
+    refreshing=true;location.reload();
+  });
+  function check(){if(reg&&navigator.onLine!==false)reg.update().catch(()=>{});}
+  window.addEventListener('load',async()=>{
+    try{
+      const hadController=!!navigator.serviceWorker.controller;
+      reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      if(hadController&&reg.waiting)show(reg.waiting);
+      reg.addEventListener('updatefound',()=>{
+        const w=reg.installing;if(!w)return;
+        w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)show(reg.waiting||w);});
+      });
+      check();
+      setInterval(check,15*60*1000);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
+      window.addEventListener('online',check);
+    }catch(err){console.warn('Actualización PWA:',err);}
+  });
+})();
 </script>
 <style id="lg2">
 /* ===== Panel de Deudas 2.0 · Liquid Glass (solo capa visual) ===== */
