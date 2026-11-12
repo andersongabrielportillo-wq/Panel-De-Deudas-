@@ -719,12 +719,14 @@ async function connectCloud(){
   if(!DEBTS_UNLOCKED)throw new Error("Desbloquea primero el Panel de Deudas");
   const {data:authorized,error:authError}=await SB.rpc("has_debts_unlock");if(authError||authorized!==true)throw new Error("La sesión no está autorizada para acceder a Deudas");
   const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
-  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
+  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");SB_WID=m.workspace_id;
   if(!APP_READY)loadPrivate();
   SY.doc={set:cloudSet};
-  const first=await cloudSnapshot();onRemote(first);
+  const first=await cloudSnapshot();if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");onRemote(first);
   if(SB_CH)await SB.removeChannel(SB_CH);
+  if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");
   SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
+  if(!DEBTS_UNLOCKED){if(SB_CH){const stale=SB_CH;SB_CH=null;await SB.removeChannel(stale)}throw new Error("Acceso bloqueado durante la conexión")}
   showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
 }
 async function startAuth(){
