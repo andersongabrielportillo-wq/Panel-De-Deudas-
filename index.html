@@ -738,8 +738,8 @@ document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="E
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
   if(SY.pend&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
-  DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);hideCommercialHome();try{await SB.rpc("lock_debts")}catch(e){};
-  gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
+  DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);hideCommercialHome();gate(true);hidePrivate();try{const {error}=await SB.rpc("lock_debts");if(error)throw error}catch(e){document.getElementById("authErr").textContent="No se pudo confirmar el bloqueo remoto; la sesión se cerrará igualmente."};
+  if(SB_CH){try{await SB.removeChannel(SB_CH)}catch(e){}SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
   const pending=SY.pend;
   hidePrivate();
@@ -758,7 +758,7 @@ startAuth();
 #pwaUpdate{position:fixed;z-index:10000;bottom:calc(90px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));padding:15px;border:1px solid var(--bd);border-radius:18px;background:var(--solid,var(--card));color:var(--tx);box-shadow:0 14px 44px rgba(0,0,0,.28)}
 #pwaUpdate[hidden]{display:none!important}#pwaUpdate p{margin:5px 0 12px;color:var(--mut);font-size:13px}#pwaUpdate .row{margin:0;justify-content:flex-end}
 </style>
-<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del Panel de Deudas.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
+<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión de Comercial López 2.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
 <script>
 /* Actualizaciones PWA: no recargar con pagos pendientes ni mientras se guarda. */
 (function(){
