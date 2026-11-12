@@ -16,7 +16,42 @@ async function refresh(){const e=++epoch;const {data:{session},error}=await clie
  $("identity").textContent="Rol de prueba: "+data.role;$("login").hidden=true;$("panel").hidden=false;$("result").textContent="Seleccioná un módulo para ver datos ficticios.";
 }
 $("signIn").onclick=async()=>{const email=$("email").value.trim(),password=$("password").value;$("loginMsg").textContent="Verificando…";const {error}=await client.auth.signInWithPassword({email,password});$("password").value="";if(error){$("loginMsg").textContent="No se pudo iniciar sesión.";return}$("loginMsg").textContent="";await refresh()};
-$("logout").onclick=async()=>{epoch++;$("result").textContent="";$("panel").hidden=true;await client.auth.signOut();$("login").hidden=false};
-async function show(module){$("inventoryItems").replaceChildren();const e=epoch;$("heading").textContent=module==="deudas"?"Deudas de prueba":"Inventario de prueba";$("result").textContent="Cargando…";const {data,error}=await client.rpc("cl2_sandbox_list",{p_module:module});if(e!==epoch||$("panel").hidden)return;$("result").textContent=error?"Acceso denegado o error de consulta.":JSON.stringify(data,null,2);if(!error&&module==="inventario"&&Array.isArray(data)){for(const item of data){const line=document.createElement("div");line.className="item";const label=document.createElement("span");label.textContent=`${item.name} · Existencias: ${item.quantity}`;const del=document.createElement("button");del.className="danger";del.textContent="Eliminar dato ficticio";del.onclick=async()=>{if(!confirm(`SANDBOX: ¿Eliminar definitivamente el artículo ficticio «${item.name}»? Se conservará una auditoría. No se puede deshacer.`))return;del.disabled=true;$("actionMsg").textContent="Validando eliminación de prueba…";const {data:out,error:err}=await client.rpc("cl2_sandbox_delete",{p_type:"inventory_item",p_id:item.id});if(e!==epoch)return;$("actionMsg").textContent=err?"No se pudo completar la operación de prueba.":out.status==="deleted"?"Artículo ficticio eliminado; operación auditada.":out.status==="blocked_history"?"Bloqueado: el artículo tiene movimientos históricos.":out.status==="blocked_nonzero_stock"?"Bloqueado: el artículo tiene existencias.":out.status==="not_found"?"El registro ya no existe.":"Operación no realizada.";await show("inventario")};line.append(label,del);$("inventoryItems").append(line)}}}
+$("logout").onclick=async()=>{epoch++;viewToken++;$("result").textContent="";$("panel").hidden=true;await client.auth.signOut();$("login").hidden=false};
+let viewToken=0,mutationPending=false;
+async function show(module,{keepMessage=false}={}){
+ const token=++viewToken, sessionEpoch=epoch;
+ $("inventoryItems").replaceChildren();
+ if(!keepMessage)$("actionMsg").textContent="";
+ $("heading").textContent=module==="deudas"?"Deudas de prueba":"Inventario de prueba";
+ $("result").textContent="Cargando…";
+ const {data,error}=await client.rpc("cl2_sandbox_list",{p_module:module});
+ if(token!==viewToken||sessionEpoch!==epoch||$("panel").hidden)return;
+ $("result").textContent=error?"Acceso denegado o error de consulta.":JSON.stringify(data,null,2);
+ if(error||module!=="inventario"||!Array.isArray(data))return;
+ for(const item of data){
+  const line=document.createElement("div");line.className="item";
+  const label=document.createElement("span");label.textContent=`${item.name} · Existencias: ${item.quantity}`;
+  const del=document.createElement("button");del.className="danger";del.textContent="Eliminar dato ficticio";
+  del.disabled=mutationPending;
+  del.onclick=async()=>{
+   if(mutationPending)return;
+   if(!confirm(`SANDBOX: ¿Eliminar definitivamente el artículo ficticio «${item.name}»? Se conservará una auditoría. No se puede deshacer.`))return;
+   mutationPending=true;
+   document.querySelectorAll("#inventoryItems button").forEach(b=>b.disabled=true);
+   $("actionMsg").textContent="Validando eliminación de prueba…";
+   let message;
+   try{
+    const {data:out,error:err}=await client.rpc("cl2_sandbox_delete",{p_type:"inventory_item",p_id:item.id});
+    if(err)message="No se pudo completar la operación de prueba.";
+    else message=out?.status==="deleted"?"Artículo ficticio eliminado; operación auditada.":out?.status==="blocked_history"?"Bloqueado: el artículo tiene movimientos históricos.":out?.status==="blocked_nonzero_stock"?"Bloqueado: el artículo tiene existencias.":out?.status==="not_found"?"El registro ya no existe.":"Operación no realizada.";
+   }catch(_){message="Error de conexión. Verificá el resultado antes de reintentar."}
+   finally{mutationPending=false}
+   if(sessionEpoch!==epoch||$("panel").hidden)return;
+   $("actionMsg").textContent=message;
+   await show("inventario",{keepMessage:true});
+  };
+  line.append(label,del);$("inventoryItems").append(line);
+ }
+}
 $("debts").onclick=()=>show("deudas");$("inventory").onclick=()=>show("inventario");refresh();
 </script></body></html>
