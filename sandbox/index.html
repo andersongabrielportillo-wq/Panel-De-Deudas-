@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comercial López 2 · Sandbox aislado</title><style>
+:root{font-family:system-ui,Arial,sans-serif;color-scheme:dark;background:#0b1729;color:#e8f2ff}body{max-width:780px;margin:32px auto;padding:16px}section{background:#14253d;border:1px solid #29415c;border-radius:14px;padding:18px;margin:14px 0}input,button{font:inherit;padding:12px;border-radius:9px;margin:6px 4px 6px 0}input{background:#0c1d30;color:white;border:1px solid #4b6380;max-width:95%}button{background:#1a8caa;color:white;border:0;cursor:pointer}button:disabled{opacity:.45}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#b9d0e5}.warn{color:#ffcc86}</style></head><body>
+<h1>Comercial López 2 · Entorno de pruebas</h1><p class="warn">SANDBOX · Datos ficticios. Esta página no contiene claves ni conexiones a la base de producción de Deudas.</p>
+<section id="login"><h2>Cuenta de prueba</h2><label>Correo <input id="email" type="email" autocomplete="username"></label><label>Contraseña <input id="password" type="password" autocomplete="current-password"></label><button id="signIn">Entrar</button><p id="loginMsg" role="status"></p></section>
+<section id="panel" hidden><p id="identity"></p><button id="logout">Cerrar sesión</button><button id="debts">Deudas ficticias</button><button id="inventory">Inventario ficticio</button><h2 id="heading"></h2><pre id="result" aria-live="polite"></pre><small>Esta pantalla solo consulta datos del esquema privado cl2_sandbox mediante funciones de prueba. No ejecuta movimientos reales ni usa tablas inv_*.</small></section>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+"use strict";
+const client=window.supabase.createClient("https://dozcnytevqhoymzqlxah.supabase.co","sb_publishable_Fm_PBg4TGT_GSeDi9KPI6g_S8ht5RWs",{auth:{storageKey:"cl2-sandbox-auth",persistSession:true,autoRefreshToken:true}});
+const $=id=>document.getElementById(id);
+let epoch=0;
+async function refresh(){const e=++epoch;const {data:{session},error}=await client.auth.getSession();if(e!==epoch)return;if(error||!session){$("login").hidden=false;$("panel").hidden=true;return}
+ const {data,error:accessError}=await client.rpc("cl2_sandbox_status");if(e!==epoch)return;
+ if(accessError){$("loginMsg").textContent="La cuenta no está autorizada para este sandbox.";$("login").hidden=false;$("panel").hidden=true;await client.auth.signOut();return}
+ $("identity").textContent="Rol de prueba: "+data.role;$("login").hidden=true;$("panel").hidden=false;$("result").textContent="Seleccioná un módulo para ver datos ficticios.";
+}
+$("signIn").onclick=async()=>{const email=$("email").value.trim(),password=$("password").value;$("loginMsg").textContent="Verificando…";const {error}=await client.auth.signInWithPassword({email,password});$("password").value="";if(error){$("loginMsg").textContent="No se pudo iniciar sesión.";return}$("loginMsg").textContent="";await refresh()};
+$("logout").onclick=async()=>{epoch++;$("result").textContent="";$("panel").hidden=true;await client.auth.signOut();$("login").hidden=false};
+async function show(module){const e=epoch;$("heading").textContent=module==="deudas"?"Deudas de prueba":"Inventario de prueba";$("result").textContent="Cargando…";const {data,error}=await client.rpc("cl2_sandbox_list",{p_module:module});if(e!==epoch||$("panel").hidden)return;$("result").textContent=error?"Acceso denegado o error de consulta.":JSON.stringify(data,null,2)}
+$("debts").onclick=()=>show("deudas");$("inventory").onclick=()=>show("inventario");refresh();
+</script></body></html>
