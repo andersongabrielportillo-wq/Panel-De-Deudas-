@@ -27,3 +27,19 @@ Estado: PREPARACION; no publicar ni activar RLS en producción todavía.
 3. Reemplazar políticas RLS permisivas existentes (no añadir una política OR).
 4. Auditar vistas, funciones, realtime, almacenamiento local y permisos.
 5. Validar con cuentas de prueba y recién entonces aprobar despliegue de producción.
+
+
+## Auditoría estática de preparación (2026-11-12)
+- [x] Nombre visible en `<title>`, metadatos móviles y manifiesto: Comercial López 2.
+- [x] Cache del service worker versionada para que la actualización recupere el manifiesto.
+- [x] Sintaxis de los 3 bloques JavaScript embebidos: verificada por compilación estática.
+- [x] El frontend exige desbloqueo antes de descargar el snapshot de deudas y comprueba el estado durante conexión y sincronización.
+- [x] El inventario consulta membresía del usuario antes de descargar tablas operativas.
+- [x] Consultadas políticas de producción: siguen existiendo las ocho políticas originales de `debts` y `transactions`; **NO** se ha activado RLS con desbloqueo adicional.
+- [ ] Pruebas E2E de autenticación, tres usuarios, realtime, entradas, salidas, reparaciones y modo sin conexión.
+- [ ] Revisar datos sensibles en `localStorage` (`cp_v2`, `cp_v2_bak`, `cp_prev`) y diseñar migración segura sin perder cambios offline. **Bloquear la interfaz no cifra esos datos**.
+- [ ] Revisar seguridad de eventos realtime, vistas y RPC; verificar bloqueo de lecturas directas con sesión autenticada pero sin segundo factor.
+- [ ] Copia de seguridad verificada y plan de reversión de frontend + políticas SQL.
+- [ ] Despliegue coordinado: no fusionar la rama ni aplicar el SQL de RLS antes de aprobar estas verificaciones.
+
+**Estado:** desarrollo preparado parcialmente, NO APTO para publicación definitiva todavía. Ninguna prueba funcional real se debe marcar aprobada sin evidencia.
