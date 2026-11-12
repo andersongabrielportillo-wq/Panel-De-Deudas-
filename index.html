@@ -367,16 +367,17 @@ function save(){
   if(ok)sv("Guardado en este dispositivo "+hm());
   SY.pend=true;lsSet("cp_pend","1");schedulePush(300);return ok;
 }
-function schedulePush(ms){clearTimeout(SY.timer);if(!SY.doc)return;SY.timer=setTimeout(push,ms)}
+function schedulePush(ms){clearTimeout(SY.timer);if(!SY.doc||!DEBTS_UNLOCKED||!APP_READY)return;SY.timer=setTimeout(push,ms)}
 async function push(){
-  if(!SY.doc||SY.pushing||!SY.pend)return;
+  if(!SY.doc||SY.pushing||!SY.pend||!DEBTS_UNLOCKED||!APP_READY)return;
   if(typeof navigator!=="undefined"&&navigator.onLine===false){sv("⚠ Sin conexión: cambios guardados aquí, pendientes de sincronizar",1);return}
   SY.pushing=true;const sg=sig(S),rev=S.rev;sv("Sincronizando…");
   try{
     await SY.doc.set({j:JSON.stringify(S),rev,dev:DEV,ts:Date.now()});
+    if(!DEBTS_UNLOCKED||!APP_READY)return;
     S.debts.forEach(d=>SY.known[d.id]=d.mt||0);SY.fail=0;
     if(sig(S)===sg){SY.pend=false;lsDel("cp_pend");sv("Sincronizado "+hm())}else schedulePush(300);
-  }catch(e){SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
+  }catch(e){if(!DEBTS_UNLOCKED||!APP_READY)return;SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
   finally{SY.pushing=false}
 }
 function uiRefresh(){
@@ -387,6 +388,7 @@ function uiRefresh(){
 }
 // Aplica datos recibidos de la nube aunque haya un diálogo abierto (los datos se actualizan siempre; el diálogo solo se refresca si es seguro).
 function onRemote(s){
+  if(!DEBTS_UNLOCKED||!APP_READY)return;
   if(!s.exists){SY.pend=true;schedulePush(0);return}
   const d=s.data()||{};if(d.dev===DEV)return;
   let o=null;try{o=norm(JSON.parse(d.j))}catch(e){}
