@@ -378,7 +378,7 @@ async function push(){
     S.debts.forEach(d=>SY.known[d.id]=d.mt||0);SY.fail=0;
     if(sig(S)===sg){SY.pend=false;lsDel("cp_pend");sv("Sincronizado "+hm())}else schedulePush(300);
   }catch(e){if(!DEBTS_UNLOCKED||!APP_READY||epoch!==DEBT_SESSION_EPOCH)return;SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
-  finally{SY.pushing=false}
+  finally{if(epoch===DEBT_SESSION_EPOCH)SY.pushing=false}
 }
 function uiRefresh(){
   render();
@@ -661,7 +661,7 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(!DEBTS_UNLOCKED)throw new Error("Acceso privado requerido");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
-function hidePrivate(){DEBT_SESSION_EPOCH++;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=lsGet("cp_pend")==="1";clearTimeout(SY.timer)}
+function hidePrivate(){DEBT_SESSION_EPOCH++;SY.pushing=false;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=lsGet("cp_pend")==="1";clearTimeout(SY.timer)}
 function showPrivate(){if(!DEBTS_UNLOCKED||!APP_READY)return;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
@@ -683,10 +683,11 @@ async function cloudSnapshot(){
 }
 async function cloudSet(payload){
   if(!DEBTS_UNLOCKED||!APP_READY)throw new Error("Panel de Deudas bloqueado");
+  const epoch=DEBT_SESSION_EPOCH;
   const state=JSON.parse(payload.j);
   const {data:old,error:re}=await SB.from("debts").select("id").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(re)throw re;
-  if(!DEBTS_UNLOCKED||!APP_READY)throw new Error("Acceso bloqueado durante la sincronización");
+  if(!DEBTS_UNLOCKED||!APP_READY||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la sincronización");
   if(old){const {error}=await SB.from("debts").update({data:state,updated_by:SB_UID,updated_at:new Date().toISOString()}).eq("workspace_id",SB_WID).eq("id","__shared_state__");if(error)throw error}
   else{const {error}=await SB.from("debts").insert({id:"__shared_state__",workspace_id:SB_WID,data:state,created_by:SB_UID,updated_by:SB_UID});if(error)throw error}
 }
@@ -728,7 +729,7 @@ async function connectCloud(){
   const first=await cloudSnapshot();if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la conexión");onRemote(first);
   if(SB_CH)await SB.removeChannel(SB_CH);
   if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la conexión");
-  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
+  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if(epoch!==DEBT_SESSION_EPOCH||!DEBTS_UNLOCKED||!APP_READY)return;if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{const snapshot=await cloudSnapshot();if(epoch===DEBT_SESSION_EPOCH&&DEBTS_UNLOCKED&&APP_READY)onRemote(snapshot)}catch(e){if(epoch===DEBT_SESSION_EPOCH&&DEBTS_UNLOCKED)sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(epoch!==DEBT_SESSION_EPOCH||!DEBTS_UNLOCKED||!APP_READY)return;if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
   if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH){if(SB_CH){const stale=SB_CH;SB_CH=null;await SB.removeChannel(stale)}throw new Error("Acceso bloqueado durante la conexión")}
   showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
 }
