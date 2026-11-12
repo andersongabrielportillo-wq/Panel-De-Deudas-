@@ -672,11 +672,13 @@ const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 let SB_UID=null,SB_WID=null,SB_CH=null;
 const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
+  if(!DEBTS_UNLOCKED)throw new Error("Panel de Deudas bloqueado");
   const {data,error}=await SB.from("debts").select("data").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(error)throw error;
   return{exists:!!data,data:()=>data?{j:JSON.stringify(data.data),dev:"supabase"}:{}};
 }
 async function cloudSet(payload){
+  if(!DEBTS_UNLOCKED)throw new Error("Panel de Deudas bloqueado");
   const state=JSON.parse(payload.j);
   const {data:old,error:re}=await SB.from("debts").select("id").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(re)throw re;
@@ -687,10 +689,10 @@ let DEBTS_UNLOCKED=false, DEBTS_EXPIRY_TIMER=null;
 function showCommercialHome(){hidePrivate();gate(false);const h=document.getElementById("commercialHome");h.hidden=false;h.inert=false;document.getElementById("debtUnlockForm").hidden=true;document.getElementById("debtUnlockInput").value="";document.getElementById("debtUnlockError").textContent="";document.getElementById("logoutBtn").style.display="none"}
 function hideCommercialHome(){const h=document.getElementById("commercialHome");h.hidden=true;h.inert=true}
 async function enterCommercialHome(){const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();if(error)throw error;if(!m)throw new Error("Cuenta sin acceso");SB_WID=m.workspace_id;showCommercialHome()}
-async function lockDebtPanel(){if(SY.pend){const ok=confirm("Hay cambios pendientes de sincronizar. Se conservarán en este dispositivo, pero permanecerán pendientes hasta el siguiente desbloqueo. ¿Bloquear ahora?");if(!ok)return}DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;hidePrivate();try{await SB.rpc("lock_debts")}catch(e){}showCommercialHome()}
+async function lockDebtPanel(force=false){if(SY.pend&&!force){const ok=confirm("Hay cambios pendientes de sincronizar. Se conservarán en este dispositivo, pero permanecerán pendientes hasta el siguiente desbloqueo. ¿Bloquear ahora?");if(!ok)return}DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;hidePrivate();try{await SB.rpc("lock_debts")}catch(e){}showCommercialHome()}
 document.getElementById("lockDebtBtn").onclick=()=>lockDebtPanel();
 document.getElementById("openDebtUnlock").onclick=()=>{document.getElementById("debtUnlockForm").hidden=false;document.getElementById("debtUnlockInput").focus()};
-document.getElementById("confirmDebtUnlock").onclick=async()=>{const btn=document.getElementById("confirmDebtUnlock"),msg=document.getElementById("debtUnlockError"),password=document.getElementById("debtUnlockInput").value;btn.disabled=true;msg.textContent="Comprobando…";try{const {data,error}=await SB.rpc("unlock_debts",{p_password:password});if(error)throw error;if(data!==true){msg.textContent="Contraseña incorrecta o acceso temporalmente bloqueado";return}document.getElementById("debtUnlockInput").value="";DEBTS_UNLOCKED=true;await connectCloud();hideCommercialHome();clearInterval(DEBTS_EXPIRY_TIMER);DEBTS_EXPIRY_TIMER=setInterval(async()=>{if(!DEBTS_UNLOCKED)return;try{const {data,error}=await SB.rpc("has_debts_unlock");if(error||data!==true)await lockDebtPanel()}catch(e){await lockDebtPanel()}},15000)}catch(e){DEBTS_UNLOCKED=false;msg.textContent=e.message||"No se pudo validar el acceso"}finally{btn.disabled=false}};
+document.getElementById("confirmDebtUnlock").onclick=async()=>{const btn=document.getElementById("confirmDebtUnlock"),msg=document.getElementById("debtUnlockError"),password=document.getElementById("debtUnlockInput").value;btn.disabled=true;msg.textContent="Comprobando…";try{const {data,error}=await SB.rpc("unlock_debts",{p_password:password});if(error)throw error;if(data!==true){msg.textContent="Contraseña incorrecta o acceso temporalmente bloqueado";return}document.getElementById("debtUnlockInput").value="";DEBTS_UNLOCKED=true;await connectCloud();hideCommercialHome();clearInterval(DEBTS_EXPIRY_TIMER);DEBTS_EXPIRY_TIMER=setInterval(async()=>{if(!DEBTS_UNLOCKED)return;try{const {data,error}=await SB.rpc("has_debts_unlock");if(error||data!==true)await lockDebtPanel(true)}catch(e){await lockDebtPanel(true)}},15000)}catch(e){DEBTS_UNLOCKED=false;if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;hidePrivate();msg.textContent=e.message||"No se pudo validar el acceso"}finally{btn.disabled=false}};
 document.getElementById("debtUnlockInput").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("confirmDebtUnlock").click()});
 document.getElementById("homeLogout").onclick=()=>document.getElementById("logoutBtn").click();
 async function connectCloud(){
@@ -724,7 +726,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
   document.getElementById("authPass").value="";
   try{await SB.auth.signOut();sv("Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){DEBTS_UNLOCKED=false;hideCommercialHome();gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>enterCommercialHome().catch(e=>gate(true,e.message)),0)}});
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);if(SB_CH){SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;SB_UID=null;SB_WID=null;hideCommercialHome();gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>enterCommercialHome().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
