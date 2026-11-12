@@ -4,6 +4,7 @@
 #authGate[hidden]{display:none!important}.authCard{width:min(420px,100%);background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:22px;box-shadow:var(--sh)}
 .authCard h2{margin:0 0 6px}.authCard p{color:var(--mut);margin:0 0 16px}.authCard input{width:100%;background:var(--in);border:1px solid var(--bd);border-radius:10px;padding:11px;margin:5px 0}.authCard .b{width:100%;margin-top:10px}.authErr{color:var(--red);min-height:20px;margin-top:8px;font-size:13px}
 #logoutBtn{display:none}
+#commercialHome{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:var(--bg);padding:22px}#commercialHome[hidden]{display:none!important}.commercialCard{width:min(470px,100%);padding:28px;border:1px solid var(--bd);border-radius:22px;background:var(--card);box-shadow:var(--sh)}.commercialCard h1{margin:0 0 10px}.commercialCard p{color:var(--mut);line-height:1.5}.commercialCard .b{width:100%;margin:12px 0}#debtUnlockInput{width:100%;padding:13px;border-radius:10px;background:var(--in);color:var(--tx);border:1px solid var(--bd)}#debtUnlockError{color:var(--red);min-height:20px}
 </style>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0b1f3a">
@@ -15,6 +16,7 @@
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body><div id="lgIntro" aria-hidden="true"><div class="orb"></div></div>
+<section id="commercialHome" hidden inert><div class="commercialCard"><h1>Comercial López Nº 2</h1><p>Panel administrativo. Los datos de deudas permanecen bloqueados hasta que ingreses la contraseña adicional.</p><button type="button" class="b" id="openDebtUnlock">🔒 Panel de Deudas</button><div id="debtUnlockForm" hidden><label for="debtUnlockInput">Contraseña adicional</label><input id="debtUnlockInput" type="password" autocomplete="off" placeholder="Contraseña privada"><button type="button" class="b" id="confirmDebtUnlock">Desbloquear Deudas</button><p id="debtUnlockError" role="alert"></p></div><button type="button" class="g2" id="homeLogout">Cerrar sesión</button></div></section>
 <div id="authGate"><div class="authCard"><h2>Panel de Deudas</h2><p>Inicia sesión para acceder a la base compartida.</p><input id="authEmail" type="email" autocomplete="username" placeholder="Correo"><input id="authPass" type="password" autocomplete="current-password" placeholder="Contraseña"><button class="b" id="authLogin">Iniciar sesión</button><div class="authErr" id="authErr"></div></div></div>
 <title>Panel De Deudas</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -654,7 +656,7 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 // Los datos privados se cargan y renderizan solo después de autorizar la sesión.
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
-function loadPrivate(){S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
+function loadPrivate(){if(!DEBTS_UNLOCKED)throw new Error("Acceso privado requerido");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
 function showPrivate(){document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
@@ -681,7 +683,17 @@ async function cloudSet(payload){
   if(old){const {error}=await SB.from("debts").update({data:state,updated_by:SB_UID,updated_at:new Date().toISOString()}).eq("workspace_id",SB_WID).eq("id","__shared_state__");if(error)throw error}
   else{const {error}=await SB.from("debts").insert({id:"__shared_state__",workspace_id:SB_WID,data:state,created_by:SB_UID,updated_by:SB_UID});if(error)throw error}
 }
+let DEBTS_UNLOCKED=false, DEBTS_EXPIRY_TIMER=null;
+function showCommercialHome(){hidePrivate();gate(false);const h=document.getElementById("commercialHome");h.hidden=false;h.inert=false;document.getElementById("debtUnlockForm").hidden=true;document.getElementById("debtUnlockInput").value="";document.getElementById("debtUnlockError").textContent="";document.getElementById("logoutBtn").style.display="none"}
+function hideCommercialHome(){const h=document.getElementById("commercialHome");h.hidden=true;h.inert=true}
+async function enterCommercialHome(){const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();if(error)throw error;if(!m)throw new Error("Cuenta sin acceso");SB_WID=m.workspace_id;showCommercialHome()}
+async function lockDebtPanel(){DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}SY.doc=null;hidePrivate();try{await SB.rpc("lock_debts")}catch(e){}showCommercialHome()}
+document.getElementById("openDebtUnlock").onclick=()=>{document.getElementById("debtUnlockForm").hidden=false;document.getElementById("debtUnlockInput").focus()};
+document.getElementById("confirmDebtUnlock").onclick=async()=>{const btn=document.getElementById("confirmDebtUnlock"),msg=document.getElementById("debtUnlockError"),password=document.getElementById("debtUnlockInput").value;btn.disabled=true;msg.textContent="Comprobando…";try{const {data,error}=await SB.rpc("unlock_debts",{p_password:password});if(error)throw error;if(data!==true){msg.textContent="Contraseña incorrecta o acceso temporalmente bloqueado";return}document.getElementById("debtUnlockInput").value="";DEBTS_UNLOCKED=true;await connectCloud();hideCommercialHome();clearInterval(DEBTS_EXPIRY_TIMER);DEBTS_EXPIRY_TIMER=setInterval(async()=>{if(!DEBTS_UNLOCKED)return;try{const {data,error}=await SB.rpc("has_debts_unlock");if(error||data!==true)await lockDebtPanel()}catch(e){await lockDebtPanel()}},15000)}catch(e){DEBTS_UNLOCKED=false;msg.textContent=e.message||"No se pudo validar el acceso"}finally{btn.disabled=false}};
+document.getElementById("debtUnlockInput").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("confirmDebtUnlock").click()});
+document.getElementById("homeLogout").onclick=()=>document.getElementById("logoutBtn").click();
 async function connectCloud(){
+  if(!DEBTS_UNLOCKED)throw new Error("Desbloquea primero el Panel de Deudas");
   const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
   if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
   if(!APP_READY)loadPrivate();
@@ -692,13 +704,14 @@ async function connectCloud(){
   showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
 }
 async function startAuth(){
-  try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
+  try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await enterCommercialHome()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
 }
-document.getElementById("authLogin").onclick=async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPass").value;document.getElementById("authErr").textContent="Entrando…";const {data,error}=await SB.auth.signInWithPassword({email,password});if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}SB_UID=data.user.id;try{await connectCloud()}catch(e){await SB.auth.signOut();gate(true,e.message||"Cuenta sin acceso")}};
+document.getElementById("authLogin").onclick=async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPass").value;document.getElementById("authErr").textContent="Entrando…";const {data,error}=await SB.auth.signInWithPassword({email,password});if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}SB_UID=data.user.id;try{await enterCommercialHome()}catch(e){await SB.auth.signOut();gate(true,e.message||"Cuenta sin acceso")}};
 document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("authLogin").click()});
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
   if(SY.pend&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
+  DEBTS_UNLOCKED=false;clearInterval(DEBTS_EXPIRY_TIMER);hideCommercialHome();try{await SB.rpc("lock_debts")}catch(e){};
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
   const pending=SY.pend;
@@ -709,7 +722,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
   document.getElementById("authPass").value="";
   try{await SB.auth.signOut();sv("Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){DEBTS_UNLOCKED=false;hideCommercialHome();gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>enterCommercialHome().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
