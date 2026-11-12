@@ -28,3 +28,11 @@ Supabase: https://supabase.com/docs/guides/database/postgres/row-level-security
 - Todas las operaciones fueron rechazadas por `insufficient_privilege`; el bloque de aserciones terminó sin error.
 - Estas pruebas simulan los roles de base de datos, **no** constituyen sesiones reales de Supabase Auth ni cuentas de prueba creadas.
 - **Bloqueante para E2E**: crear usuarios ficticios mediante el mecanismo autorizado de Supabase Auth, con credenciales temporales gestionadas fuera del repositorio, habilitar un acceso de prueba explícito al sandbox y probar sesiones JWT reales. No reutilizar cuentas ni datos de producción.
+
+## Segunda ronda de pruebas automatizadas (2026-11-12)
+- SQL ejecutado contra `cl2_sandbox`: crear deuda temporal $200; insertar abonos $25 y $35; saldo comprobado $140; corregir $35 a $30 y comprobar $145; borrar abono $25 y comprobar $170; eliminar abonos y deuda temporal; verificar cantidad original de deudas restaurada. Resultado: **PASS**.
+- Se confirmó que siguen existiendo exactamente dos registros en `cl2_sandbox.test_members`.
+- Sintaxis JavaScript de los cuatro bloques embebidos de `index.html` de la rama: **PASS** (compilación estática, no ejecución en navegador).
+- **NO probado**: login con contraseñas reales, sesiones JWT reales, pruebas E2E, permisos por rol en operaciones, realtime, offline, PWA, flujo de inventario, garantías, reparaciones, recálculo cronológico de intereses. Las tablas de sandbox de deudas son fixtures simplificados, no equivalen al motor de producción.
+- **Bloqueo detectado**: el frontend de desarrollo sigue apuntando Deudas a `josdmjjbnrugiwlwgjky` (producción), mientras Inventario apunta a `dozcnytevqhoymzqlxah`. No usar la app para ensayar deudas con cuentas ficticias hasta disponer de una variante aislada de configuración y esquema/API compatibles.
+- **Seguridad**: las cuentas de prueba no están en `public.inv_members`, por lo que no pueden ejecutar pruebas de inventario; evitar agregarlas sin aislar los datos existentes.
