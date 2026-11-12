@@ -371,13 +371,13 @@ function schedulePush(ms){clearTimeout(SY.timer);if(!SY.doc||!DEBTS_UNLOCKED||!A
 async function push(){
   if(!SY.doc||SY.pushing||!SY.pend||!DEBTS_UNLOCKED||!APP_READY)return;
   if(typeof navigator!=="undefined"&&navigator.onLine===false){sv("⚠ Sin conexión: cambios guardados aquí, pendientes de sincronizar",1);return}
-  SY.pushing=true;const sg=sig(S),rev=S.rev;sv("Sincronizando…");
+  SY.pushing=true;const epoch=DEBT_SESSION_EPOCH,sg=sig(S),rev=S.rev;sv("Sincronizando…");
   try{
     await SY.doc.set({j:JSON.stringify(S),rev,dev:DEV,ts:Date.now()});
-    if(!DEBTS_UNLOCKED||!APP_READY)return;
+    if(!DEBTS_UNLOCKED||!APP_READY||epoch!==DEBT_SESSION_EPOCH)return;
     S.debts.forEach(d=>SY.known[d.id]=d.mt||0);SY.fail=0;
     if(sig(S)===sg){SY.pend=false;lsDel("cp_pend");sv("Sincronizado "+hm())}else schedulePush(300);
-  }catch(e){if(!DEBTS_UNLOCKED||!APP_READY)return;SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
+  }catch(e){if(!DEBTS_UNLOCKED||!APP_READY||epoch!==DEBT_SESSION_EPOCH)return;SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
   finally{SY.pushing=false}
 }
 function uiRefresh(){
@@ -661,7 +661,7 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(!DEBTS_UNLOCKED)throw new Error("Acceso privado requerido");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
-function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=lsGet("cp_pend")==="1";clearTimeout(SY.timer)}
+function hidePrivate(){DEBT_SESSION_EPOCH++;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=lsGet("cp_pend")==="1";clearTimeout(SY.timer)}
 function showPrivate(){if(!DEBTS_UNLOCKED||!APP_READY)return;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
@@ -706,7 +706,7 @@ invEl("inventoryMoveType").onchange=()=>{invEl("inventoryMoveDestinationLabel").
 invEl("inventoryMoveForm").onsubmit=async e=>{e.preventDefault();const btn=invEl("inventoryMoveSubmit"),tipo=invEl("inventoryMoveType").value,cantidad=Number(invEl("inventoryMoveQty").value),origen=Number(invEl("inventoryMoveOrigin").value),destino=tipo==="traslado"?Number(invEl("inventoryMoveDestination").value):null,observaciones=invEl("inventoryMoveNote").value.trim();if(!Number.isSafeInteger(cantidad)||cantidad<=0||!observaciones||(tipo==="traslado"&&origen===destino)){invEl("inventoryStatus").textContent="Verifica cantidad, observaciones y ubicaciones";return}if(!confirm("¿Confirmar "+tipo+" de "+cantidad+" unidades? Esto modificará las existencias."))return;btn.disabled=true;const opId=crypto.randomUUID();try{const {error}=await INVENTORY_SB.rpc("inv_registrar_movimiento",{p_item_id:invEl("inventoryMoveItem").value,p_tipo:tipo,p_origen:origen,p_destino:destino,p_cantidad:cantidad,p_vendedor:null,p_observaciones:observaciones,p_client_op_id:opId});if(error)throw error;invEl("inventoryMoveForm").reset();invEl("inventoryMoveDestinationLabel").hidden=true;await inventoryLoad();invEl("inventoryStatus").textContent="Movimiento registrado correctamente"}catch(err){invEl("inventoryStatus").textContent="No se pudo registrar: "+err.message}finally{btn.disabled=false}};
 invEl("inventoryEntryForm").onsubmit=async e=>{e.preventDefault();const btn=invEl("inventoryEntrySubmit"),qty=Number(invEl("inventoryEntryQty").value),note=invEl("inventoryEntryNote").value.trim();if(!Number.isSafeInteger(qty)||qty<=0||!note){invEl("inventoryStatus").textContent="Cantidad y observaciones válidas son obligatorias";return}btn.disabled=true;try{const {error}=await INVENTORY_SB.rpc("inv_solicitar_entrada",{p_item_id:invEl("inventoryEntryItem").value,p_location_id:Number(invEl("inventoryEntryLocation").value),p_cantidad:qty,p_observaciones:note});if(error)throw error;invEl("inventoryEntryForm").reset();await inventoryLoad();invEl("inventoryStatus").textContent="Solicitud enviada a revisión. No aumenta existencias hasta su aprobación."}catch(err){invEl("inventoryStatus").textContent="No se pudo solicitar entrada: "+err.message}finally{btn.disabled=false}};
 invEl("inventoryRefresh").onclick=()=>inventoryLoad();invEl("inventorySignOut").onclick=async()=>{await INVENTORY_SB.auth.signOut();invEl("inventoryRows").replaceChildren();invEl("inventoryStatus").textContent="Sesión de inventario cerrada";await inventorySession()};
-let DEBTS_UNLOCKED=false, DEBTS_EXPIRY_TIMER=null;
+let DEBTS_UNLOCKED=false, DEBTS_EXPIRY_TIMER=null, DEBT_SESSION_EPOCH=0;
 function showCommercialHome(){hidePrivate();gate(false);const h=document.getElementById("commercialHome");h.hidden=false;h.inert=false;document.getElementById("debtUnlockForm").hidden=true;document.getElementById("debtUnlockInput").value="";document.getElementById("debtUnlockError").textContent="";document.getElementById("logoutBtn").style.display="none"}
 function hideCommercialHome(){const h=document.getElementById("commercialHome");h.hidden=true;h.inert=true}
 async function enterCommercialHome(){const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();if(error)throw error;if(!m)throw new Error("Cuenta sin acceso");SB_WID=m.workspace_id;showCommercialHome()}
@@ -718,16 +718,17 @@ document.getElementById("debtUnlockInput").addEventListener("keydown",e=>{if(e.k
 document.getElementById("homeLogout").onclick=()=>document.getElementById("logoutBtn").click();
 async function connectCloud(){
   if(!DEBTS_UNLOCKED)throw new Error("Desbloquea primero el Panel de Deudas");
-  const {data:authorized,error:authError}=await SB.rpc("has_debts_unlock");if(authError||authorized!==true)throw new Error("La sesión no está autorizada para acceder a Deudas");
+  const epoch=DEBT_SESSION_EPOCH;
+  const {data:authorized,error:authError}=await SB.rpc("has_debts_unlock");if(authError||authorized!==true||epoch!==DEBT_SESSION_EPOCH)throw new Error("La sesión no está autorizada para acceder a Deudas");
   const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
-  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");SB_WID=m.workspace_id;
+  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la conexión");SB_WID=m.workspace_id;
   if(!APP_READY)loadPrivate();
   SY.doc={set:cloudSet};
-  const first=await cloudSnapshot();if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");onRemote(first);
+  const first=await cloudSnapshot();if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la conexión");onRemote(first);
   if(SB_CH)await SB.removeChannel(SB_CH);
-  if(!DEBTS_UNLOCKED)throw new Error("Acceso bloqueado durante la conexión");
+  if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH)throw new Error("Acceso bloqueado durante la conexión");
   SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
-  if(!DEBTS_UNLOCKED){if(SB_CH){const stale=SB_CH;SB_CH=null;await SB.removeChannel(stale)}throw new Error("Acceso bloqueado durante la conexión")}
+  if(!DEBTS_UNLOCKED||epoch!==DEBT_SESSION_EPOCH){if(SB_CH){const stale=SB_CH;SB_CH=null;await SB.removeChannel(stale)}throw new Error("Acceso bloqueado durante la conexión")}
   showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
 }
 async function startAuth(){
