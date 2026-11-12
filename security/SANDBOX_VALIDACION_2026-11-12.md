@@ -22,3 +22,9 @@ Proyecto Supabase existente **Comercial Lopez Pruebas** (`dozcnytevqhoymzqlxah`)
 
 ## Referencia de seguridad
 Supabase: https://supabase.com/docs/guides/database/postgres/row-level-security
+
+## Pruebas de autorización por roles (2026-11-12)
+- Ejecutadas 8 comprobaciones SQL con `SET LOCAL ROLE`: roles `anon` y `authenticated`, cada uno intentando `SELECT`, `INSERT`, `UPDATE` y `DELETE` sobre `cl2_sandbox.test_debts`.
+- Todas las operaciones fueron rechazadas por `insufficient_privilege`; el bloque de aserciones terminó sin error.
+- Estas pruebas simulan los roles de base de datos, **no** constituyen sesiones reales de Supabase Auth ni cuentas de prueba creadas.
+- **Bloqueante para E2E**: crear usuarios ficticios mediante el mecanismo autorizado de Supabase Auth, con credenciales temporales gestionadas fuera del repositorio, habilitar un acceso de prueba explícito al sandbox y probar sesiones JWT reales. No reutilizar cuentas ni datos de producción.
