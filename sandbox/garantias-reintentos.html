@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Garantías · simulador de reintentos</title>
+<style>body{font:16px system-ui;background:#f4f7fb;color:#14233b;max-width:780px;margin:35px auto;padding:16px}main{background:white;border-radius:18px;padding:24px;box-shadow:0 8px 30px #14233b12}label{display:block;margin:14px 0}input,select,button{font:inherit;padding:10px;border:1px solid #c7d2e1;border-radius:9px}button{background:#123a6d;color:white;cursor:pointer}button:disabled{opacity:.5}pre{white-space:pre-wrap;background:#eef3f8;padding:15px;border-radius:9px}small{color:#53677d}</style>
+<main><h1>Prueba aislada de liberación de garantías</h1><p><strong>Simulador local.</strong> No se conecta a Supabase ni modifica inventarios reales.</p>
+<label>Artículo ficticio <input id="item" value="ARTICULO-DE-PRUEBA"></label>
+<label>Destino <select id="dest"><option value="1">Bodega 1</option><option value="2">Bodega 2</option></select></label>
+<label>Cantidad <input id="qty" type="number" min="1" step="1" value="2"></label>
+<label>Observaciones <input id="notes" value="Revisión de prueba"></label>
+<button id="send">Simular liberación</button> <button id="retry" disabled>Reintentar misma solicitud</button> <button id="reset">Nuevo intento</button>
+<p><small>La clave permanece asociada al mismo contenido. Cambiar cualquier campo exige generar un intento nuevo.</small></p>
+<pre id="out" role="status" aria-live="polite"></pre></main>
+<script>
+"use strict";
+const el=id=>document.getElementById(id);
+const operations=new Map(); // Servidor ficticio; solo existe en esta pestaña
+let pending=null,busy=false;
+function payload(){const q=Number(el("qty").value),n=el("notes").value.trim();if(!Number.isSafeInteger(q)||q<=0||!n)throw Error("Cantidad y observaciones obligatorias");return {item:el("item").value.trim(),destination:Number(el("dest").value),quantity:q,notes:n}}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+async function fakeRpc(data,key){await new Promise(resolve=>setTimeout(resolve,350));const old=operations.get(key);if(old){if(!same(old.data,data))throw Error("Identificador reutilizado con datos diferentes");return {status:"already_released",movement_id:old.id}}const id=crypto.randomUUID();operations.set(key,{data,id});return {status:"released",movement_id:id}}
+function output(s){el("out").textContent=s}
+function sync(){el("send").disabled=busy||!!pending;el("retry").disabled=busy||!pending;el("reset").disabled=busy}
+async function submit(retry){if(busy)return;try{const data=payload();if(retry){if(!pending)throw Error("No hay intento pendiente");if(!same(data,pending.data))throw Error("Cambiaste los datos: restaura los originales o crea un nuevo intento")}else{if(pending)throw Error("Finaliza o reinicia el intento anterior");pending={key:crypto.randomUUID(),data}}busy=true;sync();const result=await fakeRpc(pending.data,pending.key);output(JSON.stringify({operation_key:pending.key,...result},null,2))}catch(e){output("Error: "+e.message)}finally{busy=false;sync()}}
+el("send").onclick=()=>submit(false);el("retry").onclick=()=>submit(true);el("reset").onclick=()=>{pending=null;output("Listo para una operación nueva.");sync()};output("Preparado. Todos los datos son ficticios.");
+</script></html>
