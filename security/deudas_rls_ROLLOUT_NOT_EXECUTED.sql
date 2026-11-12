@@ -3,7 +3,7 @@
 begin;
 -- PRECHECK BLOQUEANTE: no aplicar si existen políticas inesperadas o falta la RPC.
 -- Ejecutar en una ventana de despliegue coordinado, tras respaldar y probar.
-DO $
+DO $$
 DECLARE
   v_table text;
   v_expected text[];
@@ -32,7 +32,7 @@ BEGIN
       RAISE EXCEPTION 'Políticas inesperadas en %. Esperadas %, encontradas %',v_table,v_expected,v_actual;
     END IF;
   END LOOP;
-END $;
+END $$;
 drop policy if exists members_read_debts on public.debts;
 create policy members_read_debts on public.debts for select to authenticated
 using (public.is_workspace_member(workspace_id) and (select public.has_debts_unlock()));
