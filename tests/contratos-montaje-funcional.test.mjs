@@ -84,3 +84,31 @@ test('cambiar usuario desmonta incluso con sesión autenticada',async()=>{
  assert.equal(limpiezas,1);
  assert.equal(modulo.desmontarContratosEnStaging(root),false);
 });
+
+test('cancelar mientras se verifica permiso impide montar y permite otro intento',async()=>{
+ let liberar,montados=0;
+ const espera=new Promise(resolve=>{liberar=resolve});
+ globalThis.__montajeContratosPrueba=()=>{montados++;return {destruir(){}}};
+ const root=contenedor();
+ const supabase={auth:{getUser:async()=>usuario('u1')},rpc:async()=>{await espera;return {data:[],error:null}}};
+ const intento=modulo.montarContratosEnStaging({supabase,contenedor:root});
+ assert.equal(modulo.desmontarContratosEnStaging(root),true);
+ liberar();
+ await assert.rejects(intento,/Montaje cancelado/);
+ assert.equal(montados,0);
+ await modulo.montarContratosEnStaging({supabase,contenedor:root});
+ assert.equal(montados,1);
+});
+test('error de observador de sesión destruye controlador y libera contenedor',async()=>{
+ let destruidos=0,limpiezas=0;
+ globalThis.__montajeContratosPrueba=()=>({destruir(){destruidos++}});
+ const root={replaceChildren(){limpiezas++}};
+ const supabase={auth:{
+  getUser:async()=>usuario('u1'),
+  onAuthStateChange:()=>{throw new Error('Observador no disponible')}
+ },rpc:async()=>({data:[],error:null})};
+ await assert.rejects(modulo.montarContratosEnStaging({supabase,contenedor:root}),/Observador no disponible/);
+ assert.equal(destruidos,1);
+ assert.equal(limpiezas,1);
+ assert.equal(modulo.desmontarContratosEnStaging(root),false);
+});
