@@ -23,7 +23,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     if(pendiente.cancelado)throw new Error('Montaje cancelado');
     if(error || !data?.user?.id)throw new Error('Inicia sesión para acceder a contratos');
     const usuarioInicial=data.user.id;
-    const permiso=await supabase.rpc('inv_catalogo_vendedores');
+    const permiso=await supabase.rpc('inv_catalogo_vendedores_manual');
     if(pendiente.cancelado)throw new Error('Montaje cancelado');
     if(permiso.error)throw new Error('Sin permiso para contratos: '+(permiso.error.message||'Acceso denegado'));
     // La sesión puede cambiar durante la RPC: nunca montar para un usuario distinto.
