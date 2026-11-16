@@ -18,3 +18,5 @@ test('login tardío no reabre sesión después de invalidación',()=>{assert.mat
 test('búsqueda reemplazada no muestra respuesta anterior',()=>{assert.match(html,/view==="contratos"&&clientRequest===controller/);assert.match(html,/session===s&&clientRequest===controller/)});
 
 test('ficha e historial de clientes solo lectura por UUID validado',()=>{assert.match(html,/rpc\("inv_ficha_cliente"\)/);assert.match(html,/rpc\("inv_historial_cliente"\)/);assert.match(html,/p_cliente_id:id/);assert.match(html,/detailRequest===controller/);assert.match(html,/detailRequest\.abort\(\)/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
+
+test('renovación JWT está aislada por sesión, sin promesa global compartida',()=>{assert.match(html,/if\(s\.refreshing\)return s\.refreshing/);assert.match(html,/s\.refreshing=\(async\(\)=>/);assert.match(html,/if\(session!==s\)throw Error\("Sesión cerrada"\)/);assert.match(html,/finally\{s\.refreshing=null\}/);assert.doesNotMatch(html,/let session=null[^;]*refreshing=null/)});
