@@ -157,3 +157,13 @@ test('revisión de contrato rechaza booleanos en dinero y cantidades',()=>{
  assert.match(ui,/typeof valor==='boolean'/);
  assert.match(ui,/typeof articulo\.cantidad==='boolean'/);
 });
+
+test('confirmación tardía no borra revisión de otro contrato',()=>{
+ assert.match(ui,/const revisionEnviada=revision/);
+ assert.match(ui,/const operacionEnviada=operacionConfirmacion/);
+ assert.match(ui,/if\(revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*invalidarRevision\(\)/);
+});
+test('fallo tardío no reactiva confirmación de otra revisión',()=>{
+ assert.match(ui,/catch\(e\)\{\s*\/\/ Solo permitir reintento si seguimos viendo la misma revisión/);
+ assert.match(ui,/if\(revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*confirmarVenta\.disabled=false/);
+});
