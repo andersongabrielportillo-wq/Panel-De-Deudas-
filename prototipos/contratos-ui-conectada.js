@@ -37,11 +37,32 @@ export function iniciarContratosDemo({supabase,root}) {
   const dui=campo(clienteBox,'DUI');
   const telefono=campo(clienteBox,'Teléfono');
   const direccion=campo(clienteBox,'Dirección');
+  const ubicacion=campo(clienteBox,'Ubicación');
+  const vivienda=el('select',{'aria-label':'Tipo de vivienda'});
+  vivienda.append(el('option',{value:''},'No indicado'),el('option',{value:'propia'},'Propia'),el('option',{value:'alquila'},'Alquila'));
+  clienteBox.append(el('p',{},'Tipo de vivienda'),vivienda);
+  const lugarTrabajo=campo(clienteBox,'Lugar de trabajo');
+  const telefonoTrabajo=campo(clienteBox,'Teléfono del trabajo');
+  const referencias=[1,2].map(n=>({
+    nombre:campo(clienteBox,'Referencia '+n+' · Nombre'),
+    telefono:campo(clienteBox,'Referencia '+n+' · Teléfono'),
+    direccion:campo(clienteBox,'Referencia '+n+' · Dirección'),
+    parentesco:campo(clienteBox,'Referencia '+n+' · Parentesco')
+  }));
   const crearCliente=el('button',{type:'button'},'Crear cliente');
   clienteBox.append(crearCliente);
   const contratoBox=section('Crear contrato borrador');
   const numero=campo(contratoBox,'Número de contrato');
   const fecha=campo(contratoBox,'Fecha','date');
+  const plan=el('select',{'aria-label':'Plan de pagos'});
+  [['normal','Normal'],['6_pagos','6 pagos'],['3_pagos','3 pagos']].forEach(([v,t])=>plan.append(el('option',{value:v},t)));
+  const frecuencia=el('select',{'aria-label':'Frecuencia de cobro'});
+  [['semanal','Semanal'],['quincenal','Quincenal'],['mensual','Mensual']].forEach(([v,t])=>frecuencia.append(el('option',{value:v},t)));
+  const ruta=campo(contratoBox,'Ruta');
+  const diaCobro=campo(contratoBox,'Día de cobro');
+  const cuota=campo(contratoBox,'Cuota','number');cuota.step='.01';
+  const saldoInicial=campo(contratoBox,'Saldo inicial','number');saldoInicial.step='.01';
+  const receptorAlterno=campo(contratoBox,'Persona que recibe la letra');
   const vendedor=el('select',{'aria-label':'Vendedor'});
   const item=el('select',{'aria-label':'Artículo'});
   const cantidad=campo(contratoBox,'Cantidad','number');cantidad.value='1';
@@ -53,7 +74,8 @@ export function iniciarContratosDemo({supabase,root}) {
   const agregar=el('button',{type:'button'},'Agregar artículo');
   const articulosLista=el('ul');
   const guardar=el('button',{type:'button'},'Guardar borrador');
-  contratoBox.append(el('p',{},'Vendedor'),vendedor,el('p',{},'Artículo'),item,agregar,articulosLista,primaLabel,guardar);
+  contratoBox.append(el('p',{},'Plan'),plan,el('p',{},'Frecuencia'),frecuencia,
+    el('p',{},'Vendedor'),vendedor,el('p',{},'Artículo'),item,agregar,articulosLista,primaLabel,guardar);
   const histBox=section('Historial del vendedor');
   const verHistorial=el('button',{type:'button'},'Consultar historial');
   const histLista=el('div');histBox.append(verHistorial,histLista);
@@ -89,7 +111,12 @@ export function iniciarContratosDemo({supabase,root}) {
   crearCliente.onclick=()=>tarea(async()=>{
     state.clienteId=await api.crearCliente({
       nombre:nombre.value,dui:dui.value,telefono:telefono.value,
-      direccion:direccion.value,referencias:[]
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
     });
   });
   agregar.onclick=()=>{
@@ -111,7 +138,9 @@ export function iniciarContratosDemo({supabase,root}) {
     if(!state.items.length)throw new Error('Agrega artículos');
     const id=await api.crearContratoBorrador({
       numero:numero.value,clienteId:state.clienteId,vendedorId:vendedor.value,
-      fecha:fecha.value,modalidad:'credito',plan:'normal',frecuencia:'semanal',
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
       comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
       articulos:state.items
     });
