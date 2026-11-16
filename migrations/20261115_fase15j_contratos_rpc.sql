@@ -106,11 +106,19 @@ BEGIN
  p_fecha_plan,p_ruta,p_dia_cobro,p_receptor_alterno,p_comision,p_observaciones) RETURNING id INTO v_id;
  FOR v_line IN SELECT value FROM pg_catalog.jsonb_array_elements(p_detalles) LOOP
    IF pg_catalog.jsonb_typeof(v_line)<>'object' THEN RAISE EXCEPTION 'Línea inválida'; END IF;
-   v_item:=(v_line->>'item_id')::uuid;
-   IF (v_line->>'cantidad') IS NULL
+   IF pg_catalog.jsonb_typeof(v_line->'item_id')<>'string'
+      OR (v_line->>'item_id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+   THEN RAISE EXCEPTION 'Identificador de artículo inválido'; END IF;
+   IF pg_catalog.jsonb_typeof(v_line->'cantidad')<>'number'
       OR (v_line->>'cantidad') !~ '^[1-9][0-9]*$'
       OR length(v_line->>'cantidad')>9
    THEN RAISE EXCEPTION 'Cantidad debe ser un entero positivo'; END IF;
+   IF pg_catalog.jsonb_typeof(v_line->'precio_credito_unitario')<>'number'
+      OR (v_line ? 'comision_linea' AND pg_catalog.jsonb_typeof(v_line->'comision_linea')<>'number')
+      OR (v_line->>'precio_credito_unitario') !~ '^[0-9]+(\\.[0-9]+)?$'
+      OR (v_line ? 'comision_linea' AND (v_line->>'comision_linea') !~ '^[0-9]+(\\.[0-9]+)?$')
+   THEN RAISE EXCEPTION 'Importes de artículo inválidos'; END IF;
+   v_item:=(v_line->>'item_id')::uuid;
    v_cantidad:=(v_line->>'cantidad')::integer;
    v_precio:=(v_line->>'precio_credito_unitario')::numeric;
    v_comision:=coalesce((v_line->>'comision_linea')::numeric,0);
