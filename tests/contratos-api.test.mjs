@@ -252,3 +252,12 @@ test('comisiones booleanas no se convierten a cero',()=>{
  }
  assert.equal(m.calls.length,0);
 });
+
+test('recorta nombres y rechaza referencias mayores de 200 caracteres',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente',referencias:[{nombre:'R'.repeat(201)}]}),/referencias/);
+ await api.crearCliente({nombre:'  Cliente Ejemplo  ',referencias:[{nombre:'  Referencia Ejemplo  '}]});
+ assert.equal(m.calls.length,1);
+ assert.equal(m.calls[0].args.p_nombre,'Cliente Ejemplo');
+ assert.equal(m.calls[0].args.p_referencias[0].nombre,'Referencia Ejemplo');
+});
