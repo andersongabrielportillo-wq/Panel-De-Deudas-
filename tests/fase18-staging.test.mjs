@@ -7,4 +7,6 @@ test('consultas de inventario se cancelan al cambiar modulo o cerrar sesión',()
 
 test('contratos solo lee catálogos protegidos, sin escribir contratos',()=>{assert.match(html,/inv_catalogo_vendedores/);assert.match(html,/inv_catalogo_articulos_contratos/);assert.match(html,/Contratos: catálogos protegidos en solo lectura/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/);assert.doesNotMatch(html,/rpc\/(?:inv_registrar_venta|inv_marcar_prima_recibida)/)});
 
-test('búsqueda de clientes protegida sin escrituras y con aislamiento de sesión',()=>{assert.match(html,/rpc\/inv_buscar_clientes/);assert.match(html,/p_busqueda:q/);assert.match(html,/q\.length<2/);assert.match(html,/clientRequest\.abort\(\)/);assert.match(html,/session!==s\|\|view!=="contratos"/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
+test('búsqueda de clientes protegida sin escrituras y con aislamiento de sesión',()=>{assert.match(html,/rpc\/inv_buscar_clientes/);assert.match(html,/p_busqueda:q/);assert.match(html,/q\.length<3/);assert.match(html,/clientRequest\.abort\(\)/);assert.match(html,/session!==s\|\|view!=="contratos"/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
+
+test('el umbral de búsqueda coincide con la validación SQL (3 caracteres)',()=>{assert.match(html,/q\.length<3/);assert.match(html,/Escribí al menos 3 caracteres/);assert.doesNotMatch(html,/q\.length<2/) });
