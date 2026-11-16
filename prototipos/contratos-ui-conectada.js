@@ -207,13 +207,19 @@ export function iniciarContratosDemo({supabase,root}) {
     for(const x of v.data||[])opcion(vendedor,x.id,x.nombre);
     for(const x of i.data||[])opcion(item,x.id,x.nombre);
   }
+  let solicitudBusqueda=0;
+  busqueda.addEventListener('input',()=>{solicitudBusqueda++;resultados.replaceChildren();});
   buscar.onclick=()=>tarea(async()=>{
-    const rows=await api.buscarClientes(busqueda.value);
+    const solicitud=++solicitudBusqueda;
+    const texto=busqueda.value.trim();
+    if(texto.length<3||texto.length>100)throw new Error('Busca entre 3 y 100 caracteres');
+    const rows=await api.buscarClientes(texto);
+    if(solicitud!==solicitudBusqueda)return 'Búsqueda anterior descartada';
     resultados.replaceChildren();
     if(!rows?.length){resultados.append(el('p',{},'Sin resultados'));return}
     for(const r of rows){
       const b=el('button',{type:'button'},r.nombre+' · '+(r.dui_mostrado||'Sin DUI'));
-      b.onclick=()=>{state.clienteId=r.id;resultados.append(el('p',{},'Cliente seleccionado: '+r.nombre))};
+      b.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}state.clienteId=r.id;resultados.replaceChildren(el('p',{},'Cliente seleccionado: '+r.nombre))};
       resultados.append(b);
     }
   });
@@ -255,11 +261,12 @@ export function iniciarContratosDemo({supabase,root}) {
         parentesco:r.parentesco.value
       }))
     });
-    state.clienteId=clienteNuevo;
-    return 'Cliente creado y seleccionado: '+nombre.value.trim();
+    if(!guardandoBorrador)state.clienteId=clienteNuevo;
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
     } finally {creandoCliente=false;crearCliente.disabled=false;}
   });
   agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
     const q=Number(cantidad.value),p=Number(precio.value);
     if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
     if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
@@ -271,7 +278,7 @@ export function iniciarContratosDemo({supabase,root}) {
     state.items.push(line);
     const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
     const quitar=el('button',{type:'button'},'Quitar');
-    quitar.onclick=()=>{const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
     li.append(quitar);articulosLista.append(li);
   };
   let guardandoBorrador=false;
@@ -284,13 +291,15 @@ export function iniciarContratosDemo({supabase,root}) {
     if(!numero.value.trim())throw new Error('Escribe el número del contrato');
     if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
     if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
     const id=await api.crearContratoBorrador({
-      numero:numero.value,clienteId:state.clienteId,vendedorId:vendedor.value,
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
       fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
       ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
       saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
       comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
-      articulos:state.items
+      articulos:articulosGuardados
     });
     state.items=[];articulosLista.replaceChildren();
     confirmarId.value=id;
