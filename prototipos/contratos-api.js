@@ -21,7 +21,12 @@ export function crearServicioContratos(supabase) {
   };
   return Object.freeze({
     buscarClientes: texto=>rpc('inv_buscar_clientes',{p_busqueda:String(texto||'').trim()}),
-    catalogoVendedores:()=>rpc('inv_catalogo_vendedores',{}),
+    catalogoVendedores:()=>rpc('inv_catalogo_vendedores_manual',{}),
+    crearVendedor: nombre=>{
+      if(typeof nombre!=='string'||nombre.trim().length<2||nombre.trim().length>200)
+        throw new Error('Nombre de vendedor inválido');
+      return rpc('inv_crear_vendedor_manual',{p_nombre:nombre.trim()});
+    },
     catalogoArticulos:()=>rpc('inv_catalogo_articulos_contratos',{}),
     fichaCliente:clienteId=>rpc('inv_ficha_cliente',{p_cliente_id:clienteId}),
     historialCliente:clienteId=>rpc('inv_historial_cliente',{p_cliente_id:clienteId}),
