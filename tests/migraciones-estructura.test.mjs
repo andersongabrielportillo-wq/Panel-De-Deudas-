@@ -71,3 +71,9 @@ test('15Q contiene una sola definición de función y un único cierre transacci
  assert.equal((sql.match(/^COMMIT;\s*$/gm)||[]).length,1);
  assert.equal((sql.match(/^END \$\$;\s*$/gm)||[]).length,1);
 });
+
+test('15J busca nombre literal sin comodines SQL que expongan listados amplios',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ assert.match(sql,/pg_catalog\.strpos\(lower\(c\.nombre\),lower\(v_q\)\)>0/);
+ assert.doesNotMatch(sql,/lower\(c\.nombre\) LIKE/);
+});
