@@ -17,6 +17,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
   const pendiente={cancelado:false};
   montajes.set(contenedor,pendiente);
   let cancelado=false;
+  let registroCreado=null;
   try {
     const {data,error}=await supabase.auth.getUser();
     if(error || !data?.user?.id)throw new Error('Inicia sesión para acceder a contratos');
@@ -40,6 +41,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
       if(montajes.get(contenedor)===registro)montajes.delete(contenedor);
     };
     registro.cancelar=cancelar;
+    registroCreado=registro;
     montajes.set(contenedor,registro);
     if(typeof supabase.auth.onAuthStateChange==='function'){
       const {data:escucha,error:errorEscucha}=supabase.auth.onAuthStateChange((_evento,sesion)=>{
@@ -51,6 +53,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     }
     return controlador;
   }catch(e){
+    if(registroCreado)registroCreado.cancelar();
     if(montajes.get(contenedor)===pendiente)montajes.delete(contenedor);
     throw e;
   }
