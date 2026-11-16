@@ -139,3 +139,16 @@ test('el guardado utiliza copia de artículos y bloquea cambios concurrentes',()
  assert.match(ui,/agregar\.onclick=\(\)=>\{\s*if\(guardandoBorrador\)/);
  assert.match(ui,/quitar\.onclick=\(\)=>\{if\(guardandoBorrador\)/);
 });
+
+test('ficha de cliente descarta resultados obsoletos',()=>{
+ assert.match(ui,/let solicitudPerfil=0/);
+ assert.match(ui,/const clienteConsultado=state\.clienteId/);
+ assert.match(ui,/if\(solicitud!==solicitudPerfil\|\|clienteConsultado!==state\.clienteId\)/);
+});
+test('cambiar de cliente limpia ficha e invalida consultas pendientes',()=>{
+ assert.match(ui,/state\.clienteId=r\.id;solicitudPerfil\+\+;perfilContenido\.replaceChildren\(\)/);
+ assert.match(ui,/state\.clienteId=clienteNuevo;solicitudPerfil\+\+;perfilContenido\.replaceChildren\(\)/);
+});
+test('guardar borrador invalida revisiones anteriores de confirmación',()=>{
+ assert.match(ui,/confirmarId\.value=id;\s*revisionSolicitud\+\+;\s*invalidarRevision\(\)/);
+});
