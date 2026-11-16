@@ -45,7 +45,7 @@ function makeAdapter({client,enabled=false}={}){
     anularVenta:({ventaId,motivo})=>operation('inv_anular_venta',{p_venta_id:validId(ventaId),p_motivo:requiredText(motivo)}),
     detalleContrato:id=>query('detalleContrato',{p_contrato_id:validId(id)}),
     crearReparacion:({itemId,cantidad,destinoTipo,destinoNombre,motivo,observaciones})=>{validId(itemId);qty(cantidad);return operation('inv_crear_reparacion',{p_item_id:itemId,p_cantidad:cantidad,p_destino_tipo:oneOf(destinoTipo,['proveedor','taller'],'Tipo de destino'),p_destino_nombre:requiredText(destinoNombre),p_motivo:requiredText(motivo),p_observaciones:requiredText(observaciones)})},
-    enviarReparacion:({reparacionId})=>operation('inv_enviar_reparacion',{p_reparacion_id:validId(reparacionId)}),
+    enviarReparacion:value=>operation('inv_enviar_reparacion',{p_reparacion_id:validId(typeof value==='string'?value:value?.reparacionId)}),
     resolverReparacion:({reparacionId,operacion,cantidad,observaciones})=>{validId(reparacionId);qty(cantidad);return operation('inv_resolver_reparacion',{p_reparacion_id:reparacionId,p_operacion:requiredText(operacion),p_cantidad:cantidad,p_observaciones:requiredText(observaciones)})},
     crearRecepcion:({proveedor,referencia,fecha,observaciones,detalles})=>operation('inv_crear_recepcion',{p_proveedor:requiredText(proveedor),p_referencia:requiredText(referencia),p_fecha:requiredText(fecha),p_observaciones:requiredText(observaciones),p_detalles:receiptDetails(detalles)}),
     revisarRecepcion:({recepcionId,aprobar})=>{validId(recepcionId);if(typeof aprobar!=='boolean')throw Error('Decisión inválida');return operation('inv_revisar_recepcion',{p_recepcion_id:recepcionId,p_aprobar:aprobar})},
