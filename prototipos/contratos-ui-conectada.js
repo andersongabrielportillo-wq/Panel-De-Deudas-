@@ -206,6 +206,7 @@ export function iniciarContratosDemo({supabase,root}) {
   });
   agregar.onclick=()=>{
     const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
     if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
       estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
     }
@@ -217,7 +218,11 @@ export function iniciarContratosDemo({supabase,root}) {
     quitar.onclick=()=>{state.items.splice(state.items.indexOf(line),1);li.remove()};
     li.append(quitar);articulosLista.append(li);
   };
+  let guardandoBorrador=false;
   guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
     if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
     if(!vendedor.value)throw new Error('Selecciona un vendedor');
     if(!numero.value.trim())throw new Error('Escribe el número del contrato');
@@ -235,6 +240,7 @@ export function iniciarContratosDemo({supabase,root}) {
     confirmarId.value=id;
     invalidarRevision();
     return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
   });
   verHistorial.onclick=()=>tarea(async()=>{
     const rows=await api.historialVendedor(vendedor.value);
