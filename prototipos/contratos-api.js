@@ -43,6 +43,8 @@ export function crearServicioContratos(supabase) {
       let totalCentavos=0;
       const maxCentavos=99999999999999;
       for(const a of c.articulos){
+        if(!a || typeof a.itemId!=='string' || !a.itemId.trim())
+          throw new Error('Selecciona un artículo válido');
         if(a.cantidad===null || a.cantidad===undefined || String(a.cantidad).trim()==='' || !Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
           throw new Error('Cantidad de artículo inválida');
         const centavos=Math.round(dinero(a.precio)*100);
@@ -53,7 +55,7 @@ export function crearServicioContratos(supabase) {
       const prima=dinero(c.prima??0);
       const primaCentavos=Math.round(prima*100);
       if(primaCentavos>totalCentavos)throw new Error('La prima supera el total del contrato');
-      if(c.saldoInicial!=null && c.saldoInicial!=='' && Math.round(dinero(c.saldoInicial)*100)!==totalCentavos-primaCentavos)
+      if(c.saldoInicial!=null && Math.round(dinero(c.saldoInicial)*100)!==totalCentavos-primaCentavos)
         throw new Error('Saldo inicial no coincide con total menos prima');
       return rpc('inv_crear_contrato_borrador',{
         p_numero:c.numero,p_cliente_id:c.clienteId,p_vendedor_id:c.vendedorId,
@@ -74,11 +76,11 @@ export function crearServicioContratos(supabase) {
       });
     },
     confirmarContrato:(contratoId,ubicaciones,operacionId)=>{
-      if(!contratoId||!operacionId||!Array.isArray(ubicaciones)||ubicaciones.length===0)
+      if(typeof contratoId!=='string'||!contratoId.trim()||typeof operacionId!=='string'||!operacionId.trim()||!Array.isArray(ubicaciones)||ubicaciones.length===0)
         throw new Error('Faltan datos para confirmar el contrato');
       const ids=new Set();
       for(const linea of ubicaciones){
-        if(!linea.detalleId||ids.has(linea.detalleId)||![1,2].includes(Number(linea.ubicacionId)))
+        if(!linea||typeof linea.detalleId!=='string'||!linea.detalleId.trim()||ids.has(linea.detalleId)||![1,2].includes(Number(linea.ubicacionId)))
           throw new Error('Ubicaciones o líneas de contrato inválidas');
         ids.add(linea.detalleId);
       }
