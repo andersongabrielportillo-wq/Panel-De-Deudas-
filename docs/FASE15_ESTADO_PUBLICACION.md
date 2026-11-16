@@ -7,10 +7,10 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Pull Request borrador #2: https://github.com/andersongabrielportillo-wq/Panel-De-Deudas-/pull/2 — abierto, no fusionado. GitHub Actions aún sin ejecución confirmada.
 
 ## Evidencia disponible
-- 89 casos preparados: 34 API con mock de Supabase, 29 UI y 26 SQL estructurales/estáticos. Las baterías se ejecutaron en un entorno JavaScript adaptado; tras ajustar una aserción obsoleta, las 29 pruebas de UI pasaron. No se ha ejecutado aún el conjunto completo de 89 tras ese último ajuste. No se ha confirmado la ejecución de las 89 pruebas en GitHub Actions. Los 29 casos de interfaz incluyen protección contra búsquedas y fichas obsoletas, modificaciones durante el guardado y coerción de importes. **No equivale a Node.js CI ni a PostgreSQL real.**
+- 91 casos preparados: 34 API con mock de Supabase, 31 UI y 26 SQL estructurales/estáticos. Las baterías se ejecutaron en un entorno JavaScript adaptado; tras ajustar una aserción obsoleta, las 31 pruebas de UI pasaron. No se ha ejecutado aún el conjunto completo de 91 tras ese último ajuste. No se ha confirmado la ejecución de las 91 pruebas en GitHub Actions. Los 31 casos de interfaz incluyen protección contra búsquedas y fichas obsoletas, modificaciones durante el guardado y coerción de importes. **No equivale a Node.js CI ni a PostgreSQL real.**
 - Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales, 18/18 columnas de esquema compatibles y 3/3 firmas de RPC de ventas/movimientos/anulación verificadas.
 - 15J: búsqueda de clientes con coincidencia literal, sin interpretar comodines LIKE; validación estricta de primas y comisiones en API. DUI y longitud de referencias validados también en servidor.
-- UI: las búsquedas y fichas anteriores no pisan resultados nuevos, se bloquean cambios de artículos/cliente durante el guardado y se rechazan booleanos en importes/cantidades.
+- UI: las búsquedas y fichas anteriores no pisan resultados nuevos, se bloquean cambios de artículos/cliente durante el guardado y se rechazan booleanos en importes/cantidades. Una confirmación tardía no borra ni reactiva la revisión de otro contrato.
 - 15J: comprobaciones de tipos JSON, UUID y formatos monetarios antes de convertir datos de artículos en PostgreSQL.
 - 15Q: se verifican UUID de detalle y ubicaciones JSON numéricas antes de convertir. Se restauró el archivo tras detectar una edición defectuosa; pruebas estructurales repetidas.
 - 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original y rechaza venta anulada. Limita 100 líneas y total/ prima. No se ha aplicado al servidor.
@@ -19,7 +19,7 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - La rama de integración no es la rama de producción.
 
 ## Puertas obligatorias antes de publicar
-- [ ] GitHub Actions / Node 22: 89 pruebas ejecutadas y aprobadas en CI, sin saltos.
+- [ ] GitHub Actions / Node 22: 91 pruebas ejecutadas y aprobadas en CI, sin saltos.
 - [ ] PostgreSQL aislado con copia anonimizada o datos ficticios: aplicar migraciones 15I/J/K/N/P/Q en orden, registrar resultados y comprobar reversibilidad. Ejecutar luego tests/15x_verificacion_postmigracion_solo_lectura.sql para auditar RLS, permisos y funciones.
 - [ ] Probar JWT de admin, secretaria, empleado y usuario ajeno: permisos por función y acceso directo a tablas.
 - [ ] Probar contrato de múltiples artículos y dos ubicaciones; verificar movimientos de stock y venta en una transacción.
@@ -32,4 +32,4 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - [ ] Aprobación explícita para desplegar cambios a producción.
 
 ## Porcentaje orientativo
-**74% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
+**75% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
