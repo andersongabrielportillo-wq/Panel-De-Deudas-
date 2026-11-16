@@ -4,6 +4,8 @@ on:
     branches: [integracion-inventario-fase15]
     paths:
       - 'index.html'
+      - 'sw.js'
+      - 'tests/debt-sw.test.mjs'
       - 'cl-nexus-shell.js'
       - 'cl-nexus-adapter.cjs'
       - 'debt-gate-client.cjs'
@@ -22,6 +24,8 @@ on:
   pull_request:
     paths:
       - 'index.html'
+      - 'sw.js'
+      - 'tests/debt-sw.test.mjs'
       - 'cl-nexus-shell.js'
       - 'cl-nexus-adapter.cjs'
       - 'debt-gate-client.cjs'
@@ -52,4 +56,5 @@ jobs:
       - run: node --check debt-gate-client.cjs
       - run: node --check debt-module-controller.cjs
       - run: node --check debt-cache-preflight.cjs
-      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-integration.test.mjs tests/debt-main-screen.test.mjs
+      - run: node --check sw.js
+      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-integration.test.mjs tests/debt-main-screen.test.mjs tests/debt-sw.test.mjs
