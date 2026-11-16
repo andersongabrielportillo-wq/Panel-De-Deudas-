@@ -102,7 +102,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <script src="./debt-module-controller.cjs"></script>
 <script src="./debt-cache-preflight.cjs"></script>
 <div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
-<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
+<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
@@ -676,11 +676,13 @@ window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
 let SB_UID=null,SB_WID=null,SB_CH=null;
 const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
+ if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))throw Error("Acceso a Deudas no autorizado");
   const {data,error}=await SB.from("debts").select("data").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(error)throw error;
   return{exists:!!data,data:()=>data?{j:JSON.stringify(data.data),dev:"supabase"}:{}};
 }
 async function cloudSet(payload){
+ if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))throw Error("Acceso a Deudas no autorizado");
   const state=JSON.parse(payload.j);
   const {data:old,error:re}=await SB.from("debts").select("id").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(re)throw re;
@@ -692,6 +694,7 @@ const DEBT_GATE_ENABLED=false;
 let debtController=null;
 const debtScreen=document.getElementById("debtUnlockScreen");
 function debtScreenVisible(yes,msg=""){
+ document.getElementById("debtLockButton").hidden=!DEBT_GATE_ENABLED||yes;
  debtScreen.hidden=!yes;debtScreen.inert=!yes;
  document.getElementById("debtUnlockError").textContent=msg;
  if(yes){hidePrivate();gate(false)}
@@ -701,6 +704,7 @@ async function disconnectDebtChannel(){
  if(SB_CH){const ch=SB_CH;SB_CH=null;await SB.removeChannel(ch)}
 }
 async function connectDebtData(reveal=true){
+ if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))throw Error("Acceso a Deudas no autorizado");
  if(!APP_READY)loadPrivate();
  SY.doc={set:cloudSet};
  const first=await cloudSnapshot();onRemote(first);
@@ -742,6 +746,12 @@ document.getElementById("debtUnlockButton").onclick=async()=>{
 };
 document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
 document.getElementById("debtUnlockLogout").onclick=()=>document.getElementById("logoutBtn").click();
+document.getElementById("debtLockButton").onclick=async()=>{
+ if(!DEBT_GATE_ENABLED||!debtController)return;
+ const button=document.getElementById("debtLockButton");button.disabled=true;
+ try{await debtController.lock()}catch(e){debtScreenVisible(true,"Bloqueo local aplicado; no se pudo confirmar revocación remota: "+e.message)}
+ finally{button.disabled=false}
+};
 async function startAuth(){
   try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
 }
