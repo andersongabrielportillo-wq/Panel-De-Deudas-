@@ -213,3 +213,20 @@ test('rechaza DUI con longitud distinta de nueve dígitos',()=>{
  assert.throws(()=>api.crearCliente({nombre:'Cliente válido',dui:'123-45'}),/DUI/);
  assert.equal(m.calls.length,0);
 });
+
+test('no acepta booleanos como dinero ni como cantidades',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const precio of [true,false])assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],precio}]}),/Importe/);
+ for(const cantidad of [true,false])assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad}]}),/Cantidad/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza DUI con letras aunque contenga nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',dui:'A01234567-8'}),/DUI/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza contratos vacíos sin causar TypeError',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador(null),/Agrega artículos/);
+ assert.equal(m.calls.length,0);
+});
