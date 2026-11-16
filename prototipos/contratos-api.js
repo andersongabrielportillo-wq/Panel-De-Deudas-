@@ -15,11 +15,14 @@ export function crearServicioContratos(supabase) {
   const limpiarDui = valor => String(valor||'').replace(/\D/g,'');
   const dinero = valor => {
     const n=Number(valor);
-    if(!Number.isFinite(n)||n<0||Math.round(n*100)!==n*100) throw new Error('Importe monetario inválido');
-    return n;
+    if(!Number.isFinite(n)||n<0||Math.abs(n*100-Math.round(n*100))>1e-7) throw new Error('Importe monetario inválido');
+    return Math.round(n*100)/100;
   };
   return Object.freeze({
     buscarClientes: texto=>rpc('inv_buscar_clientes',{p_busqueda:String(texto||'').trim()}),
+    catalogoVendedores:()=>rpc('inv_catalogo_vendedores',{}),
+    catalogoArticulos:()=>rpc('inv_catalogo_articulos_contratos',{}),
+    fichaCliente:clienteId=>rpc('inv_ficha_cliente',{p_cliente_id:clienteId}),
     crearCliente: c=>rpc('inv_crear_cliente',{
       p_nombre:c.nombre,p_dui:c.dui?limpiarDui(c.dui):null,
       p_direccion:c.direccion||null,p_ubicacion:c.ubicacion||null,
@@ -32,6 +35,9 @@ export function crearServicioContratos(supabase) {
     }),
     crearContratoBorrador: c=>{
       if(!Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
+      for(const a of c.articulos){
+        if(!Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0) throw new Error('Cantidad de artículo inválida');
+      }
       return rpc('inv_crear_contrato_borrador',{
         p_numero:c.numero,p_cliente_id:c.clienteId,p_vendedor_id:c.vendedorId,
         p_fecha:c.fecha,p_modalidad:c.modalidad||'credito',
