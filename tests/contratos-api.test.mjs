@@ -230,3 +230,10 @@ test('rechaza contratos vacíos sin causar TypeError',()=>{
  assert.throws(()=>api.crearContratoBorrador(null),/Agrega artículos/);
  assert.equal(m.calls.length,0);
 });
+
+test('no envía más de cien ubicaciones al confirmar',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ const ubicaciones=Array.from({length:101},(_,i)=>({detalleId:'detalle-'+i,ubicacionId:1}));
+ assert.throws(()=>api.confirmarContrato('contrato',ubicaciones,'op'),/Máximo 100/);
+ assert.equal(m.calls.length,0);
+});
