@@ -24,3 +24,25 @@ test('logout reset discards delayed unlock response',async()=>{
  let resolve;const gate=createDebtGate({client:{rpc:()=>new Promise(r=>{resolve=r})},workspaceId:WID});
  const pending=gate.unlock('temporal');gate.reset();resolve({data:new Date(Date.now()+60000).toISOString(),error:null});await assert.rejects(pending,/Sesión modificada/);assert.equal(gate.isUnlocked(),false);
 });
+
+test('no permite desbloqueo mientras el bloqueo remoto está pendiente',async()=>{
+ let resolveLock;
+ const client={rpc:async(name)=>name==='debt_lock'
+  ? new Promise(resolve=>{resolveLock=resolve})
+  : {data:new Date(Date.now()+60000).toISOString(),error:null}};
+ const gate=createDebtGate({client,workspaceId:WID});
+ await gate.unlock('temporal');
+ const locking=gate.lock();
+ await assert.rejects(gate.unlock('temporal'),/Bloqueo en curso/);
+ resolveLock({data:null,error:null});
+ await locking;
+ assert.equal(gate.isUnlocked(),false);
+});
+test('un fallo de bloqueo remoto mantiene acceso local revocado',async()=>{
+ const gate=createDebtGate({client:{rpc:async(name)=>name==='debt_lock'
+  ? {data:null,error:{message:'Servidor no disponible'}}
+  : {data:new Date(Date.now()+60000).toISOString(),error:null}},workspaceId:WID});
+ await gate.unlock('temporal');
+ await assert.rejects(gate.lock(),/Servidor no disponible/);
+ assert.equal(gate.isUnlocked(),false);
+});
