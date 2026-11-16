@@ -9,3 +9,6 @@ test('shell gated by existing authenticated privateApp',()=>{assert.match(shell,
 test('modules have desktop and mobile navigation',()=>{for(const m of ['inventario','garantias','contratos'])assert.ok(shell.includes("['"+m+"'"));assert.match(shell,/const bottom=\$\('bnav'\)/)});
 test('shell cannot write debt state or call remote APIs',()=>{for(const prohibited of ['localStorage','fetch(','\.from(','\.rpc(','SUPABASE_KEY','__shared_state__','cp_v2'])assert.ok(!shell.includes(prohibited),prohibited)});
 test('existing debt backend and service worker remain present',()=>{assert.match(html,/const SUPABASE_URL=/);assert.match(html,/function cloudSnapshot/);assert.match(sw,/SKIP_WAITING/)});
+
+test('read-only adapter is loaded before shell',()=>{assert.ok(html.indexOf('src="./cl-nexus-adapter.cjs"')<html.indexOf('src="./cl-nexus-shell.js"'))});
+test('production cannot enable laboratory RPC queries',()=>{assert.match(shell,/CLNexusRuntime\.origin!==LAB_ORIGIN/);assert.match(html,/window\.CLNexusRuntime=Object\.freeze/)});
