@@ -96,7 +96,12 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
 <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol><symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
+<style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}</style>
+<script src="./debt-gate-client.cjs"></script>
+<script src="./debt-module-controller.cjs"></script>
+<script src="./debt-cache-preflight.cjs"></script>
+<div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
 <div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
@@ -682,16 +687,61 @@ async function cloudSet(payload){
   if(old){const {error}=await SB.from("debts").update({data:state,updated_by:SB_UID,updated_at:new Date().toISOString()}).eq("workspace_id",SB_WID).eq("id","__shared_state__");if(error)throw error}
   else{const {error}=await SB.from("debts").insert({id:"__shared_state__",workspace_id:SB_WID,data:state,created_by:SB_UID,updated_by:SB_UID});if(error)throw error}
 }
-async function connectCloud(){
-  const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
-  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
-  if(!APP_READY)loadPrivate();
-  SY.doc={set:cloudSet};
-  const first=await cloudSnapshot();onRemote(first);
-  if(SB_CH)await SB.removeChannel(SB_CH);
-  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
-  showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
+// Corte de Deudas requiere migración RLS productiva coordinada; NO activar por separado.
+const DEBT_GATE_ENABLED=false;
+let debtController=null;
+const debtScreen=document.getElementById("debtUnlockScreen");
+function debtScreenVisible(yes,msg=""){
+ debtScreen.hidden=!yes;debtScreen.inert=!yes;
+ document.getElementById("debtUnlockError").textContent=msg;
+ if(yes){hidePrivate();gate(false)}
 }
+async function disconnectDebtChannel(){
+ SY.doc=null;clearTimeout(SY.timer);
+ if(SB_CH){const ch=SB_CH;SB_CH=null;await SB.removeChannel(ch)}
+}
+async function connectDebtData(){
+ if(!APP_READY)loadPrivate();
+ SY.doc={set:cloudSet};
+ const first=await cloudSnapshot();onRemote(first);
+ if(SB_CH)await SB.removeChannel(SB_CH);
+ SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{
+  if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
+  try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}
+ }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
+ showPrivate();gate(false);debtScreenVisible(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
+}
+async function connectCloud(){
+ const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
+ if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
+ if(!DEBT_GATE_ENABLED){await connectDebtData();return}
+ // Fail closed if any required client/server gate component is absent.
+ if(!window.DebtGateClient||!window.DebtModuleController||!window.DebtCachePreflight)throw Error("Módulo de seguridad no disponible");
+ const guard=window.DebtGateClient.createDebtGate({client:SB,workspaceId:SB_WID});
+ debtController=window.DebtModuleController.createDebtModuleController({
+  gate:guard,
+  load:async()=>{const report=window.DebtCachePreflight.inspectDebtCache(localStorage);
+   if(!report.storageAccessible)throw Error("No se puede verificar la caché local");
+   // Production cache encryption/migration must be reviewed before enabling.
+   await connectDebtData()},
+  show:()=>{showPrivate();debtScreenVisible(false)},
+  hide:()=>{debtScreenVisible(true)},
+  disconnect:disconnectDebtChannel,
+  hasPending:()=>SY.pend||lsGet("cp_pend")==="1",
+  confirmPending:async()=>confirm("Hay cambios sin sincronizar. Se conservarán en este dispositivo. ¿Bloquear Deudas?")
+ });
+ debtScreenVisible(true);
+}
+document.getElementById("debtUnlockButton").onclick=async()=>{
+ if(!debtController)return;
+ const input=document.getElementById("debtUnlockPassword"),button=document.getElementById("debtUnlockButton");
+ const password=input.value;input.value="";button.disabled=true;
+ try{await debtController.open(password)}catch(e){debtScreenVisible(true,e.message||"No se pudo autorizar Deudas")}
+ finally{button.disabled=false}
+};
+document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
+document.getElementById("debtUnlockLogout").onclick=()=>document.getElementById("logoutBtn").click();
 async function startAuth(){
   try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
 }
@@ -700,6 +750,7 @@ document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="E
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
   if(SY.pend&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
+  if(debtController){debtController.cancel();debtController=null}debtScreenVisible(false);
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
   const pending=SY.pend;
@@ -710,7 +761,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
   document.getElementById("authPass").value="";
   try{await SB.auth.signOut();sv("Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){if(debtController){debtController.cancel();debtController=null}debtScreenVisible(false);gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
