@@ -61,7 +61,7 @@ export function iniciarContratosDemo({supabase,root}) {
 
   async function tarea(fn){
     estado.textContent='Procesando…';
-    try{await fn();estado.textContent='Operación completada.'}
+    try{const mensaje=await fn();estado.textContent=mensaje||'Operación completada.'}
     catch(e){estado.textContent='Error: '+(e?.message||String(e))}
   }
   function opcion(select,value,label){select.append(el('option',{value},label))}
@@ -93,7 +93,10 @@ export function iniciarContratosDemo({supabase,root}) {
     });
   });
   agregar.onclick=()=>{
-    if(!item.value||Number(cantidad.value)<=0||Number(precio.value)<0)return;
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(!item.value||!Number.isSafeInteger(q)||q<=0||!Number.isFinite(p)||p<0||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
     const selected=item.options[item.selectedIndex];
     const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
     state.items.push(line);
@@ -113,7 +116,7 @@ export function iniciarContratosDemo({supabase,root}) {
       articulos:state.items
     });
     state.items=[];articulosLista.replaceChildren();
-    estado.textContent='Borrador creado: '+id;
+    return 'Borrador creado: '+id;
   });
   verHistorial.onclick=()=>tarea(async()=>{
     const rows=await api.historialVendedor(vendedor.value);
@@ -123,7 +126,7 @@ export function iniciarContratosDemo({supabase,root}) {
         '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
     }
   });
-  // No cargar catálogos sin que el usuario inicialice la pantalla autenticada.
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
   tarea(cargarCatalogos);
   return {api,state};
 }
