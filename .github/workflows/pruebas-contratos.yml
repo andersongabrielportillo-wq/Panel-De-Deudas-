@@ -5,6 +5,7 @@ on:
       - integracion-inventario-fase15
     paths:
       - 'prototipos/contratos-api.js'
+      - 'prototipos/contratos-ui-conectada.js'
       - 'tests/contratos-api.test.mjs'
       - 'tests/migraciones-estructura.test.mjs'
       - 'migrations/20261115_fase15*.sql'
@@ -27,5 +28,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validar sintaxis de módulos JavaScript
+        run: |
+          node --experimental-default-type=module --check prototipos/contratos-api.js
+          node --experimental-default-type=module --check prototipos/contratos-ui-conectada.js
+          node --check tests/contratos-api.test.mjs
+          node --check tests/migraciones-estructura.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
         run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs
