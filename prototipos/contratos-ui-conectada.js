@@ -184,6 +184,10 @@ export function iniciarContratosDemo({supabase,root}) {
   const saldoInicial=campo(contratoBox,'Saldo inicial','number');saldoInicial.step='.01';
   const receptorAlterno=campo(contratoBox,'Persona que recibe la letra');
   const vendedor=el('select',{'aria-label':'Vendedor'});
+  const vendedoresBox=section('Vendedores · registro manual');
+  const nombreVendedor=campo(vendedoresBox,'Nombre del nuevo vendedor');
+  const registrarVendedor=el('button',{type:'button'},'Registrar vendedor');
+  vendedoresBox.append(registrarVendedor,el('p',{},'La lista comienza vacía. Solo aparecerán vendedores registrados manualmente.'));
   const item=el('select',{'aria-label':'Artículo'});
   const cantidad=campo(contratoBox,'Cantidad','number');cantidad.value='1';
   const precio=campo(contratoBox,'Precio al crédito','number');precio.step='.01';
@@ -214,15 +218,35 @@ export function iniciarContratosDemo({supabase,root}) {
     }
   }
   function opcion(select,value,label){select.append(el('option',{value},label))}
+  let guardandoVendedor=false;
+  registrarVendedor.onclick=()=>tarea(async()=>{
+    if(guardandoVendedor)throw new Error('El vendedor ya se está registrando');
+    guardandoVendedor=true;registrarVendedor.disabled=true;
+    try{
+      const nombre=nombreVendedor.value.trim();
+      const id=await api.crearVendedor(nombre);
+      if(destruido)return 'Interfaz cerrada';
+      const lista=await api.catalogoVendedores();
+      if(destruido)return 'Interfaz cerrada';
+      vendedor.replaceChildren();
+      opcion(vendedor,'','Selecciona un vendedor');
+      for(const v of lista||[])opcion(vendedor,v.id,v.nombre);
+      vendedor.value=id;
+      solicitudHistorial++;histLista.replaceChildren();
+      nombreVendedor.value='';
+      return 'Vendedor registrado manualmente';
+    }finally{guardandoVendedor=false;if(!destruido)registrarVendedor.disabled=false;}
+  });
   async function cargarCatalogos(){
     // Solo campos mínimos: no mostrar DUI ni otros datos personales.
     const [v,i]=await Promise.all([
-      supabase.rpc('inv_catalogo_vendedores'),
+      api.catalogoVendedores().then(data=>({data,error:null})).catch(error=>({data:null,error})),
       supabase.rpc('inv_catalogo_articulos_contratos')
     ]);
     if(destruido)return;
     if(v.error)throw v.error;if(i.error)throw i.error;
     vendedor.replaceChildren();item.replaceChildren();
+    opcion(vendedor,'','Selecciona un vendedor');
     for(const x of v.data||[])opcion(vendedor,x.id,x.nombre);
     for(const x of i.data||[])opcion(item,x.id,x.nombre);
   }
