@@ -9,6 +9,7 @@ export function iniciarContratosDemo({supabase,root}) {
   if (!root || !supabase) throw new Error('Faltan raíz o sesión Supabase');
   const api=crearServicioContratos(supabase);
   const state={clienteId:null,vendedorId:null,items:[],resultados:[]};
+  let destruido=false;
   const el=(tag,props={},text='')=>{
     const node=document.createElement(tag);
     Object.entries(props).forEach(([key,value])=>{
@@ -64,7 +65,7 @@ export function iniciarContratosDemo({supabase,root}) {
     let contrato;
     try {contrato=await api.detalleContrato(contratoId);}
     finally {cargarDetalle.disabled=false;}
-    if(solicitud!==revisionSolicitud || confirmarId.value.trim()!==contratoId)
+    if(destruido||solicitud!==revisionSolicitud || confirmarId.value.trim()!==contratoId)
       throw new Error('El contrato cambió durante la revisión; vuelve a cargarlo');
     if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
     if(!contrato.articulos?.length)throw new Error('El contrato no tiene artículos');
@@ -202,13 +203,14 @@ export function iniciarContratosDemo({supabase,root}) {
 
   let tareaActual=0;
   async function tarea(fn){
+    if(destruido)return;
     const solicitud=++tareaActual;
     estado.textContent='Procesando…';
     try{
       const mensaje=await fn();
-      if(solicitud===tareaActual)estado.textContent=mensaje||'Operación completada.';
+      if(!destruido && solicitud===tareaActual)estado.textContent=mensaje||'Operación completada.';
     }catch(e){
-      if(solicitud===tareaActual)estado.textContent='Error: '+(e?.message||String(e));
+      if(!destruido && solicitud===tareaActual)estado.textContent='Error: '+(e?.message||String(e));
     }
   }
   function opcion(select,value,label){select.append(el('option',{value},label))}
@@ -218,6 +220,7 @@ export function iniciarContratosDemo({supabase,root}) {
       supabase.rpc('inv_catalogo_vendedores'),
       supabase.rpc('inv_catalogo_articulos_contratos')
     ]);
+    if(destruido)return;
     if(v.error)throw v.error;if(i.error)throw i.error;
     vendedor.replaceChildren();item.replaceChildren();
     for(const x of v.data||[])opcion(vendedor,x.id,x.nombre);
@@ -230,7 +233,7 @@ export function iniciarContratosDemo({supabase,root}) {
     const texto=busqueda.value.trim();
     if(texto.length<3||texto.length>100)throw new Error('Busca entre 3 y 100 caracteres');
     const rows=await api.buscarClientes(texto);
-    if(solicitud!==solicitudBusqueda)return 'Búsqueda anterior descartada';
+    if(destruido||solicitud!==solicitudBusqueda)return 'Búsqueda anterior descartada';
     resultados.replaceChildren();
     if(!rows?.length){resultados.append(el('p',{},'Sin resultados'));return}
     for(const r of rows){
@@ -247,7 +250,7 @@ export function iniciarContratosDemo({supabase,root}) {
     const [ficha,contratos]=await Promise.all([
       api.fichaCliente(clienteConsultado),api.historialCliente(clienteConsultado)
     ]);
-    if(solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
+    if(destruido||solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
       return 'La selección cambió; consulta de nuevo la ficha';
     perfilContenido.replaceChildren();
     perfilContenido.append(el('h4',{},ficha.nombre));
@@ -297,6 +300,7 @@ export function iniciarContratosDemo({supabase,root}) {
         parentesco:r.parentesco.value
       }))
     });
+    if(destruido)return 'Interfaz cerrada';
     if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
     return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
     } finally {creandoCliente=false;crearCliente.disabled=false;}
@@ -337,6 +341,7 @@ export function iniciarContratosDemo({supabase,root}) {
       comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
       articulos:articulosGuardados
     });
+    if(destruido)return 'Interfaz cerrada';
     state.items=[];articulosLista.replaceChildren();
     confirmarId.value=id;
     revisionSolicitud++;
@@ -354,7 +359,7 @@ export function iniciarContratosDemo({supabase,root}) {
       api.historialVendedor(vendedorConsultado),
       api.resumenVendedor(vendedorConsultado)
     ]);
-    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+    if(destruido||solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
       return 'Cambió el vendedor; consulta el historial de nuevo';
     histLista.replaceChildren();
     const resumen=Array.isArray(resumenRaw)?resumenRaw[0]:resumenRaw;
@@ -372,5 +377,11 @@ export function iniciarContratosDemo({supabase,root}) {
   });
   // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
   tarea(cargarCatalogos);
-  return {api,state};
+  return {api,state,destruir(){
+    if(destruido)return;
+    destruido=true;
+    tareaActual++;solicitudBusqueda++;solicitudPerfil++;solicitudHistorial++;revisionSolicitud++;
+    invalidarRevision();
+    root.replaceChildren();
+  }};
 }
