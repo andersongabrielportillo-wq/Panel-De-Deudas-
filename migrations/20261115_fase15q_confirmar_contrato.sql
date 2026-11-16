@@ -74,6 +74,10 @@ BEGIN
  IF v_contrato.saldo_inicial IS NOT NULL
    AND v_contrato.saldo_inicial>v_total THEN
    RAISE EXCEPTION 'Saldo inicial supera el valor del contrato'; END IF;
+ -- Serializa también operaciones con el mismo ID, incluso de contratos distintos.
+ PERFORM pg_catalog.pg_advisory_xact_lock(
+   pg_catalog.hashtextextended(p_client_op_id::text,0)
+ );
  -- La venta debe ser nueva: no enlazar una venta anterior a este contrato.
  -- El bloqueo de contrato hace idempotente la repetición posterior.
  SELECT v.id INTO v_existing_venta FROM public.inv_ventas v
