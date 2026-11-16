@@ -86,6 +86,15 @@ export function iniciarContratosDemo({supabase,root}) {
     const primaCentavos=centavosValidos(contrato.prima?.monto);
     if(!Number.isSafeInteger(totalCentavos)||totalCentavos>99999999999999||primaCentavos>totalCentavos)
       throw new Error('Importes de contrato inconsistentes; no se puede confirmar');
+    if(contrato.saldo_inicial!==null&&contrato.saldo_inicial!==undefined&&
+       centavosValidos(contrato.saldo_inicial)!==totalCentavos-primaCentavos)
+      throw new Error('Saldo del contrato no coincide con el total menos la prima');
+    const idsDetalles=new Set();
+    for(const articulo of contrato.articulos){
+      if(!articulo.detalle_id||idsDetalles.has(articulo.detalle_id))
+        throw new Error('Identificadores de artículos ausentes o repetidos');
+      idsDetalles.add(articulo.detalle_id);
+    }
     confirmacionLineas.append(el('p',{},
       'Contrato: '+contrato.numero+' | Total: '+(totalCentavos/100).toFixed(2)+
       ' | Prima: '+(primaCentavos/100).toFixed(2)+
