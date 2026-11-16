@@ -90,7 +90,9 @@ BEGIN
  OR p_comision<>pg_catalog.round(p_comision,2) OR p_prima<>pg_catalog.round(p_prima,2)
  OR p_prima_recibida IS NULL
  THEN RAISE EXCEPTION 'Comisión o prima inválida'; END IF;
- IF p_cuota<0 OR p_saldo_inicial<0 THEN RAISE EXCEPTION 'Importes negativos'; END IF;
+ IF (p_cuota IS NOT NULL AND (p_cuota<0 OR p_cuota>999999999999.99 OR p_cuota<>pg_catalog.round(p_cuota,2)))
+ OR (p_saldo_inicial IS NOT NULL AND (p_saldo_inicial<0 OR p_saldo_inicial>999999999999.99 OR p_saldo_inicial<>pg_catalog.round(p_saldo_inicial,2)))
+ THEN RAISE EXCEPTION 'Cuota o saldo inicial inválido'; END IF;
  IF p_detalles IS NULL OR pg_catalog.jsonb_typeof(p_detalles)<>'array'
  OR pg_catalog.jsonb_array_length(p_detalles) NOT BETWEEN 1 AND 100
  THEN RAISE EXCEPTION 'Agrega entre 1 y 100 líneas'; END IF;
@@ -101,6 +103,58 @@ BEGIN
  FOR v_line IN SELECT value FROM pg_catalog.jsonb_array_elements(p_detalles) LOOP
    IF pg_catalog.jsonb_typeof(v_line)<>'object' THEN RAISE EXCEPTION 'Línea inválida'; END IF;
    v_item:=(v_line->>'item_id')::uuid;
+   IF (v_line->>'cantidad') IS NULL OR (v_line->>'cantidad') !~ '^[1-9][0-9]*
+   v_precio:=(v_line->>'precio_credito_unitario')::numeric;
+   v_comision:=coalesce((v_line->>'comision_linea')::numeric,0);
+   IF v_item IS NULL OR NOT EXISTS(SELECT 1 FROM public.inv_items WHERE id=v_item AND estado='activo')
+   OR v_cantidad IS NULL OR v_cantidad<=0 OR v_precio IS NULL OR v_precio<0
+   OR v_comision<0 OR v_precio>999999999999.99 OR v_comision>999999999999.99
+   OR v_precio<>pg_catalog.round(v_precio,2) OR v_comision<>pg_catalog.round(v_comision,2)
+   THEN RAISE EXCEPTION 'Artículo, cantidad o importe inválido'; END IF;
+   INSERT INTO public.inv_contrato_detalles(contrato_id,item_id,cantidad,precio_credito_unitario,comision_linea)
+   VALUES(v_id,v_item,v_cantidad,v_precio,v_comision);
+ END LOOP;
+ INSERT INTO public.inv_contrato_primas(contrato_id,monto,estado,fecha_recibida,registrado_por)
+ VALUES(v_id,p_prima,CASE WHEN p_prima_recibida THEN 'recibida' ELSE 'pendiente' END,
+ CASE WHEN p_prima_recibida THEN now() ELSE NULL END,auth.uid());
+ INSERT INTO public.inv_prima_eventos(prima_id,estado_anterior,estado_nuevo,usuario,observaciones)
+ SELECT id,NULL,estado,auth.uid(),'Registro inicial de prima'
+ FROM public.inv_contrato_primas WHERE contrato_id=v_id;
+ RETURN v_id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.inv_marcar_prima_recibida(p_contrato_id uuid,p_observaciones text)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $$
+DECLARE v_prima uuid;v_estado text;
+BEGIN
+ IF auth.uid() IS NULL OR NOT EXISTS (
+ SELECT 1 FROM public.inv_members WHERE user_id=auth.uid() AND rol IN ('admin','secretaria')
+ ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
+ IF NULLIF(pg_catalog.btrim(coalesce(p_observaciones,'')),'') IS NULL THEN RAISE EXCEPTION 'Indica cómo se entregó la prima'; END IF;
+ SELECT id,estado INTO v_prima,v_estado FROM public.inv_contrato_primas
+ WHERE contrato_id=p_contrato_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Prima no encontrada'; END IF;
+ IF v_estado='recibida' THEN RAISE EXCEPTION 'La prima ya fue registrada como recibida'; END IF;
+ UPDATE public.inv_contrato_primas SET estado='recibida',fecha_recibida=now(),actualizado_en=now() WHERE id=v_prima;
+ INSERT INTO public.inv_prima_eventos(prima_id,estado_anterior,estado_nuevo,usuario,observaciones)
+ VALUES(v_prima,'pendiente','recibida',auth.uid(),pg_catalog.btrim(p_observaciones));
+ RETURN true;
+END $$;
+
+REVOKE ALL ON FUNCTION public.inv_buscar_clientes(text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.inv_crear_cliente(text,text,text,text,text,text,text,text,jsonb) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.inv_crear_contrato_borrador(text,uuid,uuid,date,text,text,text,numeric,numeric,date,text,text,text,numeric,numeric,boolean,jsonb,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.inv_marcar_prima_recibida(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.inv_buscar_clientes(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inv_crear_cliente(text,text,text,text,text,text,text,text,jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inv_crear_contrato_borrador(text,uuid,uuid,date,text,text,text,numeric,numeric,date,text,text,text,numeric,numeric,boolean,jsonb,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.inv_marcar_prima_recibida(uuid,text) TO authenticated;
+COMMIT;
+ THEN
+     RAISE EXCEPTION 'Cantidad debe ser un entero positivo';
+   END IF;
    v_cantidad:=(v_line->>'cantidad')::integer;
    v_precio:=(v_line->>'precio_credito_unitario')::numeric;
    v_comision:=coalesce((v_line->>'comision_linea')::numeric,0);
