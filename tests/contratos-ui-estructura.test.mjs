@@ -105,3 +105,13 @@ test('quitar articulo no elimina otra linea si ya fue removido',()=>{
  assert.match(ui,/const indice=state\.items\.indexOf\(line\)/);
  assert.match(ui,/if\(indice!==-1\)state\.items\.splice\(indice,1\)/);
 });
+
+test('revisión exige saldo inicial consistente con total y prima',()=>{
+ assert.match(ui,/centavosValidos\(contrato\.saldo_inicial\)!==totalCentavos-primaCentavos/);
+ assert.match(ui,/Saldo del contrato no coincide/);
+});
+test('revisión impide IDs de detalles duplicados',()=>{
+ assert.match(ui,/const idsDetalles=new Set\(\)/);
+ assert.match(ui,/idsDetalles\.has\(articulo\.detalle_id\)/);
+ assert.match(ui,/Identificadores de artículos ausentes o repetidos/);
+});
