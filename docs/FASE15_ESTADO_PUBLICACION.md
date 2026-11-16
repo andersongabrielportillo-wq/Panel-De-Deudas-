@@ -1,0 +1,25 @@
+# Fase 15 — Estado de publicación (15 noviembre 2026)
+
+## Alcance
+Integración de contratos, clientes, referencias, vendedores, primas y ventas de inventario en Comercial López. **No modificar main ni producción hasta completar las puertas de publicación.**
+
+## Evidencia disponible
+- 47 casos ejecutados en un intérprete JavaScript adaptado: 23 API con mock de Supabase y 24 estructurales/estáticos; 47/47 sin fallos en esa ejecución. **No equivale a Node.js CI ni a PostgreSQL real.**
+- Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas y 5/5 verificaciones adicionales correctas en consultas realizadas.
+- Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
+- La rama de integración no es la rama de producción.
+
+## Puertas obligatorias antes de publicar
+- [ ] GitHub Actions / Node 22: 47 pruebas ejecutadas y aprobadas en CI, sin saltos.
+- [ ] PostgreSQL aislado con copia anonimizada o datos ficticios: aplicar migraciones 15I/J/K/N/P/Q en orden, registrar resultados y comprobar reversibilidad.
+- [ ] Probar JWT de admin, secretaria, empleado y usuario ajeno: permisos por función y acceso directo a tablas.
+- [ ] Probar contrato de múltiples artículos y dos ubicaciones; verificar movimientos de stock y venta en una transacción.
+- [ ] Probar reintento con mismo ID, concurrencia y rechazo por existencias insuficientes, comprobando ausencia de descuentos parciales.
+- [ ] Probar prima pendiente/recibida y bitácora de entrega; historial de vendedor y ficha de cliente.
+- [ ] Integrar interfaz con autenticación y navegación de la PWA principal, sin exponer secretos.
+- [ ] Auditar protección adicional de Deudas en el servidor, no solo en el menú.
+- [ ] Pruebas de regresión de sincronización y roles en dos dispositivos, backup y plan de reversión.
+- [ ] Aprobación explícita para desplegar cambios a producción.
+
+## Porcentaje orientativo
+**58% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
