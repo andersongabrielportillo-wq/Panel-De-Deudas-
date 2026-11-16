@@ -5,12 +5,16 @@ on:
     paths:
       - 'index.html'
       - 'cl-nexus-shell.js'
+      - 'cl-nexus-adapter.cjs'
+      - 'tests/cl-nexus-adapter.test.mjs'
       - 'tests/cl-nexus-shell.test.mjs'
       - '.github/workflows/cl-nexus-shell.yml'
   pull_request:
     paths:
       - 'index.html'
       - 'cl-nexus-shell.js'
+      - 'cl-nexus-adapter.cjs'
+      - 'tests/cl-nexus-adapter.test.mjs'
       - 'tests/cl-nexus-shell.test.mjs'
       - '.github/workflows/cl-nexus-shell.yml'
 permissions:
@@ -24,4 +28,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check cl-nexus-shell.js
-      - run: node --test tests/cl-nexus-shell.test.mjs
+      - run: node --check cl-nexus-adapter.cjs
+      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs
