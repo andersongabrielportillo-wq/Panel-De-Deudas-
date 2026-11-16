@@ -56,15 +56,19 @@ test('dos sesiones no comparten estado de desbloqueo en cliente',async()=>{
  assert.equal(await b.verify(),false);
  assert.equal(calls.filter(x=>x[0]==='debt_access_valid').length,0);
 });
-test('un desbloqueo anterior no puede revivir una sesión tras otro intento',async()=>{
+test('desbloqueos simultáneos se serializan sin crear autorización fantasma',async()=>{
  let firstResolve;let attempts=0;
  const gate=createDebtGate({workspaceId:WID,client:{rpc:async name=>{
-  if(name==='debt_unlock'){attempts++;if(attempts===1)return new Promise(r=>firstResolve=r);return {data:null,error:null}}
+  if(name==='debt_unlock'){attempts++;return new Promise(r=>firstResolve=r)}
   return {data:true,error:null};
  }}});
- const first=gate.unlock('primera');await assert.rejects(gate.unlock('segunda'),/incorrecta|expirado/);
+ const first=gate.unlock('primera');
+ await assert.rejects(gate.unlock('segunda'),/Desbloqueo en curso/);
+ assert.equal(attempts,1);
+ gate.reset();
  firstResolve({data:new Date(Date.now()+60000).toISOString(),error:null});
- await assert.rejects(first,/Sesión modificada/);assert.equal(gate.isUnlocked(),false);
+ await assert.rejects(first,/Sesión modificada/);
+ assert.equal(gate.isUnlocked(),false);
 });
 test('verificación retrasada no reautoriza después de reset',async()=>{
  let verifyResolve;
