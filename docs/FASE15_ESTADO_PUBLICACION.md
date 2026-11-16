@@ -9,7 +9,8 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 ## Evidencia disponible
 - 73 casos preparados: 31 API con mock de Supabase, 22 UI y 20 SQL estructurales/estáticos. Se ejecutaron 31 API y los 22 UI actuales en un intérprete adaptado sin fallos; las otras pruebas estructurales se ejecutaron previamente. No se ha confirmado la ejecución de las 73 pruebas juntas en CI. Los 22 casos actuales de interfaz se reejecutaron tras corregir revisiones obsoletas, altas duplicadas, catálogo vacío y eliminación de líneas. **No equivale a Node.js CI ni a PostgreSQL real.**
 - Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales, 18/18 columnas de esquema compatibles y 3/3 firmas de RPC de ventas/movimientos/anulación verificadas.
-- 15Q: se verifican UUID de detalle y ubicaciones JSON numéricas antes de convertir. Se restauró el archivo tras detectar una edición defectuosa; pruebas estructurales repetidas.\n- 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original y rechaza venta anulada. Limita 100 líneas y total/ prima. No se ha aplicado al servidor.
+- 15Q: se verifican UUID de detalle y ubicaciones JSON numéricas antes de convertir. Se restauró el archivo tras detectar una edición defectuosa; pruebas estructurales repetidas.
+- 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original y rechaza venta anulada. Limita 100 líneas y total/ prima. No se ha aplicado al servidor.
 - 41/41 casos estructurales/estáticos ejecutados sobre la versión más reciente en un entorno JavaScript adaptado; esto no sustituye GitHub Actions/Node.
 - Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
 - La rama de integración no es la rama de producción.
