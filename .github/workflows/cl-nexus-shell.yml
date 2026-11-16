@@ -7,6 +7,8 @@ on:
       - 'cl-nexus-shell.js'
       - 'cl-nexus-adapter.cjs'
       - 'debt-gate-client.cjs'
+      - 'debt-module-controller.cjs'
+      - 'tests/debt-module-controller.test.mjs'
       - 'tests/cl-nexus-adapter.test.mjs'
       - 'tests/debt-gate-client.test.mjs'
       - 'tests/debt-gate-sql.test.mjs'
@@ -19,6 +21,8 @@ on:
       - 'cl-nexus-shell.js'
       - 'cl-nexus-adapter.cjs'
       - 'debt-gate-client.cjs'
+      - 'debt-module-controller.cjs'
+      - 'tests/debt-module-controller.test.mjs'
       - 'tests/cl-nexus-adapter.test.mjs'
       - 'tests/debt-gate-client.test.mjs'
       - 'tests/debt-gate-sql.test.mjs'
@@ -38,4 +42,5 @@ jobs:
       - run: node --check cl-nexus-shell.js
       - run: node --check cl-nexus-adapter.cjs
       - run: node --check debt-gate-client.cjs
-      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs
+      - run: node --check debt-module-controller.cjs
+      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs
