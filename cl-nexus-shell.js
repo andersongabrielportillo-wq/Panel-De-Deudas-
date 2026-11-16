@@ -1,0 +1,16 @@
+/* CL Nexus integration shell — isolated from debts, no backend writes. */
+(()=>{'use strict';
+const MODULES=[['inventario','Inventario'],['garantias','Garantías'],['contratos','Contratos']];
+const $=id=>document.getElementById(id);
+let active=null,observer=null;
+function authenticated(){const app=$('privateApp');return !!app&&!app.hidden&&!app.inert}
+function clear(){active=null;const panel=$('clnPanel');if(panel)panel.hidden=true;const main=$('main');if(main)main.hidden=false;document.querySelectorAll('[data-cln-module]').forEach(b=>{b.classList.remove('on');b.removeAttribute('aria-current')});}
+function openModule(id){if(!authenticated())return clear();const item=MODULES.find(m=>m[0]===id);if(!item)return;active=id;const main=$('main');const panel=$('clnPanel');if(!main||!panel)return;main.hidden=true;panel.hidden=false;$('clnTitle').textContent=item[1];$('ttl').textContent=item[1];$('clnStatus').textContent='Módulo integrado visualmente. Operaciones deshabilitadas hasta conectar y autorizar su API en el servidor.';document.querySelectorAll('[data-cln-module]').forEach(b=>{const yes=b.dataset.clnModule===id;b.classList.toggle('on',yes);if(yes)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});}
+function install(){const app=$('privateApp'),main=$('main'),nav=$('nav');if(!app||!main||!nav)return;
+if(!$('clnPanel')){const section=document.createElement('section');section.id='clnPanel';section.hidden=true;section.setAttribute('aria-label','CL Nexus');section.innerHTML='<div class="cln-head"><h2 id="clnTitle"></h2><span class="cln-pill">Integración en preparación</span></div><p id="clnStatus" role="status"></p><p>Este módulo comparte el acceso de la PWA, pero mantiene sus datos y permisos separados de Deudas. No se habilitarán acciones sin validación del servidor.</p><button type="button" id="clnBack" class="b">Volver a Deudas</button>';main.insertAdjacentElement('afterend',section);$('clnBack').addEventListener('click',()=>{clear();const home=nav.querySelector('[data-tab]');if(home)home.click()});}
+if(!document.querySelector('#clnStyles')){const style=document.createElement('style');style.id='clnStyles';style.textContent='#clnPanel{padding:22px;max-width:1000px;margin:0 auto}#clnPanel[hidden]{display:none!important}.cln-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.cln-pill{border:1px solid var(--bd);border-radius:999px;padding:5px 10px;color:var(--mut);font-size:12px}';document.head.append(style)}
+function sync(){if(!authenticated()){clear();return}for(const [id,label] of MODULES){if(!nav.querySelector('[data-cln-module="'+id+'"]')){const b=document.createElement('button');b.type='button';b.dataset.clnModule=id;b.textContent=label;b.addEventListener('click',()=>openModule(id));nav.append(b)}}if(active){const panel=$('clnPanel');if(panel&&panel.hidden)openModule(active)}}
+observer=new MutationObserver(()=>{if(!authenticated()){clear();return}sync()});observer.observe(nav,{childList:true});const gate=$('privateApp');observer.observe(gate,{attributes:true,attributeFilter:['hidden','inert']});
+document.addEventListener('click',e=>{if(e.target.closest('[data-tab]')&&active)clear()});sync();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
