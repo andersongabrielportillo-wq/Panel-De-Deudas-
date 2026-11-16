@@ -187,7 +187,7 @@ export function iniciarContratosDemo({supabase,root}) {
   const vendedoresBox=section('Vendedores · registro manual');
   const nombreVendedor=campo(vendedoresBox,'Nombre del nuevo vendedor');
   const registrarVendedor=el('button',{type:'button'},'Registrar vendedor');
-  vendedoresBox.append(registrarVendedor,el('p',{},'La lista comienza vacía. Solo aparecerán vendedores registrados manualmente.'));
+  vendedoresBox.append(registrarVendedor,el('p',{},'El catálogo no importa vendedores históricos ni nombres de artículos. Solo administración puede registrar vendedores.'));
   const item=el('select',{'aria-label':'Artículo'});
   const cantidad=campo(contratoBox,'Cantidad','number');cantidad.value='1';
   const precio=campo(contratoBox,'Precio al crédito','number');precio.step='.01';
