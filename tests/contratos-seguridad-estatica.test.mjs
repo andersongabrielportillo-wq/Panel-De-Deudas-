@@ -194,3 +194,26 @@ test('confirmar venta revalida vendedor manual y vendedor de ventas activos',()=
  const venta=q.indexOf('v_venta_id:=public.inv_registrar_venta(');
  assert.ok(validar>0 && venta>validar,'Rechazar antes de descontar stock');
 });
+
+test('interfaz no modifica existencias ni vendedores históricos mediante tablas directas',()=>{
+ const api=readFileSync(new URL('../prototipos/contratos-api.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../prototipos/contratos-ui-conectada.js',import.meta.url),'utf8');
+ const montaje=readFileSync(new URL('../prototipos/contratos-montaje-staging.js',import.meta.url),'utf8');
+ for(const fuente of [api,ui,montaje]){
+   assert.doesNotMatch(fuente,/\.from\s*\(\s*['"]inv_(?:items|stock|vendedores|vendedores_manual|movimientos)['"]\s*\)/);
+   assert.doesNotMatch(fuente,/\.rpc\s*\(\s*['"]inv_registrar_movimiento['"]/);
+   assert.doesNotMatch(fuente,/\.rpc\s*\(\s*['"]inv_registrar_venta['"]/);
+ }
+ assert.match(api,/inv_catalogo_vendedores_manual/);
+ assert.doesNotMatch(api,/['"]inv_catalogo_vendedores['"]/);
+});
+test('alta manual restringida a admin; catalogo a admin o secretaria',()=>{
+ const q=readFileSync(new URL('../migrations/20261115_fase15ae_vendedores_manuales.sql',import.meta.url),'utf8');
+ const catalogo=q.slice(q.indexOf('CREATE OR REPLACE FUNCTION public.inv_catalogo_vendedores_manual()'),q.indexOf('CREATE OR REPLACE FUNCTION public.inv_crear_vendedor_manual('));
+ const alta=q.slice(q.indexOf('CREATE OR REPLACE FUNCTION public.inv_crear_vendedor_manual('));
+ assert.match(catalogo,/m\.rol IN \('admin','secretaria'\)/);
+ assert.match(alta,/m\.rol='admin'/);
+ assert.doesNotMatch(alta,/m\.rol IN \('admin','secretaria'\)/);
+ assert.match(alta,/INSERT INTO public\.inv_vendedores\(id,nombre,activo\)/);
+ assert.match(alta,/INSERT INTO public\.inv_vendedores_manual\(id,nombre,creado_por\)/);
+});
