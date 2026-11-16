@@ -46,3 +46,32 @@ test('verificación caducada oculta y desconecta el módulo',async()=>{
  await controller.open('temporal');valid=false;assert.equal(await controller.verify(),false);
  assert.equal(controller.state(),'locked');assert.ok(events.includes('disconnect'));
 });
+
+test('carga larga que pierde autorización no muestra deudas',async()=>{
+ const events=[];let checks=0;
+ const gate={unlock:async()=>{},verify:async()=>++checks===1,lock:async()=>{},reset:()=>events.push('reset')};
+ const controller=createDebtModuleController({gate,load:async()=>events.push('load'),show:()=>events.push('show'),hide:()=>events.push('hide'),disconnect:async()=>events.push('disconnect'),hasPending:()=>false,confirmPending:async()=>true});
+ await assert.rejects(controller.open('temporal'),/caducada/);
+ assert.equal(events.includes('load'),true);assert.equal(events.includes('show'),false);
+ assert.equal(controller.state(),'locked');assert.ok(events.includes('disconnect'));
+});
+test('desconexión fallida no omite revocación del servidor',async()=>{
+ let revoked=0;const gate={unlock:async()=>{},verify:async()=>true,lock:async()=>{revoked++},reset:()=>{}};
+ const controller=createDebtModuleController({gate,load:async()=>{},show:()=>{},hide:()=>{},disconnect:async()=>{throw Error('canal caído')},hasPending:()=>false,confirmPending:async()=>true});
+ await controller.open('temporal');
+ await assert.rejects(controller.lock(),/canal caído/);
+ assert.equal(revoked,1);assert.equal(controller.state(),'locked');
+});
+test('dos solicitudes de bloqueo no pueden superponerse',async()=>{
+ let release;const gate={unlock:async()=>{},verify:async()=>true,lock:()=>new Promise(r=>release=r),reset:()=>{}};
+ const controller=createDebtModuleController({gate,load:async()=>{},show:()=>{},hide:()=>{},disconnect:async()=>{},hasPending:()=>false,confirmPending:async()=>true});
+ await controller.open('temporal');
+ const first=controller.lock();await assert.rejects(controller.lock(),/Bloqueo en curso/);
+ release();await first;assert.equal(controller.state(),'locked');
+});
+test('un bloqueo no confirmado por cambios offline no revoca ni oculta el módulo',async()=>{
+ let revoked=0;const events=[];const gate={unlock:async()=>{},verify:async()=>true,lock:async()=>{revoked++},reset:()=>{}};
+ const controller=createDebtModuleController({gate,load:async()=>{},show:()=>{},hide:()=>events.push('hide'),disconnect:async()=>{},hasPending:()=>true,confirmPending:async()=>false});
+ await controller.open('temporal');const count=events.length;
+ assert.equal(await controller.lock(),false);assert.equal(controller.state(),'open');assert.equal(revoked,0);assert.equal(events.length,count);
+});
