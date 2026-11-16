@@ -29,3 +29,13 @@ test('la interfaz no contiene claves ni crea clientes Supabase',()=>{
  assert.doesNotMatch(ui,/createClient\s*\(/);
  assert.doesNotMatch(ui,/service_role|supabase_service_role|eyJhbGciOi/i);
 });
+
+test('no admite precio o cantidad vacíos al agregar artículos',()=>{
+ assert.match(ui,/cantidad\.value\.trim\(\)===''\|\|precio\.value\.trim\(\)===''/);
+ assert.match(ui,/q>999999999/);
+ assert.match(ui,/p>999999999999\.99/);
+});
+test('el formulario exige número y fecha antes de crear borrador',()=>{
+ assert.match(ui,/if\(!numero\.value\.trim\(\)\)/);
+ assert.match(ui,/if\(!fecha\.value\)/);
+});
