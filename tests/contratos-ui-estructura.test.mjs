@@ -179,3 +179,20 @@ test('historial de vendedor descarta consultas atrasadas',()=>{
  assert.match(ui,/vendedor\.addEventListener\('change',\(\)=>\{solicitudHistorial\+\+;histLista\.replaceChildren\(\)/);
  assert.match(ui,/solicitud!==solicitudHistorial\|\|vendedorConsultado!==vendedor\.value/);
 });
+
+test('expediente muestra dirección ubicación y referencias del cliente',()=>{
+ assert.match(ui,/ficha\.direccion/);
+ assert.match(ui,/ficha\.ubicacion/);
+ assert.match(ui,/for\(const ref of ficha\.referencias\|\|\[\]\)/);
+});
+test('detalle del contrato muestra prima y comisión',()=>{
+ assert.match(ui,/x\.prima\?\.monto/);
+ assert.match(ui,/x\.prima\?\.estado/);
+ assert.match(ui,/x\.comision_total/);
+});
+test('historial del vendedor incorpora resumen y comisiones pendientes',()=>{
+ assert.match(ui,/api\.resumenVendedor\(vendedorConsultado\)/);
+ assert.match(ui,/resumen\.comisiones_pendientes/);
+ assert.match(ui,/resumen\.primas_pendientes/);
+ assert.match(ui,/r\.comision_estado/);
+});
