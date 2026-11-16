@@ -12,3 +12,7 @@ test('existing debt backend and service worker remain present',()=>{assert.match
 
 test('read-only adapter is loaded before shell',()=>{assert.ok(html.indexOf('src="./cl-nexus-adapter.cjs"')<html.indexOf('src="./cl-nexus-shell.js"'))});
 test('production cannot enable laboratory RPC queries',()=>{assert.match(shell,/CLNexusRuntime\.origin!==LAB_ORIGIN/);assert.match(html,/window\.CLNexusRuntime=Object\.freeze/)});
+
+test('private data are cleared on logout and module switching',()=>{assert.match(shell,/function hideSensitive\(\)/);assert.match(shell,/function clear\(\)\{closeAdapter\(\);hideSensitive\(\)/);assert.match(shell,/if\(active!==id\)\{closeAdapter\(\);hideSensitive\(\)\}/)});
+test('operation responses cannot render in a different module',()=>{assert.match(shell,/active===operationModule&&authenticated\(\)/)});
+test('form numeric fields enforce numeric input',()=>{assert.match(shell,/inp\.type='number'/);assert.match(shell,/inp\.min='0'/)});
