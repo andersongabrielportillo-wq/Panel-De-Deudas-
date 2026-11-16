@@ -194,7 +194,7 @@ export function iniciarContratosDemo({supabase,root}) {
     }
   });
   crearCliente.onclick=()=>tarea(async()=>{
-    state.clienteId=await api.crearCliente({
+    const clienteNuevo=await api.crearCliente({
       nombre:nombre.value,dui:dui.value,telefono:telefono.value,
       direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
       lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
@@ -203,6 +203,8 @@ export function iniciarContratosDemo({supabase,root}) {
         parentesco:r.parentesco.value
       }))
     });
+    state.clienteId=clienteNuevo;
+    return 'Cliente creado y seleccionado: '+nombre.value.trim();
   });
   agregar.onclick=()=>{
     const q=Number(cantidad.value),p=Number(precio.value);
