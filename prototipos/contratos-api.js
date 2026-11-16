@@ -14,6 +14,7 @@ export function crearServicioContratos(supabase) {
   }
   const limpiarDui = valor => String(valor||'').replace(/\D/g,'');
   const dinero = valor => {
+    if(valor===null || valor===undefined || (typeof valor==='string' && !valor.trim())) throw new Error('Importe monetario inválido');
     const n=Number(valor);
     if(!Number.isFinite(n)||n<0||n>999999999999.99||Math.abs(n*100-Math.round(n*100))>1e-7) throw new Error('Importe monetario inválido');
     return Math.round(n*100)/100;
@@ -40,7 +41,7 @@ export function crearServicioContratos(supabase) {
       if(c.articulos.length>100) throw new Error('Máximo 100 artículos por contrato');
       let total=0;
       for(const a of c.articulos){
-        if(!Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
+        if(a.cantidad===null || a.cantidad===undefined || String(a.cantidad).trim()==='' || !Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
           throw new Error('Cantidad de artículo inválida');
         total+=Number(a.cantidad)*dinero(a.precio);
         if(total>999999999999.99)throw new Error('Total del contrato fuera de rango');
