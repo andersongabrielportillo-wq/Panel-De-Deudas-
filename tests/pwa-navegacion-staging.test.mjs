@@ -58,3 +58,52 @@ test('destruccion invalida montaje pendiente y rechaza nuevas rutas',async()=>{
  assert.equal(await pendiente,false);
  await assert.rejects(n.navegar('inventario'),/destruido/);
 });
+
+test('ruta externa exige sesion autenticada antes de mostrar datos',async()=>{
+ let llamados=0;
+ const sinSesion={auth:{getUser:async()=>({data:{user:null},error:null})},rpc:sb.rpc};
+ globalThis.__desmontarPWA=()=>{};
+ const n=crearNavegadorContratosPWA({supabase:sinSesion,contenedor:root(),mostrarModuloExterno:async()=>{llamados++}});
+ await assert.rejects(n.navegar('deudas'),/Inicia sesión/);
+ assert.equal(llamados,0);
+ n.destruir();
+});
+test('cambio de identidad durante apertura externa limpia pantalla',async()=>{
+ let lecturas=0,limpiezas=0;
+ const cambio={auth:{getUser:async()=>({data:{user:{id:++lecturas===1?'u1':'u2'}},error:null})},rpc:sb.rpc};
+ globalThis.__desmontarPWA=()=>{};
+ const n=crearNavegadorContratosPWA({supabase:cambio,contenedor:root(),mostrarModuloExterno:async()=>()=>{limpiezas++}});
+ await assert.rejects(n.navegar('inventario'),/sesión cambió/);
+ assert.equal(limpiezas,1);
+ assert.equal(n.moduloActual,null);
+ n.destruir();
+});
+test('navegacion tardia de Deudas no sustituye Inventario ni deja datos visibles',async()=>{
+ let liberar,limpiezas=0;
+ const espera=new Promise(resolve=>{liberar=resolve});
+ globalThis.__desmontarPWA=()=>{};
+ const n=crearNavegadorContratosPWA({supabase:sb,contenedor:root(),mostrarModuloExterno:async modulo=>{
+  if(modulo==='deudas'){await espera;return ()=>{limpiezas++}}
+  return ()=>{};
+ }});
+ const viejo=n.navegar('deudas');
+ await Promise.resolve();
+ assert.equal(await n.navegar('inventario'),true);
+ liberar();
+ assert.equal(await viejo,false);
+ assert.equal(limpiezas,1);
+ assert.equal(n.moduloActual,'inventario');
+ n.destruir();
+});
+test('cambiar modulo y destruir ejecuta limpieza externa exactamente una vez',async()=>{
+ let limpiezas=0;
+ globalThis.__desmontarPWA=()=>{};
+ globalThis.__montarPWA=async()=>{};
+ const n=crearNavegadorContratosPWA({supabase:sb,contenedor:root(),mostrarModuloExterno:async()=>()=>{limpiezas++}});
+ await n.navegar('inventario');
+ await n.navegar('contratos');
+ assert.equal(limpiezas,1);
+ await n.navegar('deudas');
+ n.destruir();
+ assert.equal(limpiezas,2);
+});
