@@ -252,11 +252,12 @@ export function iniciarContratosDemo({supabase,root}) {
       estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
     }
     const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
     const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
     state.items.push(line);
     const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
     const quitar=el('button',{type:'button'},'Quitar');
-    quitar.onclick=()=>{state.items.splice(state.items.indexOf(line),1);li.remove()};
+    quitar.onclick=()=>{const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
     li.append(quitar);articulosLista.append(li);
   };
   let guardandoBorrador=false;
