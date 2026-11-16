@@ -21,7 +21,7 @@ test('catálogos y ficha pasan por RPC',async()=>{
  const m=clienteMock(),api=crearServicioContratos(m.client);
  await api.catalogoVendedores();await api.catalogoArticulos();await api.fichaCliente('abc');
  assert.deepEqual(m.calls.map(c=>c.name),[
-  'inv_catalogo_vendedores','inv_catalogo_articulos_contratos','inv_ficha_cliente']);
+  'inv_catalogo_vendedores_manual','inv_catalogo_articulos_contratos','inv_ficha_cliente']);
 });
 test('acepta importes válidos con decimales',async()=>{
  const m=clienteMock();await crearServicioContratos(m.client).crearContratoBorrador(base);
@@ -277,4 +277,12 @@ test('DUI rechaza separadores adicionales aunque contenga nueve dígitos',()=>{
   assert.throws(()=>api.crearCliente({nombre:'Cliente prueba',dui}),/DUI inválido/);
  }
  assert.equal(m.calls.length,0);
+});
+
+test('alta de vendedor manual valida nombre y no toca inventario',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const nombre of ['', ' ', 'A', 'X'.repeat(201),null])assert.throws(()=>api.crearVendedor(nombre),/Nombre de vendedor/);
+ assert.equal(m.calls.length,0);
+ await api.crearVendedor('  Vendedor Nuevo  ');
+ assert.deepEqual(m.calls,[{name:'inv_crear_vendedor_manual',args:{p_nombre:'Vendedor Nuevo'}}]);
 });
