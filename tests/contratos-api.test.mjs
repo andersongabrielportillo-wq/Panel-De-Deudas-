@@ -150,3 +150,17 @@ test('rechaza prima vacía y mantiene prima cero explícita',async()=>{
  await api.crearContratoBorrador({...base,prima:0});
  assert.equal(m.calls[0].args.p_prima,0);
 });
+
+test('suma diez precios de diez centavos sin error de coma flotante',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearContratoBorrador({...base,prima:0.1,saldoInicial:0.9,
+  articulos:Array.from({length:10},()=>({...base.articulos[0],cantidad:1,precio:0.1}))});
+ assert.equal(m.calls.length,1);
+ assert.equal(m.calls[0].args.p_saldo_inicial,0.9);
+});
+test('rechaza saldo inconsistente por un centavo',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:0.1,saldoInicial:0.8,
+  articulos:Array.from({length:10},()=>({...base.articulos[0],cantidad:1,precio:0.1}))}),/Saldo inicial/);
+ assert.equal(m.calls.length,0);
+});
