@@ -69,7 +69,8 @@ export function iniciarContratosDemo({supabase,root}) {
     if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
     if(!contrato.articulos?.length)throw new Error('El contrato no tiene artículos');
     const centavosValidos=(valor)=>{
-      if(valor===null||valor===undefined||String(valor).trim()==='')
+      if(valor===null||valor===undefined||typeof valor==='boolean'||
+         (typeof valor!=='number'&&typeof valor!=='string')||String(valor).trim()==='')
         throw new Error('Importe ausente en el contrato');
       const n=Number(valor);
       if(!Number.isFinite(n)||n<0||n>999999999999.99||Math.abs(n*100-Math.round(n*100))>1e-7)
@@ -78,6 +79,9 @@ export function iniciarContratosDemo({supabase,root}) {
     };
     let totalCentavos=0;
     for(const articulo of contrato.articulos){
+      if(typeof articulo.cantidad==='boolean'||
+         (typeof articulo.cantidad!=='number'&&typeof articulo.cantidad!=='string'))
+        throw new Error('Cantidad inválida en el contrato');
       const cantidad=Number(articulo.cantidad);
       if(!Number.isSafeInteger(cantidad)||cantidad<1||cantidad>999999999)
         throw new Error('Cantidad inválida en el contrato');
