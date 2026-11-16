@@ -1,0 +1,30 @@
+name: Laboratorio conectado - pruebas de aislamiento
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'laboratorio/conectado-lectura.html'
+      - 'tests/laboratorio-conectado-lectura.test.mjs'
+      - '.github/workflows/laboratorio-conectado.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pruebas del cliente aislado
+        run: node --test tests/laboratorio-conectado-lectura.test.mjs
+      - name: Empaquetar HTML de laboratorio
+        run: |
+          mkdir -p dist
+          cp laboratorio/conectado-lectura.html dist/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: laboratorio-conectado-lectura
+          path: dist/index.html
+          retention-days: 7
