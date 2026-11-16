@@ -10,7 +10,7 @@ on:
       - 'debt-module-controller.cjs'
       - 'debt-cache-preflight.cjs'
       - 'tests/debt-cache-preflight.test.mjs'
-      - 'tests/debt-module-controller.test.mjs tests/debt-cache-preflight.test.mjs'
+      - 'tests/debt-module-controller.test.mjs'
       - 'tests/cl-nexus-adapter.test.mjs'
       - 'tests/debt-gate-client.test.mjs'
       - 'tests/debt-gate-sql.test.mjs'
