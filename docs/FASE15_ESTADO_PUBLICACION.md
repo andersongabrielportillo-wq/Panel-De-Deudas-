@@ -81,3 +81,8 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - 15AD: auditoría de solo lectura para verificar separación de tablas de artículos/vendedores, sin listar nombres ni escribir datos; nueva prueba estática de catálogos. GitHub Actions #246 terminó en success. **Esto no certifica todavía la sección de vendedores vacía**, pues la RPC actual lee vendedores históricos.
 
 - GitHub Actions #252: success para 127 pruebas preparadas. Añadidas dos aserciones de venta transaccional sin doble descuento y una prueba funcional contra cancelación obsoleta que no debe afectar al nuevo montaje. No son pruebas de ejecución PostgreSQL real.
+
+## Fase 15AE: vendedores creados manualmente (migración propuesta)
+- Preparada tabla nueva `inv_vendedores_manual`, inicialmente vacía, sin importación desde inventario y sin tocar vendedores históricos. Solo admin/secretaria mediante RPC pueden consultar y registrar; acceso directo a tabla denegado.
+- **Pendiente:** enlazar esta tabla a los contratos y a la función de ventas de forma compatible con las claves foráneas y los registros históricos; la interfaz actual aún usa `inv_catalogo_vendedores`. No presentar la sección como terminada ni ejecutar 15AE en las bases existentes.
+- Requiere revisar quién puede agregar vendedores en la UI final y validar en una base aislada que el primer catálogo no contiene registros.
