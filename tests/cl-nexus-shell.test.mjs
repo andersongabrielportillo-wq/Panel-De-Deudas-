@@ -26,5 +26,5 @@ test('staging concurrency only calls isolated sandbox and requires confirmation'
 
 test('debt security draft requires server-side unlock on every CRUD policy',()=>{const sql=readFileSync('docs/sql/debt-gate-review-only.sql','utf8');for(const operation of ['SELECT','INSERT','UPDATE','DELETE'])assert.match(sql,new RegExp('FOR '+operation+' TO authenticated'));assert.equal((sql.match(/public\.debt_access_valid\(workspace_id\)/g)||[]).length,5);assert.match(sql,/extensions\.crypt\(p_password,v_hash\)/);assert.match(sql,/session_id/);assert.match(sql,/No lanzar excepción: eso revertiría el contador/)});
 
-test('service worker caches both CL Nexus scripts in a versioned release',()=>{assert.match(sw,/\.\/cl-nexus-adapter\.cjs/);assert.match(sw,/\.\/cl-nexus-shell\.js/);assert.match(sw,/panel-de-deudas-shell-v3-cln-preparacion/)});
+test('service worker caches both CL Nexus scripts in a versioned release',()=>{assert.match(sw,/\.\/cl-nexus-adapter\.cjs/);assert.match(sw,/\.\/cl-nexus-shell\.js/);assert.match(sw,/panel-de-deudas-shell-v4-debt-gate-preparacion/)});
 test('service worker does not intercept Supabase or cross-origin traffic',()=>{assert.match(sw,/url\.origin !== self\.location\.origin/);assert.match(sw,/req\.method !== 'GET'/)});
