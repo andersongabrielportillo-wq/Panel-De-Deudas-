@@ -18,17 +18,19 @@ SELECT 'tabla_sin_acceso_directo',t.nombre,
 FROM tablas t LEFT JOIN pg_catalog.pg_class c
  ON c.oid=pg_catalog.to_regclass('public.'||t.nombre)
 UNION ALL
-SELECT 'funcion',p.proname,
-       (pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')
+-- La lista esperada va a la izquierda: si falta una RPC debe aparecer como FALSE.
+-- La versión anterior partía de pg_proc y omitía silenciosamente las RPC ausentes.
+SELECT 'funcion',f.nombre,
+       (p.oid IS NOT NULL
+        AND pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')
         AND NOT pg_catalog.has_function_privilege('anon',p.oid,'EXECUTE')
         AND p.prosecdef)
-FROM pg_catalog.pg_proc p
-JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-WHERE n.nspname='public'
-AND p.proname IN (
- 'inv_buscar_clientes','inv_crear_cliente','inv_crear_contrato_borrador',
- 'inv_marcar_prima_recibida','inv_historial_vendedor','inv_resumen_vendedor',
- 'inv_catalogo_vendedores','inv_catalogo_articulos_contratos','inv_ficha_cliente',
- 'inv_historial_cliente','inv_detalle_contrato','inv_confirmar_contrato'
-)
+FROM (VALUES
+ ('inv_buscar_clientes'),('inv_crear_cliente'),('inv_crear_contrato_borrador'),
+ ('inv_marcar_prima_recibida'),('inv_historial_vendedor'),('inv_resumen_vendedor'),
+ ('inv_catalogo_vendedores'),('inv_catalogo_articulos_contratos'),('inv_ficha_cliente'),
+ ('inv_historial_cliente'),('inv_detalle_contrato'),('inv_confirmar_contrato')
+) AS f(nombre)
+LEFT JOIN pg_catalog.pg_namespace n ON n.nspname='public'
+LEFT JOIN pg_catalog.pg_proc p ON p.pronamespace=n.oid AND p.proname=f.nombre
 ORDER BY tipo,objeto;
