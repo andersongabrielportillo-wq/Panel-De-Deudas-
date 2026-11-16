@@ -64,7 +64,7 @@ export function iniciarContratosDemo({supabase,root}) {
     cargarDetalle.disabled=true;
     let contrato;
     try {contrato=await api.detalleContrato(contratoId);}
-    finally {cargarDetalle.disabled=false;}
+    finally {if(!destruido)cargarDetalle.disabled=false;}
     if(destruido||solicitud!==revisionSolicitud || confirmarId.value.trim()!==contratoId)
       throw new Error('El contrato cambió durante la revisión; vuelve a cargarlo');
     if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
@@ -140,12 +140,12 @@ export function iniciarContratosDemo({supabase,root}) {
     try{
       const ventaId=await api.confirmarContrato(revisionEnviada.id,ubicaciones,operacionEnviada);
       // Un cambio de contrato durante la llamada no debe borrar su nueva revisión.
-      if(revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
+      if(!destruido && revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
         invalidarRevision();
       return 'Venta confirmada: '+ventaId;
     }catch(e){
       // Solo permitir reintento si seguimos viendo la misma revisión.
-      if(revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
+      if(!destruido && revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
         confirmarVenta.disabled=false;
       throw e;
     }finally{
@@ -271,7 +271,7 @@ export function iniciarContratosDemo({supabase,root}) {
         const solicitud=solicitudPerfil;
         const clienteConsultado=state.clienteId;
         const x=await api.detalleContrato(c.contrato_id);
-        if(solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
+        if(destruido||solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
           return 'El cliente cambió; consulta de nuevo el historial';
         detalle.replaceChildren();
         detalle.append(el('p',{},'Estado: '+x.estado+' · Plan: '+x.plan+
@@ -303,7 +303,7 @@ export function iniciarContratosDemo({supabase,root}) {
     if(destruido)return 'Interfaz cerrada';
     if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
     return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
-    } finally {creandoCliente=false;crearCliente.disabled=false;}
+    } finally {creandoCliente=false;if(!destruido)crearCliente.disabled=false;}
   });
   agregar.onclick=()=>{
     if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
@@ -347,7 +347,7 @@ export function iniciarContratosDemo({supabase,root}) {
     revisionSolicitud++;
     invalidarRevision();
     return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
-    } finally {guardandoBorrador=false;guardar.disabled=false;}
+    } finally {guardandoBorrador=false;if(!destruido)guardar.disabled=false;}
   });
   let solicitudHistorial=0;
   vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
