@@ -10,7 +10,7 @@ test('el controlador de contratos no está duplicado',()=>{
  assert.equal(count(/crearCliente\.onclick\s*=/g),1);
  assert.equal(count(/guardar\.onclick\s*=/g),1);
  assert.equal(count(/verHistorial\.onclick\s*=/g),1);
- assert.equal(count(/return \{api,state\};/g),1);
+ assert.equal(count(/return \{api,state,destruir\(/g),1);
 });
 test('la ficha del cliente conserva su cierre de evento',()=>{
  assert.match(ui,/for\(const a of x\.articulos\|\|\[\]\)\{[\s\S]*?detalle\.append\([\s\S]*?\}\);[\s\S]*?linea\.append\(boton,detalle\)/);
@@ -127,7 +127,7 @@ test('no permite dos confirmaciones simultáneas',()=>{
 test('búsquedas anteriores no reemplazan resultados nuevos',()=>{
  assert.match(ui,/let solicitudBusqueda=0/);
  assert.match(ui,/busqueda\.addEventListener\('input',\(\)=>\{solicitudBusqueda\+\+/);
- assert.match(ui,/if\(solicitud!==solicitudBusqueda\)return 'Búsqueda anterior descartada'/);
+ assert.match(ui,/if\(destruido\|\|solicitud!==solicitudBusqueda\)return 'Búsqueda anterior descartada'/);
 });
 test('no se modifica el cliente seleccionado mientras se guarda',()=>{
  assert.match(ui,/if\(guardandoBorrador\)\{estado\.textContent='Espera a que termine el guardado';return;\}state\.clienteId=r\.id/);
@@ -171,8 +171,8 @@ test('fallo tardío no reactiva confirmación de otra revisión',()=>{
 test('estado visual ignora respuestas de operaciones anteriores',()=>{
  assert.match(ui,/let tareaActual=0/);
  assert.match(ui,/const solicitud=\+\+tareaActual/);
- assert.match(ui,/if\(solicitud===tareaActual\)estado\.textContent=mensaje/);
- assert.match(ui,/if\(solicitud===tareaActual\)estado\.textContent='Error:/);
+ assert.match(ui,/if\(!destruido && solicitud===tareaActual\)estado\.textContent=mensaje/);
+ assert.match(ui,/if\(!destruido && solicitud===tareaActual\)estado\.textContent='Error:/);
 });
 test('historial de vendedor descarta consultas atrasadas',()=>{
  assert.match(ui,/let solicitudHistorial=0/);
