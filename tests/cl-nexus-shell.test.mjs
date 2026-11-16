@@ -21,3 +21,5 @@ test('exit movement has null destination before RPC',()=>{assert.match(shell,/va
 test('idempotency key rotates when form payload changes',()=>{assert.match(shell,/form\.dataset\.opFingerprint!==fingerprint/);assert.match(shell,/delete form\.dataset\.opFingerprint/)});
 
 test('staging permission check uses real authenticated JWT and nonexistent request',()=>{const stage=readFileSync('staging/index.html','utf8');assert.match(stage,/id="checkPermissions"/);assert.match(stage,/accessToken\(s\)/);assert.match(stage,/00000000-0000-4000-8000-000000000000/);assert.match(stage,/inv_revisar_entrada/);assert.match(stage,/authEpoch!==epoch/)});
+
+test('staging concurrency only calls isolated sandbox and requires confirmation',()=>{const stage=readFileSync('staging/index.html','utf8');assert.match(stage,/cl2_sandbox_test_sale/);assert.match(stage,/Promise\.allSettled\(\[run\(\),run\(\)\]\)/);assert.match(stage,/confirm\("¿Ejecutar DOS ventas simultáneas/);assert.match(stage,/authEpoch!==epoch/)});
