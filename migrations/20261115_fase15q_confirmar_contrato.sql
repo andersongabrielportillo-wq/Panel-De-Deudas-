@@ -49,6 +49,12 @@ BEGIN
  END IF;
  IF v_contrato.estado<>'borrador' OR v_contrato.venta_id IS NOT NULL
  THEN RAISE EXCEPTION 'Contrato no disponible para confirmar'; END IF;
+ -- Revalidar el vendedor al confirmar: pudo desactivarse después del borrador.
+ IF NOT EXISTS(
+   SELECT 1 FROM public.inv_vendedores_manual vm
+   JOIN public.inv_vendedores v ON v.id=vm.id
+   WHERE vm.id=v_contrato.vendedor_id AND vm.activo=true AND v.activo=true
+ ) THEN RAISE EXCEPTION 'Vendedor manual inactivo o no registrado'; END IF;
  IF p_ubicaciones IS NULL OR pg_catalog.jsonb_typeof(p_ubicaciones)<>'array'
  THEN RAISE EXCEPTION 'Ubicaciones inválidas'; END IF;
  SELECT count(*) INTO v_cantidad_lineas
