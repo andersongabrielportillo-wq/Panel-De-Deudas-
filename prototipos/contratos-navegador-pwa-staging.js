@@ -12,12 +12,14 @@ export function crearNavegadorContratosPWA({supabase,contenedor,mostrarModuloExt
   throw new Error('Falta contenedor de contratos');
  if(typeof mostrarModuloExterno!=='function')
   throw new Error('El anfitrión debe implementar navegación externa');
- let actual=null,revision=0,destruido=false;
+ let actual=null,revision=0,destruido=false,limpiezaExterna=null;
+ const cerrarExterno=()=>{const fn=limpiezaExterna;limpiezaExterna=null;fn?.();};
  const limpiar=()=>{desmontarContratosEnStaging(contenedor);contenedor.replaceChildren();};
  async function navegar(modulo){
   if(destruido)throw new Error('Navegador destruido');
   if(!['contratos','inventario','deudas'].includes(modulo))throw new Error('Módulo desconocido');
   const solicitud=++revision;
+  cerrarExterno();
   limpiar();
   actual=null;
   if(modulo==='contratos'){
@@ -37,20 +39,22 @@ export function crearNavegadorContratosPWA({supabase,contenedor,mostrarModuloExt
   if(destruido||solicitud!==revision)return false;
   if(errorInicio||!inicio?.user?.id)throw new Error('Inicia sesión antes de abrir el módulo');
   const usuario=inicio.user.id;
-  await mostrarModuloExterno(modulo,{supabase});
-  if(destruido||solicitud!==revision)return false;
+  const cerrar=await mostrarModuloExterno(modulo,{supabase});
+  if(destruido||solicitud!==revision){if(typeof cerrar==='function')cerrar();return false;}
   const {data:final,error:errorFinal}=await supabase.auth.getUser();
-  if(destruido||solicitud!==revision)return false;
+  if(destruido||solicitud!==revision){if(typeof cerrar==='function')cerrar();return false;}
   if(errorFinal||final?.user?.id!==usuario){
-   // El anfitrión debe limpiar su módulo externo al cambiar de usuario.
+   if(typeof cerrar==='function')cerrar();
    throw new Error('La sesión cambió durante la navegación; vuelve a ingresar');
   }
+  limpiezaExterna=typeof cerrar==='function'?cerrar:null;
   actual=modulo;
   return true;
  }
  function destruir(){
   if(destruido)return;
   destruido=true;revision++;
+  cerrarExterno();
   limpiar();
  }
  return Object.freeze({navegar,destruir,get moduloActual(){return actual;}});
