@@ -105,7 +105,7 @@ BEGIN
    v_item:=(v_line->>'item_id')::uuid;
    IF (v_line->>'cantidad') IS NULL
       OR (v_line->>'cantidad') !~ '^[1-9][0-9]*$'
-      OR length(v_line->>'cantidad')>10
+      OR length(v_line->>'cantidad')>9
    THEN RAISE EXCEPTION 'Cantidad debe ser un entero positivo'; END IF;
    v_cantidad:=(v_line->>'cantidad')::integer;
    v_precio:=(v_line->>'precio_credito_unitario')::numeric;
