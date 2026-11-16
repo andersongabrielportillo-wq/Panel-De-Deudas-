@@ -286,3 +286,42 @@ test('alta de vendedor manual valida nombre y no toca inventario',async()=>{
  await api.crearVendedor('  Vendedor Nuevo  ');
  assert.deepEqual(m.calls,[{name:'inv_crear_vendedor_manual',args:{p_nombre:'Vendedor Nuevo'}}]);
 });
+
+test('catalogo manual vacio devuelve lista vacia sin crear vendedores',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:[],error:null}}});
+ assert.deepEqual(await api.catalogoVendedores(),[]);
+ assert.deepEqual(calls,[{name:'inv_catalogo_vendedores_manual',args:{}}]);
+});
+test('alta manual conserva nombres validos y no invoca catalogo de articulos',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:'uuid-nuevo',error:null}}});
+ assert.equal(await api.crearVendedor('  María López  '),'uuid-nuevo');
+ assert.deepEqual(calls,[{name:'inv_crear_vendedor_manual',args:{p_nombre:'María López'}}]);
+});
+test('alta manual rechazada por servidor no activa ninguna escritura alternativa',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:{message:'No autorizado'}}}});
+ await assert.rejects(api.crearVendedor('Vendedor nuevo'),/No autorizado/);
+ assert.deepEqual(calls.map(x=>x.name),['inv_crear_vendedor_manual']);
+});
+test('confirmacion fallida por stock propaga error sin enviar segundo descuento',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:{message:'Existencias insuficientes'}}}});
+ await assert.rejects(api.confirmarContrato('contrato',[{detalleId:'detalle',ubicacionId:1}],'op-unica'),/Existencias insuficientes/);
+ assert.deepEqual(calls.map(x=>x.name),['inv_confirmar_contrato']);
+});
+test('confirmacion de varios articulos usa una unica RPC de ventas',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:'venta-uuid',error:null}}});
+ assert.equal(await api.confirmarContrato('contrato',[{detalleId:'a',ubicacionId:1},{detalleId:'b',ubicacionId:2},{detalleId:'c',ubicacionId:1}],'op-unica'),'venta-uuid');
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'inv_confirmar_contrato');
+ assert.deepEqual(calls[0].args.p_ubicaciones,[{detalle_id:'a',location_id:1},{detalle_id:'b',location_id:2},{detalle_id:'c',location_id:1}]);
+});
+test('confirmacion rechaza 101 ubicaciones antes de invocar servidor',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ const ubicaciones=Array.from({length:101},(_,i)=>({detalleId:'detalle-'+i,ubicacionId:1}));
+ assert.throws(()=>api.confirmarContrato('contrato',ubicaciones,'operacion'),/Máximo 100/);
+ assert.equal(m.calls.length,0);
+});
