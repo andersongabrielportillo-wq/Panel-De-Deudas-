@@ -252,6 +252,13 @@ export function iniciarContratosDemo({supabase,root}) {
     perfilContenido.replaceChildren();
     perfilContenido.append(el('h4',{},ficha.nombre));
     perfilContenido.append(el('p',{},'Teléfono: '+(ficha.telefono||'No registrado')));
+    perfilContenido.append(el('p',{},'Dirección: '+(ficha.direccion||'No registrada')));
+    perfilContenido.append(el('p',{},'Ubicación: '+(ficha.ubicacion||'No registrada')));
+    perfilContenido.append(el('p',{},'Referencias registradas: '+(ficha.referencias?.length||0)));
+    for(const ref of ficha.referencias||[]){
+      perfilContenido.append(el('p',{},'Referencia '+ref.orden+': '+ref.nombre+
+        ' · Teléfono: '+(ref.telefono||'No registrado')));
+    }
     perfilContenido.append(el('p',{},'Contratos registrados: '+contratos.length));
     for(const c of contratos){
       const linea=el('div');
@@ -264,7 +271,1118 @@ export function iniciarContratosDemo({supabase,root}) {
         if(solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
           return 'El cliente cambió; consulta de nuevo el historial';
         detalle.replaceChildren();
-        detalle.append(el('p',{},'Estado: '+x.estado+' · Plan: '+x.plan));
+        detalle.append(el('p',{},'Estado: '+x.estado+' · Plan: '+x.plan+
+          ' · Frecuencia: '+(x.frecuencia||'No indicada')));
+        detalle.append(el('p',{},'Prima: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const [rows,resumenRaw]=await Promise.all([
+      api.historialVendedor(vendedorConsultado),
+      api.resumenVendedor(vendedorConsultado)
+    ]);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    const resumen=Array.isArray(resumenRaw)?resumenRaw[0]:resumenRaw;
+    if(resumen){
+      histLista.append(el('p',{},'Contratos confirmados: '+resumen.contratos_confirmados+
+        ' · Ventas brutas: 
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++resumen.ventas_brutas+
+        ' · Comisiones pendientes: 
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++resumen.comisiones_pendientes+
+        ' · Primas pendientes: 
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++resumen.primas_pendientes));
+    }
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++r.total_articulos,'Comisión: 
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++r.comision,
+        'Estado de comisión: '+r.comision_estado,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.prima?.monto??0)+
+          ' · Estado de prima: '+(x.prima?.estado||'No registrado')+
+          ' · Comisión: 
+        for(const a of x.articulos||[]){
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
+        }
+      });
+      linea.append(boton,detalle);perfilContenido.append(linea);
+    }
+  });
+  let creandoCliente=false;
+  crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
+    const clienteNuevo=await api.crearCliente({
+      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
+      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
+      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
+      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
+        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
+        parentesco:r.parentesco.value
+      }))
+    });
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
+    return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
+  });
+  agregar.onclick=()=>{
+    if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}
+    const q=Number(cantidad.value),p=Number(precio.value);
+    if(state.items.length>=100){estado.textContent='Máximo 100 líneas por contrato';return;}
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
+      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
+    }
+    const selected=item.options[item.selectedIndex];
+    if(!selected){estado.textContent='Selecciona un artículo del catálogo';return;}
+    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
+    state.items.push(line);
+    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
+    const quitar=el('button',{type:'button'},'Quitar');
+    quitar.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}const indice=state.items.indexOf(line);if(indice!==-1)state.items.splice(indice,1);li.remove()};
+    li.append(quitar);articulosLista.append(li);
+  };
+  let guardandoBorrador=false;
+  guardar.onclick=()=>tarea(async()=>{
+    if(guardandoBorrador)throw new Error('El borrador ya se está guardando');
+    guardandoBorrador=true;guardar.disabled=true;
+    try{
+    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
+    if(!state.items.length)throw new Error('Agrega artículos');
+    const clienteGuardado=state.clienteId;
+    const articulosGuardados=state.items.map(linea=>({...linea}));
+    const id=await api.crearContratoBorrador({
+      numero:numero.value,clienteId:clienteGuardado,vendedorId:vendedor.value,
+      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
+      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
+      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
+      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
+      articulos:articulosGuardados
+    });
+    state.items=[];articulosLista.replaceChildren();
+    confirmarId.value=id;
+    revisionSolicitud++;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
+    } finally {guardandoBorrador=false;guardar.disabled=false;}
+  });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
+  verHistorial.onclick=()=>tarea(async()=>{
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
+    histLista.replaceChildren();
+    for(const r of rows||[]){
+      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
+        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
+    }
+  });
+  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
+  tarea(cargarCatalogos);
+  return {api,state};
+}
++(x.comision_total??0)));
         for(const a of x.articulos||[]){
           detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
         }
