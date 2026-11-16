@@ -2,3 +2,5 @@ import test from 'node:test';import assert from 'node:assert/strict';import{read
 
 test('staging renueva JWT de pruebas y no persiste tokens',()=>{assert.match(html,/grant_type=refresh_token/);assert.match(html,/expiresAt/);assert.match(html,/session!==s/);assert.doesNotMatch(html,/localStorage|sessionStorage/)});
 test('las respuestas tardías no restauran datos tras logout',()=>{assert.match(html,/ticket===seq&&session===s/);assert.match(html,/seq\+\+;session=null/)});
+
+test('consultas de inventario se cancelan al cambiar modulo o cerrar sesión',()=>{assert.match(html,/new AbortController\(\)/);assert.match(html,/signal:controller\.signal/);assert.match(html,/activeRequest\.abort\(\)/);assert.match(html,/if\(e\.name==="AbortError"\)return/)});
