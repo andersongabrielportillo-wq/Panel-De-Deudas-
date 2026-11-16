@@ -667,6 +667,7 @@ setInterval(()=>{if(APP_READY&&refreshT())uiRefresh()},60000);
 const SUPABASE_URL="https://josdmjjbnrugiwlwgjky.supabase.co";
 const SUPABASE_KEY="sb_publishable_0CHw4JtE92-07OMNAnvESA_44sf9dk4";
 const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
 let SB_UID=null,SB_WID=null,SB_CH=null;
 const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
@@ -844,5 +845,6 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
  if(er&&window.MutationObserver){var f=function(){/^Entrando/.test(er.textContent)?er.setAttribute("data-wait",""):er.removeAttribute("data-wait")};new MutationObserver(f).observe(er,{childList:true,characterData:true,subtree:true})}
 })();
 </script>
+<script src="./cl-nexus-adapter.cjs" defer></script>
 <script src="./cl-nexus-shell.js" defer></script>
 </body></html>
