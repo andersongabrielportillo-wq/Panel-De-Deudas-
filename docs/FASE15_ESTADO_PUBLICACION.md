@@ -62,3 +62,10 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Blindaje adicional: respuestas tardías del expediente y confirmación de venta no reactivan controles ni reescriben la pantalla después de destruir el controlador. Se añade prueba estática. No cancela una RPC ya enviada al servidor: su resultado debe consultarse mediante idempotencia si la sesión termina a mitad de confirmación.
 
 - Montaje cancelable durante RPC de permisos, con limpieza ante fallo de suscripción de autenticación. Dos pruebas funcionales adicionales; no se despliega en PWA.
+
+## Regla de negocio confirmada: inventario y vendedores separados
+- El archivo de inventario proporcionado por el usuario es **exclusivamente catálogo de artículos/existencias**. Los nombres incluidos en ese archivo NO representan vendedores y NO deben importarse, copiarse, inferirse ni sincronizarse a la sección de vendedores.
+- La sección **Vendedores** debe iniciar **vacía** en la entrega; únicamente el usuario la llenará manualmente después de tener lista la aplicación.
+- Prohibido usar registros de artículos, nombres de inventario o vendedores precargados como sustitutos. No crear vendedores ficticios en la aplicación final.
+- Conservar intactos los registros existentes en `inv_vendedores` del staging poblado: **no borrar ni modificar** datos para vaciar la interfaz. Antes del despliegue se debe diseñar y validar la separación entre los vendedores históricos usados por ventas y el registro manual nuevo, sin alterar integridad referencial ni ventas previas.
+- Bloqueo de publicación: la RPC actual `inv_catalogo_vendedores` lee `inv_vendedores`; por tanto, **todavía no satisface** el requisito de lista vacía. No declarar este punto completado hasta cambiar el origen del catálogo y probarlo con una base aislada.
