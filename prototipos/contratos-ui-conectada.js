@@ -219,15 +219,20 @@ export function iniciarContratosDemo({supabase,root}) {
     if(!rows?.length){resultados.append(el('p',{},'Sin resultados'));return}
     for(const r of rows){
       const b=el('button',{type:'button'},r.nombre+' · '+(r.dui_mostrado||'Sin DUI'));
-      b.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}state.clienteId=r.id;resultados.replaceChildren(el('p',{},'Cliente seleccionado: '+r.nombre))};
+      b.onclick=()=>{if(guardandoBorrador){estado.textContent='Espera a que termine el guardado';return;}state.clienteId=r.id;solicitudPerfil++;perfilContenido.replaceChildren();resultados.replaceChildren(el('p',{},'Cliente seleccionado: '+r.nombre))};
       resultados.append(b);
     }
   });
+  let solicitudPerfil=0;
   verPerfil.onclick=()=>tarea(async()=>{
     if(!state.clienteId)throw new Error('Primero selecciona un cliente');
+    const solicitud=++solicitudPerfil;
+    const clienteConsultado=state.clienteId;
     const [ficha,contratos]=await Promise.all([
-      api.fichaCliente(state.clienteId),api.historialCliente(state.clienteId)
+      api.fichaCliente(clienteConsultado),api.historialCliente(clienteConsultado)
     ]);
+    if(solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
+      return 'La selección cambió; consulta de nuevo la ficha';
     perfilContenido.replaceChildren();
     perfilContenido.append(el('h4',{},ficha.nombre));
     perfilContenido.append(el('p',{},'Teléfono: '+(ficha.telefono||'No registrado')));
@@ -237,7 +242,11 @@ export function iniciarContratosDemo({supabase,root}) {
       const boton=el('button',{type:'button'},'Ver '+c.numero+' · '+c.fecha);
       const detalle=el('div');
       boton.onclick=()=>tarea(async()=>{
+        const solicitud=solicitudPerfil;
+        const clienteConsultado=state.clienteId;
         const x=await api.detalleContrato(c.contrato_id);
+        if(solicitud!==solicitudPerfil||clienteConsultado!==state.clienteId)
+          return 'El cliente cambió; consulta de nuevo el historial';
         detalle.replaceChildren();
         detalle.append(el('p',{},'Estado: '+x.estado+' · Plan: '+x.plan));
         for(const a of x.articulos||[]){
@@ -261,7 +270,7 @@ export function iniciarContratosDemo({supabase,root}) {
         parentesco:r.parentesco.value
       }))
     });
-    if(!guardandoBorrador)state.clienteId=clienteNuevo;
+    if(!guardandoBorrador){state.clienteId=clienteNuevo;solicitudPerfil++;perfilContenido.replaceChildren();}
     return 'Cliente creado: '+nombre.value.trim()+(guardandoBorrador?' · No se cambió el cliente del borrador en curso':' · Seleccionado');
     } finally {creandoCliente=false;crearCliente.disabled=false;}
   });
@@ -303,6 +312,7 @@ export function iniciarContratosDemo({supabase,root}) {
     });
     state.items=[];articulosLista.replaceChildren();
     confirmarId.value=id;
+    revisionSolicitud++;
     invalidarRevision();
     return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
     } finally {guardandoBorrador=false;guardar.disabled=false;}
