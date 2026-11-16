@@ -80,7 +80,7 @@ test('15J busca nombre literal sin comodines SQL que expongan listados amplios',
 
 test('15J valida DUI también en servidor sin limpiar letras silenciosamente',()=>{
  const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
- const rechazo=sql.indexOf("pg_catalog.btrim(p_dui) !~ '^[0-9]{9}$|^[0-9]{8}-[0-9]
+ const rechazo=sql.indexOf("pg_catalog.btrim(p_dui) !~ '^[0-9]{9}$|^[0-9]{8}-[0-9]$'");
  const normalizar=sql.indexOf("v_dui:=NULLIF(");
  assert.ok(rechazo>=0 && normalizar>rechazo);
 });
