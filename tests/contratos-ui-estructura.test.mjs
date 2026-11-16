@@ -212,3 +212,13 @@ test('cierre de sesión impide reescrituras tardías de confirmación y expedien
  assert.match(ui,/if\(!destruido\)guardar\.disabled=false/);
  assert.match(ui,/if\(!destruido\)cargarDetalle\.disabled=false/);
 });
+
+test('catalogo inicial atrasado no pisa vendedor agregado manualmente',()=>{
+ assert.match(ui,/let versionCatalogoVendedores=0/);
+ assert.match(ui,/const version=\+\+versionCatalogoVendedores/);
+ assert.match(ui,/const version=versionCatalogoVendedores/);
+ assert.match(ui,/if\(version!==versionCatalogoVendedores\)return/);
+ assert.match(ui,/if\(destruido\|\|version!==versionCatalogoVendedores\)return/);
+ assert.match(ui,/api\.crearVendedor\(nombre\)/);
+ assert.match(ui,/api\.catalogoVendedores\(\)/);
+});
