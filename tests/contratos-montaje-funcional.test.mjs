@@ -52,3 +52,35 @@ test('montaje real permite reintentar después de error',async()=>{
  permitir=true;
  assert.deepEqual(await modulo.montarContratosEnStaging({supabase,contenedor:root}),{listo:true});
 });
+
+test('cerrar sesión desmonta, limpia y libera el contenedor',async()=>{
+ let evento,destruidos=0,desuscritos=0,limpiezas=0;
+ globalThis.__montajeContratosPrueba=()=>({destruir(){destruidos++}});
+ const root={replaceChildren(){limpiezas++}};
+ const supabase={auth:{
+  getUser:async()=>usuario('u1'),
+  onAuthStateChange:fn=>{evento=fn;return {data:{subscription:{unsubscribe(){desuscritos++}}}}}
+ },rpc:async()=>({data:[],error:null})};
+ await modulo.montarContratosEnStaging({supabase,contenedor:root});
+ evento('SIGNED_OUT',null);
+ assert.equal(destruidos,1);
+ assert.equal(desuscritos,1);
+ assert.equal(limpiezas,1);
+ await modulo.montarContratosEnStaging({supabase,contenedor:root});
+ assert.equal(modulo.desmontarContratosEnStaging(root),true);
+ assert.equal(modulo.desmontarContratosEnStaging(root),false);
+ assert.equal(destruidos,2);
+});
+test('cambiar usuario desmonta incluso con sesión autenticada',async()=>{
+ let evento,limpiezas=0;
+ globalThis.__montajeContratosPrueba=()=>({destruir(){}});
+ const root={replaceChildren(){limpiezas++}};
+ const supabase={auth:{
+  getUser:async()=>usuario('u1'),
+  onAuthStateChange:fn=>{evento=fn;return {data:{subscription:{unsubscribe(){}}}}}
+ },rpc:async()=>({data:[],error:null})};
+ await modulo.montarContratosEnStaging({supabase,contenedor:root});
+ evento('SIGNED_IN',{user:{id:'u2'}});
+ assert.equal(limpiezas,1);
+ assert.equal(modulo.desmontarContratosEnStaging(root),false);
+});
