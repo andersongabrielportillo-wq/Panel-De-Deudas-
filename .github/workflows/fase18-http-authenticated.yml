@@ -1,0 +1,31 @@
+name: HTTP autenticado - CL Nexus pruebas
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authenticated-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CL_TEST_PUBLISHABLE_KEY: ${{ secrets.CL_TEST_PUBLISHABLE_KEY }}
+      CL_TEST_ADMIN_EMAIL: ${{ secrets.CL_TEST_ADMIN_EMAIL }}
+      CL_TEST_ADMIN_PASSWORD: ${{ secrets.CL_TEST_ADMIN_PASSWORD }}
+      CL_TEST_SECRETARIA_EMAIL: ${{ secrets.CL_TEST_SECRETARIA_EMAIL }}
+      CL_TEST_SECRETARIA_PASSWORD: ${{ secrets.CL_TEST_SECRETARIA_PASSWORD }}
+      CL_TEST_OUTSIDER_EMAIL: ${{ secrets.CL_TEST_OUTSIDER_EMAIL }}
+      CL_TEST_OUTSIDER_PASSWORD: ${{ secrets.CL_TEST_OUTSIDER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar configuración sin revelar secretos
+        run: |
+          test -n "$CL_TEST_PUBLISHABLE_KEY"
+          test -n "$CL_TEST_ADMIN_EMAIL"
+          test -n "$CL_TEST_ADMIN_PASSWORD"
+          test -n "$CL_TEST_SECRETARIA_EMAIL"
+          test -n "$CL_TEST_SECRETARIA_PASSWORD"
+      - name: Pruebas HTTP con JWT reales (solo lectura)
+        run: node --test tests/fase18-http-authenticated.test.mjs
