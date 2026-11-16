@@ -167,7 +167,9 @@ test('registro manual de vendedores comienza sin precarga de inventario',()=>{
 test('contratos e historiales rechazan vendedores historicos no registrados manualmente',()=>{
  const borrador=sql('j_contratos_rpc');
  const historial=sql('k_historial_vendedores');
- assert.match(borrador,/FROM public\.inv_vendedores_manual WHERE id=p_vendedor_id AND activo=true/);
+ assert.match(borrador,/FROM public\.inv_vendedores_manual vm/);
+ assert.match(borrador,/JOIN public\.inv_vendedores v ON v\.id=vm\.id/);
+ assert.match(borrador,/vm\.id=p_vendedor_id AND vm\.activo=true AND v\.activo=true/);
  assert.equal((historial.match(/FROM public\.inv_vendedores_manual v WHERE v\.id=p_vendedor_id/g)||[]).length,2);
  assert.doesNotMatch(historial,/FROM public\.inv_vendedores v WHERE v\.id=p_vendedor_id/);
 });
@@ -180,4 +182,15 @@ test('postmigracion de vendedores comprueba RLS y privilegios sin escribir datos
    assert.ok(q.includes(control),control);
  }
  assert.doesNotMatch(q,/^\s*(?:INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP|ALTER)\b/mi);
+});
+
+test('confirmar venta revalida vendedor manual y vendedor de ventas activos',()=>{
+ const q=sql('q_confirmar_contrato');
+ assert.match(q,/FROM public\.inv_vendedores_manual vm/);
+ assert.match(q,/JOIN public\.inv_vendedores v ON v\.id=vm\.id/);
+ assert.match(q,/vm\.id=v_contrato\.vendedor_id AND vm\.activo=true AND v\.activo=true/);
+ assert.match(q,/Vendedor manual inactivo o no registrado/);
+ const validar=q.indexOf('Vendedor manual inactivo o no registrado');
+ const venta=q.indexOf('v_venta_id:=public.inv_registrar_venta(');
+ assert.ok(validar>0 && venta>validar,'Rechazar antes de descontar stock');
 });
