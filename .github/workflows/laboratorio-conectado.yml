@@ -9,6 +9,9 @@ on:
       - 'index.html'
       - 'staging/index.html'
       - 'tests/fase18-staging.test.mjs'
+      - 'tests/fase18-contratos-seguridad.test.mjs'
+      - 'migrations/20261115_fase15j_contratos_rpc.sql'
+      - 'migrations/20261115_fase15q_confirmar_contrato.sql'
       - '.github/workflows/laboratorio-conectado.yml'
   workflow_dispatch:
 jobs:
@@ -22,7 +25,7 @@ jobs:
         with:
           node-version: '22'
       - name: Pruebas del cliente aislado
-        run: node --test tests/laboratorio-conectado-lectura.test.mjs tests/fase18-aislamiento.test.mjs tests/fase18-staging.test.mjs
+        run: node --test tests/laboratorio-conectado-lectura.test.mjs tests/fase18-aislamiento.test.mjs tests/fase18-staging.test.mjs tests/fase18-contratos-seguridad.test.mjs
       - name: Empaquetar HTML de laboratorio
         run: |
           mkdir -p dist
