@@ -74,8 +74,19 @@ test('la prima recibida corresponde a caja y no solo al vendedor',()=>{
  assert.doesNotMatch(ui,/Prima recibida por vendedor/);
 });
 test('muestra total prima y saldo antes de confirmar la venta',()=>{
- assert.match(ui,/totalCentavos=contrato\.articulos\.reduce/);
- assert.match(ui,/primaCentavos=Math\.round/);
+ assert.match(ui,/let totalCentavos=0/);
+ assert.match(ui,/primaCentavos=centavosValidos/);
  assert.match(ui,/Importes de contrato inconsistentes/);
  assert.match(ui,/Saldo: '/);
+});
+
+test('no permite confirmar contratos sin prima o con precios ausentes',()=>{
+ assert.match(ui,/if\(valor===null\|\|valor===undefined\|\|String\(valor\)\.trim\(\)===''\)/);
+ assert.match(ui,/centavosValidos\(articulo\.precio_credito_unitario\)/);
+ assert.match(ui,/centavosValidos\(contrato\.prima\?\.monto\)/);
+});
+test('valida cantidad y límite de importes al revisar contrato',()=>{
+ assert.match(ui,/Number\.isSafeInteger\(cantidad\)/);
+ assert.match(ui,/cantidad>999999999/);
+ assert.match(ui,/totalCentavos>99999999999999/);
 });
