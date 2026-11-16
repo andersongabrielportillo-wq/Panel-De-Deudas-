@@ -46,3 +46,11 @@ test('confirmación registra venta antes de marcar contrato confirmado',()=>{
  const update=confirmacion.indexOf("SET estado='confirmado',venta_id=v_venta_id");
  assert.ok(venta>=0&&update>venta);
 });
+
+test('preflight postmigración enumera RPC esperadas y no oculta ausentes',()=>{
+ const q=readFileSync(new URL('./15x_verificacion_postmigracion_solo_lectura.sql',import.meta.url),'utf8');
+ assert.match(q,/FROM \(VALUES[\s\S]*?inv_confirmar_contrato/);
+ assert.match(q,/LEFT JOIN pg_catalog\.pg_proc p ON/);
+ assert.match(q,/p\.oid IS NOT NULL/);
+ assert.equal((q.match(/\('inv_(?:buscar_clientes|crear_cliente|crear_contrato_borrador|marcar_prima_recibida|historial_vendedor|resumen_vendedor|catalogo_vendedores|catalogo_articulos_contratos|ficha_cliente|historial_cliente|detalle_contrato|confirmar_contrato)'\)/g)||[]).length,12);
+});
