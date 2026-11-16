@@ -71,6 +71,7 @@ CREATE OR REPLACE FUNCTION public.inv_crear_contrato_borrador(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $$
 DECLARE v_id uuid;v_line jsonb;v_item uuid;v_cantidad int;v_precio numeric;v_comision numeric;
+ v_total numeric:=0;
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS(
  SELECT 1 FROM public.inv_members WHERE user_id=auth.uid() AND rol IN ('admin','secretaria')
@@ -115,9 +116,13 @@ BEGIN
    OR v_comision<0 OR v_precio>999999999999.99 OR v_comision>999999999999.99
    OR v_precio<>pg_catalog.round(v_precio,2) OR v_comision<>pg_catalog.round(v_comision,2)
    THEN RAISE EXCEPTION 'Artículo, cantidad o importe inválido'; END IF;
+   v_total:=v_total+v_cantidad*v_precio;
    INSERT INTO public.inv_contrato_detalles(contrato_id,item_id,cantidad,precio_credito_unitario,comision_linea)
    VALUES(v_id,v_item,v_cantidad,v_precio,v_comision);
  END LOOP;
+ IF p_prima>v_total THEN RAISE EXCEPTION 'La prima supera el valor del contrato'; END IF;
+ IF p_saldo_inicial IS NOT NULL AND p_saldo_inicial<>v_total-p_prima THEN
+   RAISE EXCEPTION 'El saldo inicial no coincide con el total menos la prima'; END IF;
  INSERT INTO public.inv_contrato_primas(contrato_id,monto,estado,fecha_recibida,registrado_por)
  VALUES(v_id,p_prima,CASE WHEN p_prima_recibida THEN 'recibida' ELSE 'pendiente' END,
  CASE WHEN p_prima_recibida THEN now() ELSE NULL END,auth.uid());
