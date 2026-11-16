@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+test('hub de módulos está fuera del contenedor privado de Deudas',()=>{
+ const hub=html.indexOf('id="clnModuleHub"');
+ const debts=html.indexOf('id="debtUnlockScreen"');
+ const privateApp=html.indexOf('id="privateApp"');
+ assert.ok(hub>0&&hub<debts&&debts<privateApp);
+});
+test('hub ofrece módulos independientes con botón de acceso a Deudas',()=>{
+ for(const id of ['clnHubDebts','clnHubInventory','clnHubWarranties','clnHubContracts','clnHubLogout','clnHubStatus'])
+  assert.ok(html.includes('id="'+id+'"'));
+ assert.ok(html.includes('document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true)'));
+});
+test('hub no accede a caché ni realiza consultas de deudas',()=>{
+ const start=html.indexOf('for(const [id,label] of [["clnHubInventory"');
+ const end=html.indexOf('document.getElementById("debtUnlockButton")',start);
+ const handler=html.slice(start,end);
+ assert.ok(start>0&&end>start);
+ for(const forbidden of ['loadPrivate(','cloudSnapshot(','cloudSet(','localStorage','SB.from(','SB.rpc('])
+  assert.equal(handler.includes(forbidden),false,forbidden);
+});
+test('hub solo se habilitará al activar gate con migración coordinada',()=>{
+ assert.ok(html.includes('const DEBT_GATE_ENABLED=false'));
+ assert.ok(html.includes('if(!DEBT_GATE_ENABLED){await connectDebtData();return}'));
+ assert.ok(html.includes('showModuleHub(true)'));
+});
