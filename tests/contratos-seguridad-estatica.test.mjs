@@ -155,7 +155,10 @@ test('registro manual de vendedores comienza sin precarga de inventario',()=>{
  assert.match(q,/CREATE OR REPLACE FUNCTION public\.inv_crear_vendedor_manual\(p_nombre text\)/);
  assert.equal((q.match(/rol IN \('admin','secretaria'\)/g)||[]).length,2);
  assert.doesNotMatch(q,/\b(?:FROM|JOIN|INSERT INTO|UPDATE|DELETE FROM)\s+public\.inv_items\b/i);
- assert.doesNotMatch(q,/\b(?:FROM|JOIN|INSERT INTO|UPDATE|DELETE FROM)\s+public\.inv_vendedores\s/i);
+ assert.doesNotMatch(q,/\b(?:FROM|JOIN|UPDATE|DELETE FROM)\s+public\.inv_vendedores\s/i);
+ assert.match(q,/id uuid PRIMARY KEY REFERENCES public\.inv_vendedores\(id\) ON DELETE RESTRICT/);
+ assert.match(q,/INSERT INTO public\.inv_vendedores\(id,nombre,activo\)/);
+ assert.match(q,/INSERT INTO public\.inv_vendedores_manual\(id,nombre,creado_por\)/);
  assert.doesNotMatch(q,/^\s*INSERT\s+INTO\s+public\.inv_vendedores_manual[^;]*SELECT\b/mi);
  assert.doesNotMatch(q,/GRANT EXECUTE[^;]* TO anon/i);
 });
