@@ -49,3 +49,8 @@ test('evita guardados concurrentes y restaura botón',()=>{
 test('limita el formulario a cien líneas',()=>{
  assert.match(ui,/state\.items\.length>=100/);
 });
+
+test('confirma visualmente el cliente creado y seleccionado',()=>{
+ assert.match(ui,/state\.clienteId=clienteNuevo/);
+ assert.match(ui,/return 'Cliente creado y seleccionado: '/);
+});
