@@ -10,8 +10,8 @@ function makeAdapter({client,enabled=false}={}){
   const qty=x=>{if(!Number.isSafeInteger(x)||x<=0)throw Error('Cantidad inválida');return x};
   const jsonArray=x=>{if(!Array.isArray(x)||!x.length||x.length>100)throw Error('Detalle JSON debe ser una lista no vacía de máximo 100 registros');return x};
   const oneOf=(x,values,label)=>{if(!values.includes(x))throw Error(label+' inválido');return x};
-  const contractDetails=x=>{jsonArray(x);for(const line of x){if(!line||!uuid.test(line.item_id)||!Number.isSafeInteger(line.cantidad)||line.cantidad<1||typeof line.precio_credito_unitario!=='number'||!Number.isFinite(line.precio_credito_unitario)||line.precio_credito_unitario<0||Math.round(line.precio_credito_unitario*100)!==line.precio_credito_unitario*100)throw Error('Línea de contrato inválida');if(line.comision_linea!==undefined)money(line.comision_linea)}return x};
-  const money=x=>{if(typeof x!=='number'||!Number.isFinite(x)||x<0||Math.round(x*100)!==x*100)throw Error('Importe inválido');return x};
+  const contractDetails=x=>{jsonArray(x);for(const line of x){if(!line||!uuid.test(line.item_id)||!Number.isSafeInteger(line.cantidad)||line.cantidad<1||typeof line.precio_credito_unitario!=='number'||!Number.isFinite(line.precio_credito_unitario)||line.precio_credito_unitario<0||Math.abs(Math.round(line.precio_credito_unitario*100)-line.precio_credito_unitario*100)>1e-7)throw Error('Línea de contrato inválida');if(line.comision_linea!==undefined)money(line.comision_linea)}return x};
+  const money=x=>{if(typeof x!=='number'||!Number.isFinite(x)||x<0||Math.abs(Math.round(x*100)-x*100)>1e-7)throw Error('Importe inválido');return x};
   const location=x=>{if(!Number.isInteger(x)||x<1||x>3)throw Error('Ubicación inválida');return x};
   async function operation(name,args){if(!enabled||!live)throw Error('Operaciones deshabilitadas');const serial=epoch;const {data,error}=await client.rpc(name,args);if(!live||epoch!==serial)throw Error('Sesión cerrada durante operación: verificar resultado en servidor antes de repetir');if(error)throw Error(error.message||'Operación rechazada por el servidor');return data}
 
