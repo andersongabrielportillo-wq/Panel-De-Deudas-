@@ -27,7 +27,7 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Auditoría reproducible: `tests/15ab_preflight_roles_y_rpc_solo_lectura.sql`.
 
 ## Puertas obligatorias antes de publicar
-- [x] GitHub Actions / Node 22: ejecuciones #184 y #187 aprobadas; la #187 incluye las 110 pruebas anteriores; las 2 pruebas nuevas de roles esperan verificación de CI.
+- [x] GitHub Actions / Node 22: ejecuciones #184 y #187 aprobadas; la #187 incluye las 110 pruebas anteriores; las 2 pruebas nuevas de roles están aprobadas en GitHub Actions #193 (commit de59d58f).
 - [ ] PostgreSQL aislado con copia anonimizada o datos ficticios: aplicar migraciones 15I/J/K/N/P/Q en orden, registrar resultados y comprobar reversibilidad. Ejecutar luego tests/15x_verificacion_postmigracion_solo_lectura.sql para auditar RLS, permisos y funciones.
 - [ ] Probar JWT de admin, secretaria, empleado y usuario ajeno: permisos por función y acceso directo a tablas.
 - [ ] Probar contrato de múltiples artículos y dos ubicaciones; verificar movimientos de stock y venta en una transacción.
@@ -46,3 +46,5 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Cliente y servidor alineados para DUI: exactamente 9 dígitos o 8 dígitos-guion-1; dos pruebas nuevas API.
 
 - Auditoría postmigración `tests/15x`: corregido falso positivo cuando falta una RPC; ahora enumera las 12 funciones esperadas y devuelve `false` para las ausentes. Prueba de regresión añadida.
+
+- GitHub Actions #193: ejecución real con Node 22 terminada en `success`, incluye las 112 pruebas preparadas y auditoría de roles. No equivale a pruebas JWT reales ni a PostgreSQL con migraciones.
