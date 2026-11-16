@@ -9,7 +9,7 @@ test('montaje exige sesión del anfitrión',()=>{
  assert.match(codigo,/data\?\.user\?\.id/);
 });
 test('montaje comprueba permiso RPC antes de crear interfaz',()=>{
- const permiso=codigo.indexOf("supabase.rpc('inv_catalogo_vendedores')");
+ const permiso=codigo.indexOf("supabase.rpc('inv_catalogo_vendedores_manual')");
  const montar=codigo.indexOf('iniciarContratosDemo({supabase,root:contenedor})');
  assert.ok(permiso>=0 && montar>permiso);
 });
