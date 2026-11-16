@@ -4,9 +4,13 @@ Estado: **NO PUBLICAR AUN**. Este documento prepara la salida, no autoriza cambi
 
 ## Evidencia automatizada
 - PostgreSQL 16 temporal con funciones auténticas copiadas desde staging, datos ficticios: ventas, stock, rollback, idempotencia, dos ubicaciones y permisos de secretaria.
-- Concurrencia: ejecutar `tests/postgres/concurrencia_*.sql` con dos sesiones paralelas y revisar el job `postgres-motor-autentico`. No marcar aprobado hasta CI verde.
+- Concurrencia **APROBADA**: GitHub Actions #48 (https://github.com/andersongabrielportillo-wq/Panel-De-Deudas-/actions/runs/43803837980), dos sesiones PostgreSQL paralelas con el mismo contrato y client_op_id; una venta, un movimiento y un descuento. Esto no equivale a una prueba de carga con múltiples contratos simultáneos.
 - GitHub Actions Node 22: exigir todos los jobs verdes para el SHA exacto del candidato.
 - El esquema de pruebas es una reconstrucción mínima compatible, **no una restauración completa de staging**.
+
+## Estado de rama y despliegue
+- Comparación `main...integracion-inventario-fase15` verificada el 15-11-2026: **280 commits por delante, 0 por detrás**. Los cambios agregan principalmente migraciones, prototipos, documentación y tests; no demuestran por sí mismos que la UI de contratos esté integrada en la PWA publicada.
+- **No fusionar PR #2 todavía**. No confundir CI verde con autorización de despliegue.
 
 ## Puertas pendientes antes de producción
 1. Validar JWT firmados reales de admin, secretaria, empleado y usuario ajeno en un entorno aislado.
