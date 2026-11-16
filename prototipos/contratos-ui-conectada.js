@@ -64,9 +64,23 @@ export function iniciarContratosDemo({supabase,root}) {
       throw new Error('El contrato cambió durante la revisión; vuelve a cargarlo');
     if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
     if(!contrato.articulos?.length)throw new Error('El contrato no tiene artículos');
-    const totalCentavos=contrato.articulos.reduce((sum,a)=>sum+Math.round(Number(a.precio_credito_unitario)*100)*Number(a.cantidad),0);
-    const primaCentavos=Math.round(Number(contrato.prima?.monto)*100);
-    if(!Number.isSafeInteger(totalCentavos)||!Number.isSafeInteger(primaCentavos)||primaCentavos>totalCentavos)
+    const centavosValidos=(valor)=>{
+      if(valor===null||valor===undefined||String(valor).trim()==='')
+        throw new Error('Importe ausente en el contrato');
+      const n=Number(valor);
+      if(!Number.isFinite(n)||n<0||n>999999999999.99||Math.abs(n*100-Math.round(n*100))>1e-7)
+        throw new Error('Importe inválido en el contrato');
+      return Math.round(n*100);
+    };
+    let totalCentavos=0;
+    for(const articulo of contrato.articulos){
+      const cantidad=Number(articulo.cantidad);
+      if(!Number.isSafeInteger(cantidad)||cantidad<1||cantidad>999999999)
+        throw new Error('Cantidad inválida en el contrato');
+      totalCentavos+=centavosValidos(articulo.precio_credito_unitario)*cantidad;
+    }
+    const primaCentavos=centavosValidos(contrato.prima?.monto);
+    if(!Number.isSafeInteger(totalCentavos)||totalCentavos>99999999999999||primaCentavos>totalCentavos)
       throw new Error('Importes de contrato inconsistentes; no se puede confirmar');
     confirmacionLineas.append(el('p',{},
       'Contrato: '+contrato.numero+' | Total: '+(totalCentavos/100).toFixed(2)+
