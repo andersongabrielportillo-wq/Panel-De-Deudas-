@@ -50,7 +50,7 @@ jobs:
           node --check tests/migraciones-estructura.test.mjs
           node --check tests/contratos-ui-estructura.test.mjs
           node --check tests/contratos-montaje-staging.test.mjs
-          node --check tests/contratos-montaje-funcional.test.mjs tests/pwa-montaje-autenticacion.test.mjs
+          node --check tests/contratos-montaje-funcional.test.mjs
           node --check tests/pwa-montaje-autenticacion.test.mjs
           node --check tests/contratos-seguridad-estatica.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
