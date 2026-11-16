@@ -1,10 +1,16 @@
 name: HTTP autenticado - CL Nexus pruebas
 on:
   workflow_dispatch:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - "tests/fase18-http-authenticated.test.mjs"
+      - ".github/workflows/fase18-http-authenticated.yml"
 permissions:
   contents: read
 jobs:
   authenticated-readonly:
+    if: ${{ vars.CL_TEST_HTTP_READY == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
