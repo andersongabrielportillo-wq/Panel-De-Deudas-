@@ -35,6 +35,64 @@ export function iniciarContratosDemo({supabase,root}) {
   const perfilBox=section('Expediente del cliente seleccionado');
   const verPerfil=el('button',{type:'button'},'Ver ficha e historial');
   const perfilContenido=el('div');perfilBox.append(verPerfil,perfilContenido);
+  const confirmarBox=section('Confirmar contrato y descontar existencias');
+  confirmarBox.append(el('p',{},'Solo confirma contratos revisados. La operación registra la venta y descuenta existencias.'));
+  const confirmarId=campo(confirmarBox,'ID del contrato a confirmar');
+  const cargarDetalle=el('button',{type:'button'},'Revisar artículos y ubicaciones');
+  const confirmacionLineas=el('div');
+  const confirmarVenta=el('button',{type:'button'},'Confirmar venta y descontar inventario');
+  confirmarVenta.disabled=true;
+  confirmarBox.append(cargarDetalle,confirmacionLineas,confirmarVenta);
+  let revision=null;
+  let operacionConfirmacion=null;
+  function invalidarRevision(){
+    revision=null;operacionConfirmacion=null;confirmarVenta.disabled=true;
+    confirmacionLineas.replaceChildren();
+  }
+  confirmarId.addEventListener('input',invalidarRevision);
+  cargarDetalle.onclick=()=>tarea(async()=>{
+    invalidarRevision();
+    const contratoId=confirmarId.value.trim();
+    if(!contratoId)throw new Error('Indica el identificador del contrato');
+    const contrato=await api.detalleContrato(contratoId);
+    if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
+    if(!contrato.articulos?.length)throw new Error('El contrato no tiene artículos');
+    revision={id:contrato.id,lineas:[]};
+    for(const articulo of contrato.articulos){
+      if(!articulo.detalle_id)throw new Error('Falta identificador de línea en la respuesta');
+      const fila=el('label');
+      fila.append(el('span',{},articulo.nombre+' × '+articulo.cantidad+' · ubicación de salida '));
+      const ubicacion=el('select');
+      ubicacion.append(el('option',{value:''},'Selecciona ubicación'),
+        el('option',{value:'1'},'Ubicación 1'),el('option',{value:'2'},'Ubicación 2'));
+      fila.append(ubicacion);confirmacionLineas.append(fila);
+      revision.lineas.push({detalleId:articulo.detalle_id,ubicacion});
+    }
+    operacionConfirmacion=globalThis.crypto?.randomUUID?.();
+    if(!operacionConfirmacion)throw new Error('Este navegador no admite identificadores seguros');
+    confirmarVenta.disabled=false;
+    return 'Revisa las ubicaciones antes de confirmar la venta';
+  });
+  confirmarVenta.onclick=()=>tarea(async()=>{
+    if(!revision||revision.id!==confirmarId.value.trim()||!operacionConfirmacion)
+      throw new Error('Vuelve a revisar el contrato');
+    const ubicaciones=revision.lineas.map(x=>({
+      detalleId:x.detalleId,ubicacionId:Number(x.ubicacion.value)
+    }));
+    if(ubicaciones.some(x=>![1,2].includes(x.ubicacionId)))
+      throw new Error('Selecciona la ubicación de cada artículo');
+    if(!globalThis.confirm('¿Confirmar esta venta y descontar existencias? Esta acción afecta inventario.'))
+      return 'Confirmación cancelada';
+    confirmarVenta.disabled=true;
+    try{
+      const ventaId=await api.confirmarContrato(revision.id,ubicaciones,operacionConfirmacion);
+      invalidarRevision();
+      return 'Venta confirmada: '+ventaId;
+    }catch(e){
+      confirmarVenta.disabled=false;
+      throw e;
+    }
+  });
   const clienteBox=section('Crear cliente');
   const nombre=campo(clienteBox,'Nombre completo');
   const dui=campo(clienteBox,'DUI');
