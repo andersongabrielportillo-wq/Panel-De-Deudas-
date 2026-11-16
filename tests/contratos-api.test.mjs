@@ -129,3 +129,24 @@ test('rechaza más de cien líneas y cantidades fuera del límite SQL',()=>{
  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad:1000000000}]}),/Cantidad/);
  assert.equal(m.calls.length,0);
 });
+
+test('no transforma precio vacío en venta gratis',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const precio of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],precio}]}),/Importe/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('no convierte cantidad vacía a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const cantidad of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad}]}),/Cantidad/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza prima vacía y mantiene prima cero explícita',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:''}),/Importe/);
+ await api.crearContratoBorrador({...base,prima:0});
+ assert.equal(m.calls[0].args.p_prima,0);
+});
