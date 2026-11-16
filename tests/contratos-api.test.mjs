@@ -194,3 +194,22 @@ test('ubicaciones requieren números estrictos, no cadenas ni booleanos',()=>{
  }
  assert.equal(m.calls.length,0);
 });
+
+test('rechaza nombres de cliente inválidos antes de RPC',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const nombre of ['', ' ', 'A', 'A'.repeat(201),null]){
+  assert.throws(()=>api.crearCliente({nombre}),/Nombre de cliente/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza más de dos referencias y nombres vacíos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',referencias:[{nombre:'A'},{nombre:'B'},{nombre:'C'}]}),/referencias/);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',referencias:[{nombre:' ' }]}),/referencias/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza DUI con longitud distinta de nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',dui:'123-45'}),/DUI/);
+ assert.equal(m.calls.length,0);
+});
