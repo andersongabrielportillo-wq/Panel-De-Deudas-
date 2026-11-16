@@ -8,6 +8,7 @@ on:
       - 'prototipos/contratos-ui-conectada.js'
       - 'tests/contratos-api.test.mjs'
       - 'tests/migraciones-estructura.test.mjs'
+      - 'tests/contratos-ui-estructura.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
   pull_request:
@@ -16,6 +17,7 @@ on:
       - 'prototipos/contratos-ui-conectada.js'
       - 'tests/contratos-api.test.mjs'
       - 'tests/migraciones-estructura.test.mjs'
+      - 'tests/contratos-ui-estructura.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
 permissions:
@@ -35,5 +37,6 @@ jobs:
           node --experimental-default-type=module --check prototipos/contratos-ui-conectada.js
           node --check tests/contratos-api.test.mjs
           node --check tests/migraciones-estructura.test.mjs
+          node --check tests/contratos-ui-estructura.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
-        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs
+        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs
