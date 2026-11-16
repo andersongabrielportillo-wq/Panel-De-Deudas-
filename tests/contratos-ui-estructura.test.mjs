@@ -122,3 +122,19 @@ test('no permite dos confirmaciones simultáneas',()=>{
  assert.match(ui,/confirmacionEnCurso=true/);
  assert.match(ui,/finally\{\s*confirmacionEnCurso=false/);
 });
+
+test('búsquedas anteriores no reemplazan resultados nuevos',()=>{
+ assert.match(ui,/let solicitudBusqueda=0/);
+ assert.match(ui,/busqueda\.addEventListener\('input',\(\)=>\{solicitudBusqueda\+\+/);
+ assert.match(ui,/if\(solicitud!==solicitudBusqueda\)return 'Búsqueda anterior descartada'/);
+});
+test('no se modifica el cliente seleccionado mientras se guarda',()=>{
+ assert.match(ui,/if\(guardandoBorrador\)\{estado\.textContent='Espera a que termine el guardado';return;\}state\.clienteId=r\.id/);
+ assert.match(ui,/if\(!guardandoBorrador\)state\.clienteId=clienteNuevo/);
+});
+test('el guardado utiliza copia de artículos y bloquea cambios concurrentes',()=>{
+ assert.match(ui,/const articulosGuardados=state\.items\.map\(linea=>\(\{\.\.\.linea\}\)\)/);
+ assert.match(ui,/articulos:articulosGuardados/);
+ assert.match(ui,/agregar\.onclick=\(\)=>\{\s*if\(guardandoBorrador\)/);
+ assert.match(ui,/quitar\.onclick=\(\)=>\{if\(guardandoBorrador\)/);
+});
