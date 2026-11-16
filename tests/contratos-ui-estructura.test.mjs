@@ -77,5 +77,5 @@ test('muestra total prima y saldo antes de confirmar la venta',()=>{
  assert.match(ui,/totalCentavos=contrato\.articulos\.reduce/);
  assert.match(ui,/primaCentavos=Math\.round/);
  assert.match(ui,/Importes de contrato inconsistentes/);
- assert.match(ui,/Saldo: \$'/);
+ assert.match(ui,/Saldo: '/);
 });
