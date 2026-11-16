@@ -13,6 +13,8 @@ on:
     paths:
       - 'prototipos/contratos-api.js'
       - 'tests/contratos-api.test.mjs'
+      - 'tests/migraciones-estructura.test.mjs'
+      - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
 permissions:
   contents: read
