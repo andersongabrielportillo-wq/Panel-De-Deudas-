@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CL Nexus · LAB conectado (solo lectura)</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#081626;color:#eaf3ff;font:16px system-ui,sans-serif}main{max-width:850px;margin:auto;padding:24px 16px}h1{margin-bottom:6px}.notice,.panel{padding:18px;border-radius:14px;margin:14px 0;background:#122b45;border:1px solid #355a7d}.notice{border-color:#b18c45;background:#332a1e}label{display:block;margin:12px 0 4px}input{width:100%;padding:12px;background:#081626;color:white;border:1px solid #547697;border-radius:9px}button{background:#7ec7ff;color:#07182a;border:0;border-radius:9px;padding:11px 15px;margin:10px 6px 4px 0;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07182a;padding:12px;border-radius:10px}small{color:#c2d3e4}.error{color:#ffc1b5}.ok{color:#b7f5d3}
+</style></head><body><main>
+<h1>CL Nexus · Laboratorio conectado</h1><p>Versión de lectura y sincronización por consulta periódica.</p>
+<div class="notice"><b>SOLO PRUEBAS.</b> Usar exclusivamente el proyecto «Comercial Lopez Pruebas», usuarios ficticios y su clave publicable. No introducir contraseñas ni claves de producción. No se envían operaciones de escritura.</div>
+<section class="panel" id="login"><h2>Conectar al sandbox</h2>
+<label for="url">URL del proyecto de pruebas</label><input id="url" type="url" autocomplete="off" placeholder="https://...supabase.co">
+<label for="key">Clave publicable (anon/publishable), nunca service_role</label><input id="key" type="password" autocomplete="off">
+<label for="email">Correo de usuario ficticio</label><input id="email" type="email" autocomplete="username">
+<label for="pass">Contraseña de prueba</label><input id="pass" type="password" autocomplete="current-password">
+<button id="connect">Iniciar sesión de prueba</button><p id="authStatus" role="status"></p>
+</section>
+<section class="panel" id="dashboard" hidden><h2>Lecturas autorizadas</h2>
+<p id="who"></p><button id="refresh">Actualizar ahora</button><button id="stop">Pausar sincronización</button><button id="logout">Cerrar sesión</button>
+<p id="syncStatus" role="status">Esperando primera consulta</p>
+<h3>Inventario ficticio</h3><pre id="items">—</pre><h3>Deudas ficticias (solo lectura)</h3><pre id="debts">—</pre>
+<small>La actualización automática consulta el servidor cada 5 segundos; no usa todavía WebSocket/Realtime. No hay acciones de edición ni acceso a producción.</small>
+</section>
+<footer><small>LAB de lectura. No reemplaza la PWA real. Al cerrar o recargar se pierde la sesión.</small></footer>
+</main><script>
+"use strict";
+const $=id=>document.getElementById(id);
+const allowedProject="dozcnytevqhoymzqlxah";
+let session=null, poll=null, busy=false, seq=0;
+function status(id,message,error=false){$(id).textContent=message;$(id).className=error?"error":"ok"}
+function origin(){const raw=$("url").value.trim();const u=new URL(raw);if(u.protocol!=="https:"||u.hostname!==allowedProject+".supabase.co"||u.pathname!=="/"||u.search||u.hash||u.username||u.password||u.port)throw Error("Solo se admite la URL HTTPS exacta del proyecto Comercial Lopez Pruebas");return u.origin}
+function publicKey(){const k=$("key").value.trim();if(!k||/service_role|sb_secret_/i.test(k))throw Error("Clave no publicable rechazada");return k}
+async function request(url,options){const response=await fetch(url,options);const raw=await response.text();let data;try{data=JSON.parse(raw)}catch{throw Error("Respuesta no JSON ("+response.status+")")}if(!response.ok)throw Error(data.msg||data.error_description||data.message||data.error||"HTTP "+response.status);return data}
+async function rpc(module){const s=session;if(!s)throw Error("Sin sesión");return request(s.origin+"/rest/v1/rpc/cl2_sandbox_list",{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+s.token,"Content-Type":"application/json"},body:JSON.stringify({p_module:module}),cache:"no-store"})}
+async function refresh(){if(!session||busy)return;busy=true;const current=seq;try{const [items,debts]=await Promise.all([rpc("inventario"),rpc("deudas")]);if(current!==seq)return;$("items").textContent=JSON.stringify(items,null,2);$("debts").textContent=JSON.stringify(debts,null,2);status("syncStatus","Consulta correcta · "+new Date().toLocaleTimeString())}catch(e){if(current===seq)status("syncStatus","Error de lectura: "+e.message,true)}finally{busy=false}}
+function stop(){if(poll)clearInterval(poll);poll=null}
+$("connect").addEventListener("click",async()=>{const button=$("connect");button.disabled=true;try{const base=origin(),key=publicKey(),email=$("email").value.trim(),password=$("pass").value;if(!email||!password)throw Error("Ingresá credenciales ficticias");const data=await request(base+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":key,"Content-Type":"application/json"},body:JSON.stringify({email,password})});if(!data.access_token)throw Error("Sin token de acceso");session={origin:base,key,token:data.access_token};$("pass").value="";$("key").value="";$("login").hidden=true;$("dashboard").hidden=false;$("who").textContent="Usuario de laboratorio: "+email;seq++;await refresh();stop();poll=setInterval(refresh,5000)}catch(e){status("authStatus",e.message,true)}finally{button.disabled=false}});
+$("refresh").addEventListener("click",refresh);
+$("stop").addEventListener("click",()=>{stop();status("syncStatus","Sincronización pausada")});
+$("logout").addEventListener("click",()=>{stop();seq++;session=null;$("items").textContent="—";$("debts").textContent="—";$("dashboard").hidden=true;$("login").hidden=false;status("authStatus","Sesión local cerrada")});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&poll)refresh()});
+</script></body></html>
