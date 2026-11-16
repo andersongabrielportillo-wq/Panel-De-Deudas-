@@ -60,126 +60,10 @@ BEGIN
      RAISE EXCEPTION 'Línea de ubicación inválida'; END IF;
    IF (v_linea->>'detalle_id') IS NULL OR (v_linea->>'location_id') IS NULL THEN
      RAISE EXCEPTION 'Faltan identificadores de línea o ubicación'; END IF;
-   IF (v_linea->>'detalle_id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
-   WHERE id=(v_linea->>'detalle_id')::uuid AND contrato_id=p_contrato_id;
-   IF NOT FOUND THEN RAISE EXCEPTION 'Línea no pertenece al contrato'; END IF;
-   IF EXISTS(
-     SELECT 1 FROM pg_catalog.jsonb_array_elements(v_venta_lineas) j
-     WHERE j.value->>'detalle_id'=v_detalle.id::text
-   ) THEN RAISE EXCEPTION 'Línea de contrato repetida'; END IF;
-   v_ubicacion:=(v_linea->>'location_id')::smallint;
-   v_total:=v_total+v_detalle.cantidad*v_detalle.precio_credito_unitario;
-   v_venta_lineas:=v_venta_lineas||pg_catalog.jsonb_build_array(
-     pg_catalog.jsonb_build_object(
-       'detalle_id',v_detalle.id,
-       'item_id',v_detalle.item_id,
-       'location_id',v_ubicacion,
-       'cantidad',v_detalle.cantidad,
-       'precio_unitario',v_detalle.precio_credito_unitario,
-       'descuento',0
-     )
-   );
- END LOOP;
- SELECT p.monto INTO v_prima FROM public.inv_contrato_primas p
- WHERE p.contrato_id=p_contrato_id;
- IF v_prima IS NULL THEN RAISE EXCEPTION 'El contrato no tiene prima registrada'; END IF;
- IF v_total>999999999999.99 THEN RAISE EXCEPTION 'El total supera el límite permitido'; END IF;
- IF v_prima<0 OR v_prima>v_total THEN RAISE EXCEPTION 'La prima no es válida para el total del contrato'; END IF;
- IF v_contrato.saldo_inicial IS NOT NULL
-   AND v_contrato.saldo_inicial<>v_total-v_prima THEN
-   RAISE EXCEPTION 'El saldo inicial no coincide con total menos prima'; END IF;
- -- Serializa también operaciones con el mismo ID, incluso de contratos distintos.
- PERFORM pg_catalog.pg_advisory_xact_lock(
-   pg_catalog.hashtextextended(p_client_op_id::text,0)
- );
- -- La venta debe ser nueva: no enlazar una venta anterior a este contrato.
- -- El bloqueo de contrato hace idempotente la repetición posterior.
- SELECT v.id INTO v_existing_venta FROM public.inv_ventas v
- WHERE v.client_op_id=p_client_op_id;
- IF v_existing_venta IS NOT NULL THEN
-   RAISE EXCEPTION 'Identificador de operación utilizado anteriormente';
- END IF;
- -- Reutiliza la función de ventas existente, con control de existencias,
- -- movimientos y deduplicación por client_op_id.
- v_venta_id:=public.inv_registrar_venta(
-   v_contrato.vendedor_id,
-   v_contrato.modalidad,
-   v_venta_lineas,
-   0,
-   'Contrato '||v_contrato.numero,
-   p_client_op_id
- );
- UPDATE public.inv_contratos
- SET estado='confirmado',venta_id=v_venta_id,actualizado_en=now()
- WHERE id=p_contrato_id;
- RETURN v_venta_id;
-END $$;
-REVOKE ALL ON FUNCTION public.inv_confirmar_contrato(uuid,jsonb,uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.inv_confirmar_contrato(uuid,jsonb,uuid) TO authenticated;
-COMMIT;
- THEN
+   IF (v_linea->>'detalle_id') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
      RAISE EXCEPTION 'Identificador de línea inválido'; END IF;
    IF pg_catalog.jsonb_typeof(v_linea->'location_id')<>'number'
-      OR (v_linea->>'location_id') !~ '^[12]
-   WHERE id=(v_linea->>'detalle_id')::uuid AND contrato_id=p_contrato_id;
-   IF NOT FOUND THEN RAISE EXCEPTION 'Línea no pertenece al contrato'; END IF;
-   IF EXISTS(
-     SELECT 1 FROM pg_catalog.jsonb_array_elements(v_venta_lineas) j
-     WHERE j.value->>'detalle_id'=v_detalle.id::text
-   ) THEN RAISE EXCEPTION 'Línea de contrato repetida'; END IF;
-   IF (v_linea->>'location_id') !~ '^[12]$' THEN
-     RAISE EXCEPTION 'Solo se permiten ubicaciones 1 y 2'; END IF;
-   v_ubicacion:=(v_linea->>'location_id')::smallint;
-   v_total:=v_total+v_detalle.cantidad*v_detalle.precio_credito_unitario;
-   v_venta_lineas:=v_venta_lineas||pg_catalog.jsonb_build_array(
-     pg_catalog.jsonb_build_object(
-       'detalle_id',v_detalle.id,
-       'item_id',v_detalle.item_id,
-       'location_id',v_ubicacion,
-       'cantidad',v_detalle.cantidad,
-       'precio_unitario',v_detalle.precio_credito_unitario,
-       'descuento',0
-     )
-   );
- END LOOP;
- SELECT p.monto INTO v_prima FROM public.inv_contrato_primas p
- WHERE p.contrato_id=p_contrato_id;
- IF v_prima IS NULL THEN RAISE EXCEPTION 'El contrato no tiene prima registrada'; END IF;
- IF v_total>999999999999.99 THEN RAISE EXCEPTION 'El total supera el límite permitido'; END IF;
- IF v_prima<0 OR v_prima>v_total THEN RAISE EXCEPTION 'La prima no es válida para el total del contrato'; END IF;
- IF v_contrato.saldo_inicial IS NOT NULL
-   AND v_contrato.saldo_inicial<>v_total-v_prima THEN
-   RAISE EXCEPTION 'El saldo inicial no coincide con total menos prima'; END IF;
- -- Serializa también operaciones con el mismo ID, incluso de contratos distintos.
- PERFORM pg_catalog.pg_advisory_xact_lock(
-   pg_catalog.hashtextextended(p_client_op_id::text,0)
- );
- -- La venta debe ser nueva: no enlazar una venta anterior a este contrato.
- -- El bloqueo de contrato hace idempotente la repetición posterior.
- SELECT v.id INTO v_existing_venta FROM public.inv_ventas v
- WHERE v.client_op_id=p_client_op_id;
- IF v_existing_venta IS NOT NULL THEN
-   RAISE EXCEPTION 'Identificador de operación utilizado anteriormente';
- END IF;
- -- Reutiliza la función de ventas existente, con control de existencias,
- -- movimientos y deduplicación por client_op_id.
- v_venta_id:=public.inv_registrar_venta(
-   v_contrato.vendedor_id,
-   v_contrato.modalidad,
-   v_venta_lineas,
-   0,
-   'Contrato '||v_contrato.numero,
-   p_client_op_id
- );
- UPDATE public.inv_contratos
- SET estado='confirmado',venta_id=v_venta_id,actualizado_en=now()
- WHERE id=p_contrato_id;
- RETURN v_venta_id;
-END $$;
-REVOKE ALL ON FUNCTION public.inv_confirmar_contrato(uuid,jsonb,uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.inv_confirmar_contrato(uuid,jsonb,uuid) TO authenticated;
-COMMIT;
- THEN
+      OR (v_linea->>'location_id') !~ '^[12]$' THEN
      RAISE EXCEPTION 'Solo se permiten ubicaciones numéricas 1 y 2'; END IF;
    SELECT * INTO v_detalle FROM public.inv_contrato_detalles
    WHERE id=(v_linea->>'detalle_id')::uuid AND contrato_id=p_contrato_id;
@@ -188,8 +72,6 @@ COMMIT;
      SELECT 1 FROM pg_catalog.jsonb_array_elements(v_venta_lineas) j
      WHERE j.value->>'detalle_id'=v_detalle.id::text
    ) THEN RAISE EXCEPTION 'Línea de contrato repetida'; END IF;
-   IF (v_linea->>'location_id') !~ '^[12]$' THEN
-     RAISE EXCEPTION 'Solo se permiten ubicaciones 1 y 2'; END IF;
    v_ubicacion:=(v_linea->>'location_id')::smallint;
    v_total:=v_total+v_detalle.cantidad*v_detalle.precio_credito_unitario;
    v_venta_lineas:=v_venta_lineas||pg_catalog.jsonb_build_array(
