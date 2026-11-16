@@ -46,6 +46,6 @@ jobs:
           node --check tests/migraciones-estructura.test.mjs
           node --check tests/contratos-ui-estructura.test.mjs
           node --check tests/contratos-montaje-staging.test.mjs
-          node --check tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs
+          node --check tests/contratos-seguridad-estatica.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
-        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs
+        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs
