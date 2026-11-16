@@ -48,3 +48,31 @@ test('propaga errores del servidor',async()=>{
  const m=clienteMock({message:'No autorizado'});
  await assert.rejects(()=>crearServicioContratos(m.client).buscarClientes('Ana'),/No autorizado/);
 });
+
+test('confirmar contrato envía ubicaciones por línea y operación única',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.confirmarContrato('contrato-uuid',[
+  {detalleId:'detalle-a',ubicacionId:1},{detalleId:'detalle-b',ubicacionId:2}
+ ],'operacion-uuid');
+ assert.deepEqual(m.calls[0],{
+  name:'inv_confirmar_contrato',
+  args:{
+   p_contrato_id:'contrato-uuid',
+   p_ubicaciones:[
+    {detalle_id:'detalle-a',location_id:1},
+    {detalle_id:'detalle-b',location_id:2}
+   ],
+   p_client_op_id:'operacion-uuid'
+  }
+ });
+});
+test('rechaza líneas repetidas o ubicaciones no autorizadas',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.confirmarContrato('c',[
+  {detalleId:'x',ubicacionId:1},{detalleId:'x',ubicacionId:2}
+ ],'op'),/inválidas/);
+ assert.throws(()=>api.confirmarContrato('c',[
+  {detalleId:'x',ubicacionId:3}
+ ],'op'),/inválidas/);
+ assert.equal(m.calls.length,0);
+});
