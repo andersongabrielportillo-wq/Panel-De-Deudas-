@@ -80,13 +80,13 @@ export function crearServicioContratos(supabase) {
         throw new Error('Faltan datos para confirmar el contrato');
       const ids=new Set();
       for(const linea of ubicaciones){
-        if(!linea||typeof linea.detalleId!=='string'||!linea.detalleId.trim()||ids.has(linea.detalleId)||![1,2].includes(Number(linea.ubicacionId)))
+        if(!linea||typeof linea.detalleId!=='string'||!linea.detalleId.trim()||ids.has(linea.detalleId)||![1,2].includes(linea.ubicacionId))
           throw new Error('Ubicaciones o líneas de contrato inválidas');
         ids.add(linea.detalleId);
       }
       return rpc('inv_confirmar_contrato',{
         p_contrato_id:contratoId,
-        p_ubicaciones:ubicaciones.map(x=>({detalle_id:x.detalleId,location_id:Number(x.ubicacionId)})),
+        p_ubicaciones:ubicaciones.map(x=>({detalle_id:x.detalleId,location_id:x.ubicacionId})),
         p_client_op_id:operacionId
       });
     },
