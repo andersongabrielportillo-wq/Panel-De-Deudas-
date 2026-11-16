@@ -109,3 +109,17 @@ test('prima no puede marcarse recibida si su venta ya fue anulada',()=>{
  assert.match(fn,/v\.id=v_venta_id AND v\.anulada_en IS NOT NULL/);
  assert.match(fn,/La venta asociada fue anulada; revisar prima/);
 });
+
+test('inventario y vendedores permanecen separados sin precarga de nombres',()=>{
+ const q=readFileSync(new URL('./15ad_preflight_separacion_inventario_vendedores_solo_lectura.sql',import.meta.url),'utf8');
+ const catalogos=sql('n_catalogos_ficha_cliente');
+ const vendedores=catalogos.slice(catalogos.indexOf('CREATE OR REPLACE FUNCTION public.inv_catalogo_vendedores()'),catalogos.indexOf('CREATE OR REPLACE FUNCTION public.inv_catalogo_articulos_contratos()'));
+ const articulos=catalogos.slice(catalogos.indexOf('CREATE OR REPLACE FUNCTION public.inv_catalogo_articulos_contratos()'),catalogos.indexOf('CREATE OR REPLACE FUNCTION public.inv_ficha_cliente('));
+ assert.match(q,/tablas_distintas/);
+ assert.match(q,/to_regclass\('public\.inv_items'\)<>to_regclass\('public\.inv_vendedores'\)/);
+ assert.doesNotMatch(q,/^\s*(?:INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP|ALTER)\b/mi);
+ assert.match(vendedores,/FROM public\.inv_vendedores v/);
+ assert.doesNotMatch(vendedores,/FROM public\.inv_items/);
+ assert.match(articulos,/FROM public\.inv_items i/);
+ assert.doesNotMatch(articulos,/FROM public\.inv_vendedores/);
+});
