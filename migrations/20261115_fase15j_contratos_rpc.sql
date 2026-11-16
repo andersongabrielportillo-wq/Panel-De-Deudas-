@@ -117,6 +117,8 @@ BEGIN
    OR v_precio<>pg_catalog.round(v_precio,2) OR v_comision<>pg_catalog.round(v_comision,2)
    THEN RAISE EXCEPTION 'Artículo, cantidad o importe inválido'; END IF;
    v_total:=v_total+v_cantidad*v_precio;
+   IF v_total>999999999999.99 THEN
+     RAISE EXCEPTION 'El total del contrato supera el límite permitido'; END IF;
    INSERT INTO public.inv_contrato_detalles(contrato_id,item_id,cantidad,precio_credito_unitario,comision_linea)
    VALUES(v_id,v_item,v_cantidad,v_precio,v_comision);
  END LOOP;
