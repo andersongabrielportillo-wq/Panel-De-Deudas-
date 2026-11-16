@@ -43,3 +43,5 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/fixture_minima.sql
       - name: Instalar migraciones y verificar tablas y funciones
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/aplicar_migraciones.sql
+      - name: Validar vendedores manuales y permisos con PostgreSQL real
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
