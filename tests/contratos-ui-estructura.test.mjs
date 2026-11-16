@@ -90,3 +90,10 @@ test('valida cantidad y límite de importes al revisar contrato',()=>{
  assert.match(ui,/cantidad>999999999/);
  assert.match(ui,/totalCentavos>99999999999999/);
 });
+
+test('impide revisiones concurrentes del mismo formulario',()=>{
+ assert.match(ui,/let revisionEnCurso=false/);
+ assert.match(ui,/if\(revisionEnCurso\)throw new Error/);
+ assert.match(ui,/revisionEnCurso=true/);
+ assert.match(ui,/finally \{revisionEnCurso=false;\}/);
+});
