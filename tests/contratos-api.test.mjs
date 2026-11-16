@@ -261,3 +261,20 @@ test('recorta nombres y rechaza referencias mayores de 200 caracteres',async()=>
  assert.equal(m.calls[0].args.p_nombre,'Cliente Ejemplo');
  assert.equal(m.calls[0].args.p_referencias[0].nombre,'Referencia Ejemplo');
 });
+
+test('DUI admite solo nueve dígitos o formato ocho guion uno',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const dui of ['012345678','01234567-8']){
+  await api.crearCliente({nombre:'Cliente prueba',dui});
+ }
+ assert.equal(m.calls.length,2);
+ assert.equal(m.calls[0].args.p_dui,'012345678');
+ assert.equal(m.calls[1].args.p_dui,'012345678');
+});
+test('DUI rechaza separadores adicionales aunque contenga nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const dui of ['0123 45678','012-34567-8','012345678-','0-12345678']){
+  assert.throws(()=>api.crearCliente({nombre:'Cliente prueba',dui}),/DUI inválido/);
+ }
+ assert.equal(m.calls.length,0);
+});
