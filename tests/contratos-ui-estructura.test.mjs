@@ -167,3 +167,15 @@ test('fallo tardío no reactiva confirmación de otra revisión',()=>{
  assert.match(ui,/catch\(e\)\{\s*\/\/ Solo permitir reintento si seguimos viendo la misma revisión/);
  assert.match(ui,/if\(revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*confirmarVenta\.disabled=false/);
 });
+
+test('estado visual ignora respuestas de operaciones anteriores',()=>{
+ assert.match(ui,/let tareaActual=0/);
+ assert.match(ui,/const solicitud=\+\+tareaActual/);
+ assert.match(ui,/if\(solicitud===tareaActual\)estado\.textContent=mensaje/);
+ assert.match(ui,/if\(solicitud===tareaActual\)estado\.textContent='Error:/);
+});
+test('historial de vendedor descarta consultas atrasadas',()=>{
+ assert.match(ui,/let solicitudHistorial=0/);
+ assert.match(ui,/vendedor\.addEventListener\('change',\(\)=>\{solicitudHistorial\+\+;histLista\.replaceChildren\(\)/);
+ assert.match(ui,/solicitud!==solicitudHistorial\|\|vendedorConsultado!==vendedor\.value/);
+});
