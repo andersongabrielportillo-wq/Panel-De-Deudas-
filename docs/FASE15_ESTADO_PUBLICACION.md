@@ -3,10 +3,14 @@
 ## Alcance
 Integración de contratos, clientes, referencias, vendedores, primas y ventas de inventario en Comercial López. **No modificar main ni producción hasta completar las puertas de publicación.**
 
+## Revisión en GitHub
+- Pull Request borrador #2: https://github.com/andersongabrielportillo-wq/Panel-De-Deudas-/pull/2 — abierto, no fusionado. GitHub Actions aún sin ejecución confirmada.
+
 ## Evidencia disponible
-- 56 casos preparados: 24 API con mock de Supabase, 17 UI y 15 SQL estructurales/estáticos. Se ejecutaron 24 API y los 17 UI actuales en un intérprete adaptado sin fallos; las otras pruebas estructurales se ejecutaron previamente. No se ha confirmado la ejecución de las 51 pruebas juntas en CI. Los 12 casos de interfaz se reejecutaron tras corregir revisiones obsoletas y altas duplicadas. **No equivale a Node.js CI ni a PostgreSQL real.**
+- 58 casos preparados: 24 API con mock de Supabase, 17 UI y 17 SQL estructurales/estáticos. Se ejecutaron 24 API y los 17 UI actuales en un intérprete adaptado sin fallos; las otras pruebas estructurales se ejecutaron previamente. No se ha confirmado la ejecución de las 51 pruebas juntas en CI. Los 12 casos de interfaz se reejecutaron tras corregir revisiones obsoletas y altas duplicadas. **No equivale a Node.js CI ni a PostgreSQL real.**
 - Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales, 18/18 columnas de esquema compatibles y 3/3 firmas de RPC de ventas/movimientos/anulación verificadas.
-- 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original; no se ha aplicado al servidor.
+- 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original y rechaza venta anulada. Limita 100 líneas y total/ prima. No se ha aplicado al servidor.
+- 34/34 casos estructurales/estáticos ejecutados sobre la versión más reciente en un entorno JavaScript adaptado; esto no sustituye GitHub Actions/Node.
 - Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
 - La rama de integración no es la rama de producción.
 
@@ -24,4 +28,4 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - [ ] Aprobación explícita para desplegar cambios a producción.
 
 ## Porcentaje orientativo
-**63% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
+**65% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
