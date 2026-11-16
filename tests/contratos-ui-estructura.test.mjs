@@ -115,3 +115,10 @@ test('revisión impide IDs de detalles duplicados',()=>{
  assert.match(ui,/idsDetalles\.has\(articulo\.detalle_id\)/);
  assert.match(ui,/Identificadores de artículos ausentes o repetidos/);
 });
+
+test('no permite dos confirmaciones simultáneas',()=>{
+ assert.match(ui,/let confirmacionEnCurso=false/);
+ assert.match(ui,/if\(confirmacionEnCurso\)throw new Error/);
+ assert.match(ui,/confirmacionEnCurso=true/);
+ assert.match(ui,/finally\{\s*confirmacionEnCurso=false/);
+});
