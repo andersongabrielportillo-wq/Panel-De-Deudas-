@@ -69,3 +69,11 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Prohibido usar registros de artículos, nombres de inventario o vendedores precargados como sustitutos. No crear vendedores ficticios en la aplicación final.
 - Conservar intactos los registros existentes en `inv_vendedores` del staging poblado: **no borrar ni modificar** datos para vaciar la interfaz. Antes del despliegue se debe diseñar y validar la separación entre los vendedores históricos usados por ventas y el registro manual nuevo, sin alterar integridad referencial ni ventas previas.
 - Bloqueo de publicación: la RPC actual `inv_catalogo_vendedores` lee `inv_vendedores`; por tanto, **todavía no satisface** el requisito de lista vacía. No declarar este punto completado hasta cambiar el origen del catálogo y probarlo con una base aislada.
+
+## Regla obligatoria: descuento automático por venta confirmada
+- Una venta **confirmada** debe descontar existencias de cada artículo vendido en su ubicación correspondiente. Una venta borrador no modifica stock.
+- No implementar un segundo descuento desde la interfaz ni desde contratos: reutilizar exclusivamente la RPC transaccional existente `inv_registrar_venta` que coordina los movimientos del inventario.
+- Rechazar ventas con stock insuficiente sin descuentos parciales; deduplicar reintentos mediante `client_op_id`; anulación mediante `inv_anular_venta` y sus reglas existentes, sin sumar stock manualmente en el navegador.
+- En contratos, `inv_confirmar_contrato` debe registrar la venta y actualizar el estado del contrato dentro de la misma transacción, para evitar contrato confirmado sin descuento.
+- Antes de publicar: probar en PostgreSQL aislado venta de uno y varios artículos, ubicaciones 1/2, falta de stock, reintento, anulación y concurrencia. No se ha ejecutado esta batería real todavía.
+- Esta regla es independiente del catálogo de vendedores, que el usuario exige vacío al inicio.
