@@ -164,3 +164,25 @@ test('rechaza saldo inconsistente por un centavo',()=>{
   articulos:Array.from({length:10},()=>({...base.articulos[0],cantidad:1,precio:0.1}))}),/Saldo inicial/);
  assert.equal(m.calls.length,0);
 });
+
+test('rechaza artículos sin identificador antes de llamar al servidor',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const itemId of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],itemId}]}),/artículo válido/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza saldo vacío en vez de convertirlo a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,saldoInicial:''}),/Importe/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza identificadores y líneas de confirmación mal formados',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const contrato of ['', ' ']){
+  assert.throws(()=>api.confirmarContrato(contrato,[{detalleId:'d',ubicacionId:1}],'op'),/Faltan datos/);
+ }
+ assert.throws(()=>api.confirmarContrato('c',[null],'op'),/inválidas/);
+ assert.throws(()=>api.confirmarContrato('c',[{detalleId:' ',ubicacionId:1}],'op'),/inválidas/);
+ assert.equal(m.calls.length,0);
+});
