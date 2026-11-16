@@ -40,3 +40,15 @@ test('15Q reintento de contrato confirmado exige el mismo ID de operación',()=>
  assert.match(sql,/Contrato ya confirmado con otra operación/);
  assert.match(sql,/IF v_contrato\.estado='confirmado' THEN[\s\S]*?RETURN v_contrato\.venta_id;/);
 });
+
+test('15Q rechaza reintento de venta anulada',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ assert.match(sql,/v\.anulada_en IS NOT NULL/);
+ assert.match(sql,/La venta asociada fue anulada/);
+});
+test('15Q valida límites de líneas y monto antes de registrar venta',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ assert.match(sql,/v_cantidad_lineas>100/);
+ assert.match(sql,/v_total>999999999999\.99/);
+ assert.match(sql,/v_prima<0 OR v_prima>v_total/);
+});
