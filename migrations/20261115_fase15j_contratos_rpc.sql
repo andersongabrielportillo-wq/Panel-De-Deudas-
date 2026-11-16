@@ -84,7 +84,7 @@ BEGIN
  OR p_cliente_id IS NULL OR p_vendedor_id IS NULL OR p_fecha IS NULL
  THEN RAISE EXCEPTION 'Datos principales incompletos'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.inv_clientes WHERE id=p_cliente_id)
- OR NOT EXISTS(SELECT 1 FROM public.inv_vendedores WHERE id=p_vendedor_id AND activo=true)
+ OR NOT EXISTS(SELECT 1 FROM public.inv_vendedores_manual WHERE id=p_vendedor_id AND activo=true)
  THEN RAISE EXCEPTION 'Cliente o vendedor inválido'; END IF;
  IF p_modalidad NOT IN ('credito','contado') OR p_modalidad IS NULL
  OR p_plan NOT IN ('normal','3_pagos','6_pagos') OR p_plan IS NULL
