@@ -82,7 +82,7 @@ test('muestra total prima y saldo antes de confirmar la venta',()=>{
 });
 
 test('no permite confirmar contratos sin prima o con precios ausentes',()=>{
- assert.match(ui,/if\(valor===null\|\|valor===undefined\|\|String\(valor\)\.trim\(\)===''\)/);
+ assert.match(ui,/if\(valor===null\|\|valor===undefined\|\|typeof valor==='boolean'/);
  assert.match(ui,/centavosValidos\(articulo\.precio_credito_unitario\)/);
  assert.match(ui,/centavosValidos\(contrato\.prima\?\.monto\)/);
 });
