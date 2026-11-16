@@ -36,7 +36,6 @@ BEGIN
    SELECT 1 FROM public.inv_members WHERE user_id=auth.uid() AND rol IN ('admin','secretaria')
  ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
  IF length(pg_catalog.btrim(coalesce(p_nombre,''))) NOT BETWEEN 2 AND 200 THEN RAISE EXCEPTION 'Nombre inválido'; END IF;
- -- El servidor también debe rechazar letras y símbolos; la validación del navegador no basta.
  IF p_dui IS NOT NULL AND p_dui !~ '^[0-9[:space:]-]*
  IF v_dui IS NOT NULL THEN
    IF length(v_dui)<>9 THEN RAISE EXCEPTION 'DUI inválido'; END IF;
