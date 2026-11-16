@@ -116,7 +116,9 @@ export function iniciarContratosDemo({supabase,root}) {
     return 'Revisa las ubicaciones antes de confirmar la venta';
     } finally {revisionEnCurso=false;}
   });
+  let confirmacionEnCurso=false;
   confirmarVenta.onclick=()=>tarea(async()=>{
+    if(confirmacionEnCurso)throw new Error('La confirmación ya está en curso');
     if(!revision||revision.id!==confirmarId.value.trim()||!operacionConfirmacion)
       throw new Error('Vuelve a revisar el contrato');
     const ubicaciones=revision.lineas.map(x=>({
@@ -126,6 +128,7 @@ export function iniciarContratosDemo({supabase,root}) {
       throw new Error('Selecciona la ubicación de cada artículo');
     if(!globalThis.confirm('¿Confirmar esta venta y descontar existencias? Esta acción afecta inventario.'))
       return 'Confirmación cancelada';
+    confirmacionEnCurso=true;
     confirmarVenta.disabled=true;
     try{
       const ventaId=await api.confirmarContrato(revision.id,ubicaciones,operacionConfirmacion);
@@ -134,6 +137,8 @@ export function iniciarContratosDemo({supabase,root}) {
     }catch(e){
       confirmarVenta.disabled=false;
       throw e;
+    }finally{
+      confirmacionEnCurso=false;
     }
   });
   const clienteBox=section('Crear cliente');
