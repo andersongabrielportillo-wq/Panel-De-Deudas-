@@ -29,3 +29,14 @@ test('la contraseña adicional se limpia del campo después de enviarla',()=>{
 test('cierre de sesión cancela gate y revoca estado local',()=>{
  assert.match(html,/if\(debtController\)\{debtController.cancel\(\);debtController=null\}/);
 });
+
+test('pantalla incorpora botón de bloqueo explícito y lo oculta si el gate está apagado',()=>{
+ assert.match(html,/id="debtLockButton" type="button" hidden/);
+ assert.ok(html.includes('document.getElementById("debtLockButton").hidden=!DEBT_GATE_ENABLED||yes'));
+ assert.ok(html.includes('await debtController.lock()'));
+});
+test('consultas y escrituras cloud requieren autorización al habilitar gate',()=>{
+ assert.match(html,/async function cloudSnapshot\(\)\{\s*if\(DEBT_GATE_ENABLED/);
+ assert.match(html,/async function cloudSet\(payload\)\{\s*if\(DEBT_GATE_ENABLED/);
+ assert.ok(html.includes('debtGate.isUnlocked()'));
+});
