@@ -16,3 +16,6 @@ test('production cannot enable laboratory RPC queries',()=>{assert.match(shell,/
 test('private data are cleared on logout and module switching',()=>{assert.match(shell,/function hideSensitive\(\)/);assert.match(shell,/function clear\(\)\{closeAdapter\(\);hideSensitive\(\)/);assert.match(shell,/if\(active!==id\)\{closeAdapter\(\);hideSensitive\(\)\}/)});
 test('operation responses cannot render in a different module',()=>{assert.match(shell,/active===operationModule&&authenticated\(\)/)});
 test('form numeric fields enforce numeric input',()=>{assert.match(shell,/inp\.type='number'/);assert.match(shell,/inp\.min='0'/)});
+
+test('exit movement has null destination before RPC',()=>{assert.match(shell,/values\.tipo==='salida'&&!values\.destino\.trim\(\)\)values\.destino=null/)});
+test('idempotency key rotates when form payload changes',()=>{assert.match(shell,/form\.dataset\.opFingerprint!==fingerprint/);assert.match(shell,/delete form\.dataset\.opFingerprint/)});
