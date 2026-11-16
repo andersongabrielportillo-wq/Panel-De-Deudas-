@@ -64,3 +64,10 @@ test('15Q exige ubicación numérica sin coerción de texto',()=>{
  assert.match(sql,/jsonb_typeof\(v_linea->'location_id'\)<>'number'/);
  assert.match(sql,/Solo se permiten ubicaciones numéricas 1 y 2/);
 });
+
+test('15Q contiene una sola definición de función y un único cierre transaccional',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ assert.equal((sql.match(/CREATE OR REPLACE FUNCTION public\.inv_confirmar_contrato\(/g)||[]).length,1);
+ assert.equal((sql.match(/^COMMIT;\s*$/gm)||[]).length,1);
+ assert.equal((sql.match(/^END \$\$;\s*$/gm)||[]).length,1);
+});
