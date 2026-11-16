@@ -44,7 +44,7 @@ test('evita guardados concurrentes y restaura botón',()=>{
  assert.match(ui,/let guardandoBorrador=false/);
  assert.match(ui,/if\(guardandoBorrador\)throw new Error/);
  assert.match(ui,/guardandoBorrador=true;guardar\.disabled=true/);
- assert.match(ui,/finally \{guardandoBorrador=false;guardar\.disabled=false;\}/);
+ assert.match(ui,/finally \{guardandoBorrador=false;if\(!destruido\)guardar\.disabled=false;\}/);
 });
 test('limita el formulario a cien líneas',()=>{
  assert.match(ui,/state\.items\.length>=100/);
@@ -59,15 +59,15 @@ test('confirma visualmente el cliente creado y seleccionado',()=>{
 test('invalida revisiones de contratos cambiados durante la consulta',()=>{
  assert.match(ui,/let revisionSolicitud=0/);
  assert.match(ui,/revisionSolicitud\+\+;invalidarRevision\(\)/);
- assert.match(ui,/solicitud!==revisionSolicitud \|\| confirmarId\.value\.trim\(\)!==contratoId/);
+ assert.match(ui,/destruido\|\|solicitud!==revisionSolicitud \|\| confirmarId\.value\.trim\(\)!==contratoId/);
  assert.match(ui,/cargarDetalle\.disabled=true/);
- assert.match(ui,/finally \{cargarDetalle\.disabled=false;\}/);
+ assert.match(ui,/finally \{if\(!destruido\)cargarDetalle\.disabled=false;\}/);
 });
 test('evita dar de alta dos veces al mismo cliente por doble clic',()=>{
  assert.match(ui,/let creandoCliente=false/);
  assert.match(ui,/if\(creandoCliente\)throw new Error/);
  assert.match(ui,/creandoCliente=true;crearCliente\.disabled=true/);
- assert.match(ui,/finally \{creandoCliente=false;crearCliente\.disabled=false;\}/);
+ assert.match(ui,/finally \{creandoCliente=false;if\(!destruido\)crearCliente\.disabled=false;\}/);
 });
 
 test('la prima recibida corresponde a caja y no solo al vendedor',()=>{
@@ -143,7 +143,7 @@ test('el guardado utiliza copia de artículos y bloquea cambios concurrentes',()
 test('ficha de cliente descarta resultados obsoletos',()=>{
  assert.match(ui,/let solicitudPerfil=0/);
  assert.match(ui,/const clienteConsultado=state\.clienteId/);
- assert.match(ui,/if\(solicitud!==solicitudPerfil\|\|clienteConsultado!==state\.clienteId\)/);
+ assert.match(ui,/if\(destruido\|\|solicitud!==solicitudPerfil\|\|clienteConsultado!==state\.clienteId\)/);
 });
 test('cambiar de cliente limpia ficha e invalida consultas pendientes',()=>{
  assert.match(ui,/state\.clienteId=r\.id;solicitudPerfil\+\+;perfilContenido\.replaceChildren\(\)/);
@@ -161,11 +161,11 @@ test('revisión de contrato rechaza booleanos en dinero y cantidades',()=>{
 test('confirmación tardía no borra revisión de otro contrato',()=>{
  assert.match(ui,/const revisionEnviada=revision/);
  assert.match(ui,/const operacionEnviada=operacionConfirmacion/);
- assert.match(ui,/if\(revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*invalidarRevision\(\)/);
+ assert.match(ui,/if\(!destruido && revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*invalidarRevision\(\)/);
 });
 test('fallo tardío no reactiva confirmación de otra revisión',()=>{
  assert.match(ui,/catch\(e\)\{\s*\/\/ Solo permitir reintento si seguimos viendo la misma revisión/);
- assert.match(ui,/if\(revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*confirmarVenta\.disabled=false/);
+ assert.match(ui,/if\(!destruido && revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)\s*confirmarVenta\.disabled=false/);
 });
 
 test('estado visual ignora respuestas de operaciones anteriores',()=>{
