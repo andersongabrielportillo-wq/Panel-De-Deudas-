@@ -40,6 +40,11 @@ BEGIN
      SELECT 1 FROM public.inv_ventas v
      WHERE v.id=v_contrato.venta_id AND v.client_op_id=p_client_op_id
    ) THEN RAISE EXCEPTION 'Contrato ya confirmado con otra operación'; END IF;
+   -- No presentar una venta anulada como confirmación vigente.
+   IF EXISTS(
+     SELECT 1 FROM public.inv_ventas v
+     WHERE v.id=v_contrato.venta_id AND v.anulada_en IS NOT NULL
+   ) THEN RAISE EXCEPTION 'La venta asociada fue anulada; requiere revisión'; END IF;
    RETURN v_contrato.venta_id;
  END IF;
  IF v_contrato.estado<>'borrador' OR v_contrato.venta_id IS NOT NULL
@@ -48,7 +53,7 @@ BEGIN
  THEN RAISE EXCEPTION 'Ubicaciones inválidas'; END IF;
  SELECT count(*) INTO v_cantidad_lineas
  FROM public.inv_contrato_detalles WHERE contrato_id=p_contrato_id;
- IF v_cantidad_lineas=0 OR v_cantidad_lineas<>pg_catalog.jsonb_array_length(p_ubicaciones)
+ IF v_cantidad_lineas=0 OR v_cantidad_lineas>100 OR v_cantidad_lineas<>pg_catalog.jsonb_array_length(p_ubicaciones)
  THEN RAISE EXCEPTION 'Las ubicaciones deben coincidir con todas las líneas'; END IF;
  FOR v_linea IN SELECT value FROM pg_catalog.jsonb_array_elements(p_ubicaciones) LOOP
    IF pg_catalog.jsonb_typeof(v_linea)<>'object' THEN
@@ -80,7 +85,8 @@ BEGIN
  SELECT p.monto INTO v_prima FROM public.inv_contrato_primas p
  WHERE p.contrato_id=p_contrato_id;
  IF v_prima IS NULL THEN RAISE EXCEPTION 'El contrato no tiene prima registrada'; END IF;
- IF v_prima>v_total THEN RAISE EXCEPTION 'La prima supera el total del contrato'; END IF;
+ IF v_total>999999999999.99 THEN RAISE EXCEPTION 'El total supera el límite permitido'; END IF;
+ IF v_prima<0 OR v_prima>v_total THEN RAISE EXCEPTION 'La prima no es válida para el total del contrato'; END IF;
  IF v_contrato.saldo_inicial IS NOT NULL
    AND v_contrato.saldo_inicial<>v_total-v_prima THEN
    RAISE EXCEPTION 'El saldo inicial no coincide con total menos prima'; END IF;
