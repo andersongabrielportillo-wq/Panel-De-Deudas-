@@ -46,3 +46,47 @@ test('un fallo de bloqueo remoto mantiene acceso local revocado',async()=>{
  await assert.rejects(gate.lock(),/Servidor no disponible/);
  assert.equal(gate.isUnlocked(),false);
 });
+
+test('dos sesiones no comparten estado de desbloqueo en cliente',async()=>{
+ const calls=[];
+ const client={rpc:async(name,args)=>{calls.push([name,args]);return {data:name==='debt_unlock'?new Date(Date.now()+60000).toISOString():true,error:null}}};
+ const a=createDebtGate({client,workspaceId:WID}),b=createDebtGate({client,workspaceId:WID});
+ await a.unlock('clave temporal');
+ assert.equal(a.isUnlocked(),true);assert.equal(b.isUnlocked(),false);
+ assert.equal(await b.verify(),false);
+ assert.equal(calls.filter(x=>x[0]==='debt_access_valid').length,0);
+});
+test('un desbloqueo anterior no puede revivir una sesión tras otro intento',async()=>{
+ let firstResolve;let attempts=0;
+ const gate=createDebtGate({workspaceId:WID,client:{rpc:async name=>{
+  if(name==='debt_unlock'){attempts++;if(attempts===1)return new Promise(r=>firstResolve=r);return {data:null,error:null}}
+  return {data:true,error:null};
+ }}});
+ const first=gate.unlock('primera');await assert.rejects(gate.unlock('segunda'),/incorrecta|expirado/);
+ firstResolve({data:new Date(Date.now()+60000).toISOString(),error:null});
+ await assert.rejects(first,/Sesión modificada/);assert.equal(gate.isUnlocked(),false);
+});
+test('verificación retrasada no reautoriza después de reset',async()=>{
+ let verifyResolve;
+ const gate=createDebtGate({workspaceId:WID,client:{rpc:async name=>name==='debt_unlock'
+ ? {data:new Date(Date.now()+60000).toISOString(),error:null}
+ : new Promise(r=>verifyResolve=r)}});
+ await gate.unlock('temporal');const check=gate.verify();gate.reset();
+ verifyResolve({data:true,error:null});
+ assert.equal(await check,false);assert.equal(gate.isUnlocked(),false);
+});
+test('caducidad local rechaza sin solicitar permiso al servidor',async()=>{
+ let calls=0;const original=Date.now;
+ try{
+  const start=original();Date.now=()=>start;
+  const gate=createDebtGate({workspaceId:WID,client:{rpc:async name=>{calls++;return {data:name==='debt_unlock'?new Date(start+1000).toISOString():true,error:null}}}});
+  await gate.unlock('temporal');Date.now=()=>start+1001;
+  assert.equal(gate.isUnlocked(),false);assert.equal(await gate.verify(),false);assert.equal(calls,1);
+ }finally{Date.now=original}
+});
+test('un error de red al verificar revoca autorización local',async()=>{
+ const gate=createDebtGate({workspaceId:WID,client:{rpc:async name=>name==='debt_unlock'
+ ? {data:new Date(Date.now()+60000).toISOString(),error:null}
+ : {data:null,error:{message:'sin conexión'}}}});
+ await gate.unlock('temporal');assert.equal(await gate.verify(),false);assert.equal(gate.isUnlocked(),false);
+});
