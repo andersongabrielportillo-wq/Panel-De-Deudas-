@@ -163,3 +163,11 @@ test('registro manual de vendedores comienza sin precarga de inventario',()=>{
  assert.doesNotMatch(q,/^\s*INSERT\s+INTO\s+public\.inv_vendedores_manual[^;]*SELECT\b/mi);
  assert.doesNotMatch(q,/GRANT EXECUTE[^;]* TO anon/i);
 });
+
+test('contratos e historiales rechazan vendedores historicos no registrados manualmente',()=>{
+ const borrador=sql('j_contratos_rpc');
+ const historial=sql('k_historial_vendedores');
+ assert.match(borrador,/FROM public\.inv_vendedores_manual WHERE id=p_vendedor_id AND activo=true/);
+ assert.equal((historial.match(/FROM public\.inv_vendedores_manual v WHERE v\.id=p_vendedor_id/g)||[]).length,2);
+ assert.doesNotMatch(historial,/FROM public\.inv_vendedores v WHERE v\.id=p_vendedor_id/);
+});
