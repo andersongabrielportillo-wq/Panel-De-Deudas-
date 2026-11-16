@@ -16,3 +16,5 @@ test('login no cancela su propia lectura inicial',()=>{assert.match(html,/stop\(
 
 test('login tardío no reabre sesión después de invalidación',()=>{assert.match(html,/loginEpoch=\+\+authEpoch/);assert.match(html,/if\(loginEpoch!==authEpoch\)return/);assert.match(html,/authEpoch\+\+;stop\(\);seq\+\+;session=null/)});
 test('búsqueda reemplazada no muestra respuesta anterior',()=>{assert.match(html,/view==="contratos"&&clientRequest===controller/);assert.match(html,/session===s&&clientRequest===controller/)});
+
+test('ficha e historial de clientes solo lectura por UUID validado',()=>{assert.match(html,/rpc\("inv_ficha_cliente"\)/);assert.match(html,/rpc\("inv_historial_cliente"\)/);assert.match(html,/p_cliente_id:id/);assert.match(html,/detailRequest===controller/);assert.match(html,/detailRequest\.abort\(\)/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
