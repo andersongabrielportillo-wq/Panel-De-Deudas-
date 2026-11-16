@@ -1,6 +1,7 @@
 -- FASE 15AE: registro MANUAL de vendedores para la nueva sección.
 -- PREPARADO, NO APLICADO. Solo ejecutar en PostgreSQL aislado con autorización.
--- No importa nombres de inv_items ni modifica inv_vendedores histórico.
+-- No importa nombres de inv_items ni modifica vendedores históricos.
+-- Solo admin puede registrar; admin y secretaria pueden consultar.
 BEGIN;
 CREATE TABLE IF NOT EXISTS public.inv_vendedores_manual (
  id uuid PRIMARY KEY REFERENCES public.inv_vendedores(id) ON DELETE RESTRICT,
@@ -33,7 +34,7 @@ DECLARE v_id uuid := pg_catalog.gen_random_uuid();
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS(
    SELECT 1 FROM public.inv_members m
-   WHERE m.user_id=auth.uid() AND m.rol IN ('admin','secretaria')
+   WHERE m.user_id=auth.uid() AND m.rol='admin'
  ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
  IF p_nombre IS NULL OR length(pg_catalog.btrim(p_nombre)) NOT BETWEEN 2 AND 200
  THEN RAISE EXCEPTION 'Nombre de vendedor inválido'; END IF;
