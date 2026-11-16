@@ -44,7 +44,7 @@ BEGIN
  'observaciones',c.observaciones,
  'articulos',COALESCE((
  SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
- 'item_id',d.item_id,'nombre',i.nombre_original,'cantidad',d.cantidad,
+ 'detalle_id',d.id,'item_id',d.item_id,'nombre',i.nombre_original,'cantidad',d.cantidad,
  'precio_credito_unitario',d.precio_credito_unitario,'comision_linea',d.comision_linea
  ) ORDER BY d.id)
  FROM public.inv_contrato_detalles d
