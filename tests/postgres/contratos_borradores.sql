@@ -6,32 +6,32 @@ DECLARE
  empleado_id uuid:='33333333-3333-4333-8333-333333333333';
  vendedor_id uuid;
  cliente_id uuid;
- item_id uuid;
- contrato_id uuid;
+ v_item_id uuid;
+ v_contrato_id uuid;
  n int;
 BEGIN
  PERFORM pg_catalog.set_config('request.jwt.claim.sub',admin_id::text,true);
  SELECT id INTO vendedor_id FROM public.inv_vendedores_manual LIMIT 1;
  IF vendedor_id IS NULL THEN RAISE EXCEPTION 'Falta vendedor ficticio'; END IF;
- INSERT INTO public.inv_items(nombre_original,categoria) VALUES('Cafetera ficticia','Electrodomesticos') RETURNING id INTO item_id;
+ INSERT INTO public.inv_items(nombre_original,categoria) VALUES('Cafetera ficticia','Electrodomesticos') RETURNING id INTO v_item_id;
  cliente_id:=public.inv_crear_cliente('Cliente Ficticio','123456789',NULL,NULL,NULL,NULL,NULL,NULL,'[]'::jsonb);
  IF NOT EXISTS(SELECT 1 FROM public.inv_clientes WHERE id=cliente_id AND dui='12345678-9')
  THEN RAISE EXCEPTION 'Cliente o DUI no persistido'; END IF;
- contrato_id:=public.inv_crear_contrato_borrador(
+ v_contrato_id:=public.inv_crear_contrato_borrador(
  'CI-FICTICIO-001',cliente_id,vendedor_id,current_date,'credito','semanal','normal',
  25,75,NULL,'Ruta ficticia','lunes',NULL,0,25,false,
  pg_catalog.jsonb_build_array(pg_catalog.jsonb_build_object(
- 'item_id',item_id,'cantidad',2,'precio_credito_unitario',50,'comision_linea',0)),
+ 'item_id',v_item_id,'cantidad',2,'precio_credito_unitario',50,'comision_linea',0)),
  'Solo pruebas');
- IF NOT EXISTS(SELECT 1 FROM public.inv_contratos WHERE id=contrato_id AND estado='borrador' AND venta_id IS NULL)
+ IF NOT EXISTS(SELECT 1 FROM public.inv_contratos WHERE id=v_contrato_id AND estado='borrador' AND venta_id IS NULL)
  THEN RAISE EXCEPTION 'Contrato borrador no valido'; END IF;
  SELECT count(*) INTO n FROM public.inv_ventas;
  IF n<>0 THEN RAISE EXCEPTION 'El borrador genero una venta'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.inv_contrato_detalles WHERE contrato_id=contrato_id AND item_id=item_id AND cantidad=2)
+ IF NOT EXISTS(SELECT 1 FROM public.inv_contrato_detalles d WHERE d.contrato_id=v_contrato_id AND d.item_id=v_item_id AND d.cantidad=2)
  THEN RAISE EXCEPTION 'Detalle de contrato incorrecto'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.inv_contrato_primas WHERE contrato_id=contrato_id AND monto=25 AND estado='pendiente')
+ IF NOT EXISTS(SELECT 1 FROM public.inv_contrato_primas p WHERE p.contrato_id=v_contrato_id AND p.monto=25 AND estado='pendiente')
  THEN RAISE EXCEPTION 'Prima incorrecta'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.inv_prima_eventos e JOIN public.inv_contrato_primas p ON p.id=e.prima_id WHERE p.contrato_id=contrato_id)
+ IF NOT EXISTS(SELECT 1 FROM public.inv_prima_eventos e JOIN public.inv_contrato_primas p ON p.id=e.prima_id WHERE p.contrato_id=v_contrato_id)
  THEN RAISE EXCEPTION 'Falta evento de auditoria de prima'; END IF;
  PERFORM pg_catalog.set_config('request.jwt.claim.sub',empleado_id::text,true);
  BEGIN
@@ -46,7 +46,7 @@ BEGIN
  'CI-FICTICIO-002',cliente_id,vendedor_id,current_date,'credito','semanal','normal',
  25,75,NULL,NULL,NULL,NULL,0,25,false,
  pg_catalog.jsonb_build_array(pg_catalog.jsonb_build_object(
- 'item_id',item_id,'cantidad',0,'precio_credito_unitario',50)),
+ 'item_id',v_item_id,'cantidad',0,'precio_credito_unitario',50)),
  NULL);
   RAISE EXCEPTION 'Se acepto cantidad cero';
  EXCEPTION WHEN raise_exception THEN
