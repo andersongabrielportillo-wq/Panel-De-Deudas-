@@ -49,12 +49,19 @@ export function iniciarContratosDemo({supabase,root}) {
     revision=null;operacionConfirmacion=null;confirmarVenta.disabled=true;
     confirmacionLineas.replaceChildren();
   }
-  confirmarId.addEventListener('input',invalidarRevision);
+  confirmarId.addEventListener('input',()=>{revisionSolicitud++;invalidarRevision();});
+  let revisionSolicitud=0;
   cargarDetalle.onclick=()=>tarea(async()=>{
     invalidarRevision();
+    const solicitud=++revisionSolicitud;
     const contratoId=confirmarId.value.trim();
     if(!contratoId)throw new Error('Indica el identificador del contrato');
-    const contrato=await api.detalleContrato(contratoId);
+    cargarDetalle.disabled=true;
+    let contrato;
+    try {contrato=await api.detalleContrato(contratoId);}
+    finally {cargarDetalle.disabled=false;}
+    if(solicitud!==revisionSolicitud || confirmarId.value.trim()!==contratoId)
+      throw new Error('El contrato cambió durante la revisión; vuelve a cargarlo');
     if(contrato.estado!=='borrador')throw new Error('Solo se pueden confirmar borradores');
     if(!contrato.articulos?.length)throw new Error('El contrato no tiene artículos');
     revision={id:contrato.id,lineas:[]};
@@ -193,7 +200,11 @@ export function iniciarContratosDemo({supabase,root}) {
       linea.append(boton,detalle);perfilContenido.append(linea);
     }
   });
+  let creandoCliente=false;
   crearCliente.onclick=()=>tarea(async()=>{
+    if(creandoCliente)throw new Error('El cliente ya se está guardando');
+    creandoCliente=true;crearCliente.disabled=true;
+    try {
     const clienteNuevo=await api.crearCliente({
       nombre:nombre.value,dui:dui.value,telefono:telefono.value,
       direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
@@ -205,6 +216,7 @@ export function iniciarContratosDemo({supabase,root}) {
     });
     state.clienteId=clienteNuevo;
     return 'Cliente creado y seleccionado: '+nombre.value.trim();
+    } finally {creandoCliente=false;crearCliente.disabled=false;}
   });
   agregar.onclick=()=>{
     const q=Number(cantidad.value),p=Number(precio.value);
