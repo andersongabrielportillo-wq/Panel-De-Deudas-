@@ -115,8 +115,8 @@ BEGIN
    THEN RAISE EXCEPTION 'Cantidad debe ser un entero positivo'; END IF;
    IF pg_catalog.jsonb_typeof(v_line->'precio_credito_unitario')<>'number'
       OR (v_line ? 'comision_linea' AND pg_catalog.jsonb_typeof(v_line->'comision_linea')<>'number')
-      OR (v_line->>'precio_credito_unitario') !~ '^[0-9]+(\\.[0-9]+)?$'
-      OR (v_line ? 'comision_linea' AND (v_line->>'comision_linea') !~ '^[0-9]+(\\.[0-9]+)?$')
+      OR (v_line->>'precio_credito_unitario') !~ '^[0-9]+([.][0-9]+)?$'
+      OR (v_line ? 'comision_linea' AND (v_line->>'comision_linea') !~ '^[0-9]+([.][0-9]+)?$')
    THEN RAISE EXCEPTION 'Importes de artículo inválidos'; END IF;
    v_item:=(v_line->>'item_id')::uuid;
    v_cantidad:=(v_line->>'cantidad')::integer;
