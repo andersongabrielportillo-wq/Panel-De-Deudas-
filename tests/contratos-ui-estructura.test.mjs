@@ -196,3 +196,11 @@ test('historial del vendedor incorpora resumen y comisiones pendientes',()=>{
  assert.match(ui,/resumen\.primas_pendientes/);
  assert.match(ui,/r\.comision_estado/);
 });
+
+test('desmontar invalida tareas pendientes y borra la interfaz',()=>{
+ assert.match(ui,/let destruido=false/);
+ assert.match(ui,/destruir\(\)\{/);
+ assert.match(ui,/destruido=true/);
+ assert.match(ui,/tareaActual\+\+;solicitudBusqueda\+\+;solicitudPerfil\+\+;solicitudHistorial\+\+;revisionSolicitud\+\+/);
+ assert.match(ui,/root\.replaceChildren\(\)/);
+});
