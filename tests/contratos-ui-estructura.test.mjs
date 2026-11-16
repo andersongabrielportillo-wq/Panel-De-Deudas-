@@ -131,7 +131,7 @@ test('búsquedas anteriores no reemplazan resultados nuevos',()=>{
 });
 test('no se modifica el cliente seleccionado mientras se guarda',()=>{
  assert.match(ui,/if\(guardandoBorrador\)\{estado\.textContent='Espera a que termine el guardado';return;\}state\.clienteId=r\.id/);
- assert.match(ui,/if\(!guardandoBorrador\)state\.clienteId=clienteNuevo/);
+ assert.match(ui,/if\(!guardandoBorrador\)\{state\.clienteId=clienteNuevo/);
 });
 test('el guardado utiliza copia de artículos y bloquea cambios concurrentes',()=>{
  assert.match(ui,/const articulosGuardados=state\.items\.map\(linea=>\(\{\.\.\.linea\}\)\)/);
