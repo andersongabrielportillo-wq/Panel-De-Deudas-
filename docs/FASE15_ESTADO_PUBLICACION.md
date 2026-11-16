@@ -4,8 +4,8 @@
 Integración de contratos, clientes, referencias, vendedores, primas y ventas de inventario en Comercial López. **No modificar main ni producción hasta completar las puertas de publicación.**
 
 ## Evidencia disponible
-- 47 casos ejecutados en un intérprete JavaScript adaptado: 23 API con mock de Supabase y 24 estructurales/estáticos; 47/47 sin fallos en esa ejecución. **No equivale a Node.js CI ni a PostgreSQL real.**
-- Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas y 5/5 verificaciones adicionales correctas en consultas realizadas.
+- 49 casos ejecutados en un intérprete JavaScript adaptado: 23 API con mock de Supabase y 26 estructurales/estáticos; 49/49 sin fallos en esas ejecuciones. Los 12 casos de interfaz se reejecutaron tras corregir revisiones obsoletas y altas duplicadas. **No equivale a Node.js CI ni a PostgreSQL real.**
+- Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales y 18/18 columnas de esquema compatibles en consultas realizadas.
 - Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
 - La rama de integración no es la rama de producción.
 
@@ -22,4 +22,4 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - [ ] Aprobación explícita para desplegar cambios a producción.
 
 ## Porcentaje orientativo
-**58% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
+**60% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
