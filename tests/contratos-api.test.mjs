@@ -186,3 +186,11 @@ test('rechaza identificadores y líneas de confirmación mal formados',()=>{
  assert.throws(()=>api.confirmarContrato('c',[{detalleId:' ',ubicacionId:1}],'op'),/inválidas/);
  assert.equal(m.calls.length,0);
 });
+
+test('ubicaciones requieren números estrictos, no cadenas ni booleanos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const ubicacionId of ['1','2',true,false,null,1.5]){
+  assert.throws(()=>api.confirmarContrato('c',[{detalleId:'d',ubicacionId}],'op'),/inválidas/);
+ }
+ assert.equal(m.calls.length,0);
+});
