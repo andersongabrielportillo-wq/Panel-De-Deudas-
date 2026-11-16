@@ -17,7 +17,7 @@ BEGIN
    CASE WHEN c.dui IS NULL THEN NULL ELSE '*****'||right(c.dui,5) END,
    c.telefono
  FROM public.inv_clientes c
- WHERE lower(c.nombre) LIKE '%'||lower(v_q)||'%'
+ WHERE pg_catalog.strpos(lower(c.nombre),lower(v_q))>0
     OR (length(v_digits)>=4 AND pg_catalog.regexp_replace(c.dui,'[^0-9]','','g') LIKE v_digits||'%')
  ORDER BY c.nombre,c.id LIMIT 30;
 END $$;
