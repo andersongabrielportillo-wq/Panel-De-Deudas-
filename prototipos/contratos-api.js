@@ -64,6 +64,8 @@ export function crearServicioContratos(supabase) {
         if(!Number.isSafeInteger(totalCentavos)||totalCentavos>maxCentavos)
           throw new Error('Total del contrato fuera de rango');
       }
+      if(c.primaRecibida!==undefined && typeof c.primaRecibida!=='boolean')
+        throw new Error('Estado de prima inválido');
       const prima=dinero(c.prima??0);
       const primaCentavos=Math.round(prima*100);
       if(primaCentavos>totalCentavos)throw new Error('La prima supera el total del contrato');
@@ -77,12 +79,12 @@ export function crearServicioContratos(supabase) {
         p_saldo_inicial:c.saldoInicial==null?null:dinero(c.saldoInicial),
         p_fecha_plan:c.fechaPlan||null,p_ruta:c.ruta||null,
         p_dia_cobro:c.diaCobro||null,p_receptor_alterno:c.receptorAlterno||null,
-        p_comision:dinero(c.comision||0),p_prima:prima,
-        p_prima_recibida:!!c.primaRecibida,
+        p_comision:dinero(c.comision??0),p_prima:prima,
+        p_prima_recibida:c.primaRecibida??false,
         p_detalles:c.articulos.map(a=>({
           item_id:a.itemId,cantidad:Number(a.cantidad),
           precio_credito_unitario:dinero(a.precio),
-          comision_linea:dinero(a.comision||0)
+          comision_linea:dinero(a.comision??0)
         })),
         p_observaciones:c.observaciones||null
       });
