@@ -39,16 +39,21 @@ export function crearServicioContratos(supabase) {
     crearContratoBorrador: c=>{
       if(!Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
       if(c.articulos.length>100) throw new Error('Máximo 100 artículos por contrato');
-      let total=0;
+      // Centavos enteros: evita errores acumulados de coma flotante.
+      let totalCentavos=0;
+      const maxCentavos=99999999999999;
       for(const a of c.articulos){
         if(a.cantidad===null || a.cantidad===undefined || String(a.cantidad).trim()==='' || !Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
           throw new Error('Cantidad de artículo inválida');
-        total+=Number(a.cantidad)*dinero(a.precio);
-        if(total>999999999999.99)throw new Error('Total del contrato fuera de rango');
+        const centavos=Math.round(dinero(a.precio)*100);
+        totalCentavos+=Number(a.cantidad)*centavos;
+        if(!Number.isSafeInteger(totalCentavos)||totalCentavos>maxCentavos)
+          throw new Error('Total del contrato fuera de rango');
       }
       const prima=dinero(c.prima??0);
-      if(prima>total+1e-7)throw new Error('La prima supera el total del contrato');
-      if(c.saldoInicial!=null && c.saldoInicial!=='' && Math.abs(dinero(c.saldoInicial)-(total-prima))>1e-7)
+      const primaCentavos=Math.round(prima*100);
+      if(primaCentavos>totalCentavos)throw new Error('La prima supera el total del contrato');
+      if(c.saldoInicial!=null && c.saldoInicial!=='' && Math.round(dinero(c.saldoInicial)*100)!==totalCentavos-primaCentavos)
         throw new Error('Saldo inicial no coincide con total menos prima');
       return rpc('inv_crear_contrato_borrador',{
         p_numero:c.numero,p_cliente_id:c.clienteId,p_vendedor_id:c.vendedorId,
