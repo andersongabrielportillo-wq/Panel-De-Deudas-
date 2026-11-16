@@ -89,3 +89,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
       - name: Ejecutar venta E2E con motor autentico de inventario
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico.sql
+      - name: Verificar multibodega, secretaria y vendedor inactivo en motor original
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico_multibodega.sql
