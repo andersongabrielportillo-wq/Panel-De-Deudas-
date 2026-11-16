@@ -101,3 +101,11 @@ test('registrar prima bloquea primero el contrato y rechaza anulados',()=>{
  assert.match(fn,/WHERE id=p_contrato_id FOR UPDATE/);
  assert.match(fn,/WHERE contrato_id=p_contrato_id FOR UPDATE/);
 });
+
+test('prima no puede marcarse recibida si su venta ya fue anulada',()=>{
+ const q=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ const fn=q.slice(q.indexOf('CREATE OR REPLACE FUNCTION public.inv_marcar_prima_recibida('));
+ assert.match(fn,/SELECT estado,venta_id INTO v_contrato_estado,v_venta_id/);
+ assert.match(fn,/v\.id=v_venta_id AND v\.anulada_en IS NOT NULL/);
+ assert.match(fn,/La venta asociada fue anulada; revisar prima/);
+});
