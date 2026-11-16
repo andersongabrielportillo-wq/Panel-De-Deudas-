@@ -123,3 +123,25 @@ test('inventario y vendedores permanecen separados sin precarga de nombres',()=>
  assert.match(articulos,/FROM public\.inv_items i/);
  assert.doesNotMatch(articulos,/FROM public\.inv_vendedores/);
 });
+
+test('venta de contrato usa una sola RPC transaccional para descontar stock',()=>{
+ const q=sql('q_confirmar_contrato');
+ const funcion=q.slice(q.indexOf('CREATE OR REPLACE FUNCTION public.inv_confirmar_contrato('),q.indexOf('END $$;'));
+ assert.equal((funcion.match(/v_venta_id:=public\.inv_registrar_venta\(/g)||[]).length,1);
+ assert.doesNotMatch(funcion,/\b(?:UPDATE|INSERT INTO|DELETE FROM)\s+public\.inv_(?:stock|movimientos)\b/i);
+ assert.match(funcion,/IF v_cantidad_lineas=0 OR v_cantidad_lineas>100/);
+ assert.match(funcion,/v_cantidad_lineas<>pg_catalog\.jsonb_array_length\(p_ubicaciones\)/);
+ assert.match(funcion,/IF v_contrato\.estado='confirmado' THEN/);
+ assert.match(funcion,/WHERE v\.client_op_id=p_client_op_id/);
+ const venta=funcion.indexOf('v_venta_id:=public.inv_registrar_venta');
+ const confirmar=funcion.indexOf("SET estado='confirmado',venta_id=v_venta_id");
+ assert.ok(venta>=0&&confirmar>venta);
+});
+test('borrador no altera stock y confirmacion exige ubicacion por linea',()=>{
+ const borrador=sql('j_contratos_rpc');
+ const confirmacion=sql('q_confirmar_contrato');
+ assert.doesNotMatch(borrador,/public\.inv_registrar_venta\s*\(/);
+ assert.doesNotMatch(borrador,/\bUPDATE\s+public\.inv_stock\b/i);
+ assert.match(confirmacion,/location_id/);
+ assert.match(confirmacion,/Solo se permiten ubicaciones numéricas 1 y 2/);
+});
