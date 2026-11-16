@@ -68,3 +68,14 @@ test('evita dar de alta dos veces al mismo cliente por doble clic',()=>{
  assert.match(ui,/creandoCliente=true;crearCliente\.disabled=true/);
  assert.match(ui,/finally \{creandoCliente=false;crearCliente\.disabled=false;\}/);
 });
+
+test('la prima recibida corresponde a caja y no solo al vendedor',()=>{
+ assert.match(ui,/Prima entregada a caja y recibida por administración/);
+ assert.doesNotMatch(ui,/Prima recibida por vendedor/);
+});
+test('muestra total prima y saldo antes de confirmar la venta',()=>{
+ assert.match(ui,/totalCentavos=contrato\.articulos\.reduce/);
+ assert.match(ui,/primaCentavos=Math\.round/);
+ assert.match(ui,/Importes de contrato inconsistentes/);
+ assert.match(ui,/Saldo: \$'/);
+});
