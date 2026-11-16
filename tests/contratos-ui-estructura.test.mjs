@@ -52,7 +52,8 @@ test('limita el formulario a cien líneas',()=>{
 
 test('confirma visualmente el cliente creado y seleccionado',()=>{
  assert.match(ui,/state\.clienteId=clienteNuevo/);
- assert.match(ui,/return 'Cliente creado y seleccionado: '/);
+ assert.match(ui,/return 'Cliente creado: '/);
+ assert.match(ui,/No se cambió el cliente del borrador en curso/);
 });
 
 test('invalida revisiones de contratos cambiados durante la consulta',()=>{
