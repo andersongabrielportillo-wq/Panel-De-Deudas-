@@ -19,3 +19,5 @@ test('form numeric fields enforce numeric input',()=>{assert.match(shell,/inp\.t
 
 test('exit movement has null destination before RPC',()=>{assert.match(shell,/values\.tipo==='salida'&&!values\.destino\.trim\(\)\)values\.destino=null/)});
 test('idempotency key rotates when form payload changes',()=>{assert.match(shell,/form\.dataset\.opFingerprint!==fingerprint/);assert.match(shell,/delete form\.dataset\.opFingerprint/)});
+
+test('staging permission check uses real authenticated JWT and nonexistent request',()=>{const stage=readFileSync('staging/index.html','utf8');assert.match(stage,/id="checkPermissions"/);assert.match(stage,/accessToken\(s\)/);assert.match(stage,/00000000-0000-4000-8000-000000000000/);assert.match(stage,/inv_revisar_entrada/);assert.match(stage,/authEpoch!==epoch/)});
