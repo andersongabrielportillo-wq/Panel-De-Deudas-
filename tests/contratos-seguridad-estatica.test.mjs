@@ -54,3 +54,17 @@ test('preflight postmigración enumera RPC esperadas y no oculta ausentes',()=>{
  assert.match(q,/p\.oid IS NOT NULL/);
  assert.equal((q.match(/\('inv_(?:buscar_clientes|crear_cliente|crear_contrato_borrador|marcar_prima_recibida|historial_vendedor|resumen_vendedor|catalogo_vendedores|catalogo_articulos_contratos|ficha_cliente|historial_cliente|detalle_contrato|confirmar_contrato)'\)/g)||[]).length,12);
 });
+
+test('auditoría de roles incluye empleado y evita exponer identidades',()=>{
+ const q=readFileSync(new URL('./15ab_preflight_roles_y_rpc_solo_lectura.sql',import.meta.url),'utf8');
+ for(const rol of ['admin','secretaria','empleado'])assert.ok(q.includes("('"+rol+"')"));
+ assert.match(q,/count\(\*\)::integer AS cantidad/);
+ assert.match(q,/has_function_privilege\('anon'/);
+ assert.doesNotMatch(q,/SELECT\s+\*\s+FROM\s+public\.inv_members/i);
+});
+test('auditoría de roles inspecciona las tres RPC existentes',()=>{
+ const q=readFileSync(new URL('./15ab_preflight_roles_y_rpc_solo_lectura.sql',import.meta.url),'utf8');
+ for(const rpc of ['inv_registrar_venta','inv_anular_venta','inv_registrar_movimiento'])
+  assert.ok(q.includes("'"+rpc+"'"));
+ assert.match(q,/p\.prosecdef/);
+});
