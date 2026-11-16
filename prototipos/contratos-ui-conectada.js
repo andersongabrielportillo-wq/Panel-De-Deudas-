@@ -187,58 +187,7 @@ export function iniciarContratosDemo({supabase,root}) {
         detalle.replaceChildren();
         detalle.append(el('p',{},'Estado: '+x.estado+' · Plan: '+x.plan));
         for(const a of x.articulos||[]){
-          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · 
-    state.clienteId=await api.crearCliente({
-      nombre:nombre.value,dui:dui.value,telefono:telefono.value,
-      direccion:direccion.value,ubicacion:ubicacion.value,vivienda:vivienda.value||null,
-      lugarTrabajo:lugarTrabajo.value,telefonoTrabajo:telefonoTrabajo.value,
-      referencias:referencias.filter(r=>r.nombre.value.trim()).map(r=>({
-        nombre:r.nombre.value,telefono:r.telefono.value,direccion:r.direccion.value,
-        parentesco:r.parentesco.value
-      }))
-    });
-  });
-  agregar.onclick=()=>{
-    const q=Number(cantidad.value),p=Number(precio.value);
-    if(!item.value||!Number.isSafeInteger(q)||q<=0||!Number.isFinite(p)||p<0||Math.abs(p*100-Math.round(p*100))>1e-7){
-      estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
-    }
-    const selected=item.options[item.selectedIndex];
-    const line={itemId:item.value,nombre:selected.textContent,cantidad:Number(cantidad.value),precio:Number(precio.value)};
-    state.items.push(line);
-    const li=el('li',{},line.nombre+' × '+line.cantidad+' · $'+line.precio.toFixed(2));
-    const quitar=el('button',{type:'button'},'Quitar');
-    quitar.onclick=()=>{state.items.splice(state.items.indexOf(line),1);li.remove()};
-    li.append(quitar);articulosLista.append(li);
-  };
-  guardar.onclick=()=>tarea(async()=>{
-    if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
-    if(!vendedor.value)throw new Error('Selecciona un vendedor');
-    if(!state.items.length)throw new Error('Agrega artículos');
-    const id=await api.crearContratoBorrador({
-      numero:numero.value,clienteId:state.clienteId,vendedorId:vendedor.value,
-      fecha:fecha.value,modalidad:'credito',plan:plan.value,frecuencia:frecuencia.value,
-      ruta:ruta.value,diaCobro:diaCobro.value,cuota:cuota.value||null,
-      saldoInicial:saldoInicial.value||null,receptorAlterno:receptorAlterno.value,
-      comision:comision.value,prima:prima.value,primaRecibida:primaRecibida.checked,
-      articulos:state.items
-    });
-    state.items=[];articulosLista.replaceChildren();
-    return 'Borrador creado: '+id;
-  });
-  verHistorial.onclick=()=>tarea(async()=>{
-    const rows=await api.historialVendedor(vendedor.value);
-    histLista.replaceChildren();
-    for(const r of rows||[]){
-      histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
-        '$'+r.total_articulos,'Prima: '+r.prima_estado].join(' · ')));
-    }
-  });
-  // El controlador se inicializa solo después de que el anfitrión haya autenticado al usuario.
-  tarea(cargarCatalogos);
-  return {api,state};
-}
-+a.precio_credito_unitario));
+          detalle.append(el('p',{},a.nombre+' × '+a.cantidad+' · $'+a.precio_credito_unitario));
         }
       });
       linea.append(boton,detalle);perfilContenido.append(linea);
@@ -281,7 +230,9 @@ export function iniciarContratosDemo({supabase,root}) {
       articulos:state.items
     });
     state.items=[];articulosLista.replaceChildren();
-    return 'Borrador creado: '+id;
+    confirmarId.value=id;
+    invalidarRevision();
+    return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
   });
   verHistorial.onclick=()=>tarea(async()=>{
     const rows=await api.historialVendedor(vendedor.value);
