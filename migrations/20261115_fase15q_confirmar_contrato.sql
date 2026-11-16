@@ -19,6 +19,7 @@ DECLARE
  v_venta_id uuid;
  v_ubicacion smallint;
  v_cantidad_lineas int;
+ v_existing_contrato uuid;
  v_total numeric := 0;
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS (
@@ -73,6 +74,14 @@ BEGIN
  IF v_contrato.saldo_inicial IS NOT NULL
    AND v_contrato.saldo_inicial>v_total THEN
    RAISE EXCEPTION 'Saldo inicial supera el valor del contrato'; END IF;
+ -- Impide reutilizar una operación ya asociada a otro contrato.
+ SELECT c.id INTO v_existing_contrato
+ FROM public.inv_contratos c
+ JOIN public.inv_ventas v ON v.id=c.venta_id
+ WHERE v.client_op_id=p_client_op_id AND c.id<>p_contrato_id;
+ IF v_existing_contrato IS NOT NULL THEN
+   RAISE EXCEPTION 'Identificador de operación utilizado por otro contrato';
+ END IF;
  -- Reutiliza la función de ventas existente, con control de existencias,
  -- movimientos y deduplicación por client_op_id.
  v_venta_id:=public.inv_registrar_venta(
