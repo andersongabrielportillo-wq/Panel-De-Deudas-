@@ -145,3 +145,17 @@ test('borrador no altera stock y confirmacion exige ubicacion por linea',()=>{
  assert.match(confirmacion,/location_id/);
  assert.match(confirmacion,/Solo se permiten ubicaciones numéricas 1 y 2/);
 });
+
+test('registro manual de vendedores comienza sin precarga de inventario',()=>{
+ const q=readFileSync(new URL('../migrations/20261115_fase15ae_vendedores_manuales.sql',import.meta.url),'utf8');
+ assert.match(q,/CREATE TABLE IF NOT EXISTS public\.inv_vendedores_manual/);
+ assert.match(q,/ALTER TABLE public\.inv_vendedores_manual ENABLE ROW LEVEL SECURITY/);
+ assert.match(q,/REVOKE ALL ON public\.inv_vendedores_manual FROM anon,authenticated/);
+ assert.match(q,/CREATE OR REPLACE FUNCTION public\.inv_catalogo_vendedores_manual\(\)/);
+ assert.match(q,/CREATE OR REPLACE FUNCTION public\.inv_crear_vendedor_manual\(p_nombre text\)/);
+ assert.equal((q.match(/rol IN \('admin','secretaria'\)/g)||[]).length,2);
+ assert.doesNotMatch(q,/\b(?:FROM|JOIN|INSERT INTO|UPDATE|DELETE FROM)\s+public\.inv_items\b/i);
+ assert.doesNotMatch(q,/\b(?:FROM|JOIN|INSERT INTO|UPDATE|DELETE FROM)\s+public\.inv_vendedores\s/i);
+ assert.doesNotMatch(q,/^\s*INSERT\s+INTO\s+public\.inv_vendedores_manual[^;]*SELECT\b/mi);
+ assert.doesNotMatch(q,/GRANT EXECUTE[^;]* TO anon/i);
+});
