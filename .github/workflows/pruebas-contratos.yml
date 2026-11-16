@@ -11,6 +11,7 @@ on:
       - 'tests/migraciones-estructura.test.mjs'
       - 'tests/contratos-ui-estructura.test.mjs'
       - 'tests/contratos-montaje-staging.test.mjs'
+      - 'tests/contratos-montaje-funcional.test.mjs'
       - 'tests/contratos-seguridad-estatica.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
@@ -23,6 +24,7 @@ on:
       - 'tests/migraciones-estructura.test.mjs'
       - 'tests/contratos-ui-estructura.test.mjs'
       - 'tests/contratos-montaje-staging.test.mjs'
+      - 'tests/contratos-montaje-funcional.test.mjs'
       - 'tests/contratos-seguridad-estatica.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
@@ -46,6 +48,7 @@ jobs:
           node --check tests/migraciones-estructura.test.mjs
           node --check tests/contratos-ui-estructura.test.mjs
           node --check tests/contratos-montaje-staging.test.mjs
+          node --check tests/contratos-montaje-funcional.test.mjs
           node --check tests/contratos-seguridad-estatica.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
-        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs
+        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs tests/contratos-montaje-funcional.test.mjs
