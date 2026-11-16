@@ -206,7 +206,7 @@ export function iniciarContratosDemo({supabase,root}) {
   });
   agregar.onclick=()=>{
     const q=Number(cantidad.value),p=Number(precio.value);
-    if(!item.value||!Number.isSafeInteger(q)||q<=0||!Number.isFinite(p)||p<0||Math.abs(p*100-Math.round(p*100))>1e-7){
+    if(!item.value||cantidad.value.trim()===''||precio.value.trim()===''||!Number.isSafeInteger(q)||q<=0||q>999999999||!Number.isFinite(p)||p<0||p>999999999999.99||Math.abs(p*100-Math.round(p*100))>1e-7){
       estado.textContent='Verifica artículo, cantidad entera y precio con hasta dos decimales.';return;
     }
     const selected=item.options[item.selectedIndex];
@@ -220,6 +220,8 @@ export function iniciarContratosDemo({supabase,root}) {
   guardar.onclick=()=>tarea(async()=>{
     if(!state.clienteId)throw new Error('Selecciona o crea un cliente');
     if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    if(!numero.value.trim())throw new Error('Escribe el número del contrato');
+    if(!fecha.value)throw new Error('Selecciona la fecha del contrato');
     if(!state.items.length)throw new Error('Agrega artículos');
     const id=await api.crearContratoBorrador({
       numero:numero.value,clienteId:state.clienteId,vendedorId:vendedor.value,
