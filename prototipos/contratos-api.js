@@ -34,9 +34,10 @@ export function crearServicioContratos(supabase) {
          referencias.some(r=>!r||typeof r.nombre!=='string'||r.nombre.trim().length<2||r.nombre.trim().length>200))
         throw new Error('Se admiten hasta dos referencias con nombre válido');
       if(c.dui!==null && c.dui!==undefined && typeof c.dui!=='string')throw new Error('DUI inválido');
-      if(c.dui && /[^0-9\s-]/.test(c.dui))throw new Error('DUI inválido');
-      const dui=c.dui?limpiarDui(c.dui):null;
-      if(dui && dui.length!==9)throw new Error('DUI inválido');
+      const duiTexto=c.dui?.trim()||'';
+      if(duiTexto && !/^(?:[0-9]{9}|[0-9]{8}-[0-9])$/.test(duiTexto))
+        throw new Error('DUI inválido');
+      const dui=duiTexto?limpiarDui(duiTexto):null;
       return rpc('inv_crear_cliente',{
       p_nombre:c.nombre.trim(),p_dui:dui,
       p_direccion:c.direccion||null,p_ubicacion:c.ubicacion||null,
