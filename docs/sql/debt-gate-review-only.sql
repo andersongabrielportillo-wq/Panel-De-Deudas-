@@ -93,6 +93,30 @@ $fn$;
 REVOKE ALL ON FUNCTION public.debt_lock(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.debt_lock(uuid) TO authenticated;
 
+-- Bloqueo de seguridad: impide cortar RLS si falta la configuración por workspace.
+-- Esta comprobación se ejecuta en la misma transacción que el cambio de políticas.
+DO $guard$
+DECLARE v_missing bigint; v_extra bigint;
+BEGIN
+ SELECT count(*) INTO v_missing
+ FROM (SELECT DISTINCT workspace_id FROM public.workspace_members) m
+ WHERE NOT EXISTS (SELECT 1 FROM debt_private.secrets s WHERE s.workspace_id=m.workspace_id);
+ IF v_missing>0 THEN
+  RAISE EXCEPTION 'CORTE CANCELADO: % workspace(s) sin hash de acceso a Deudas',v_missing;
+ END IF;
+ SELECT count(*) INTO v_extra FROM pg_catalog.pg_policies
+ WHERE schemaname='public' AND tablename='debts'
+ AND policyname NOT IN ('members_read_debts','members_insert_debts','members_update_debts','members_delete_debts');
+ IF v_extra>0 THEN
+  RAISE EXCEPTION 'CORTE CANCELADO: existen % políticas de Deudas no contempladas',v_extra;
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class
+  WHERE oid='public.debts'::regclass AND relrowsecurity) THEN
+  RAISE EXCEPTION 'CORTE CANCELADO: RLS no está habilitado en Deudas';
+ END IF;
+END;
+$guard$;
+
 -- CORTE ATÓMICO: ejecutar SOLO tras cliente compatible y respaldo verificado.
 -- No mantener las políticas permisivas antiguas: Postgres combina políticas permisivas con OR.
 DROP POLICY IF EXISTS members_read_debts ON public.debts;
