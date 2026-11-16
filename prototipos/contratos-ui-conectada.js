@@ -134,12 +134,18 @@ export function iniciarContratosDemo({supabase,root}) {
       return 'Confirmación cancelada';
     confirmacionEnCurso=true;
     confirmarVenta.disabled=true;
+    const revisionEnviada=revision;
+    const operacionEnviada=operacionConfirmacion;
     try{
-      const ventaId=await api.confirmarContrato(revision.id,ubicaciones,operacionConfirmacion);
-      invalidarRevision();
+      const ventaId=await api.confirmarContrato(revisionEnviada.id,ubicaciones,operacionEnviada);
+      // Un cambio de contrato durante la llamada no debe borrar su nueva revisión.
+      if(revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
+        invalidarRevision();
       return 'Venta confirmada: '+ventaId;
     }catch(e){
-      confirmarVenta.disabled=false;
+      // Solo permitir reintento si seguimos viendo la misma revisión.
+      if(revision===revisionEnviada && operacionConfirmacion===operacionEnviada)
+        confirmarVenta.disabled=false;
       throw e;
     }finally{
       confirmacionEnCurso=false;
