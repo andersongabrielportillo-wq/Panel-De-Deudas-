@@ -35,6 +35,11 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Contrato no encontrado'; END IF;
  IF v_contrato.estado='confirmado' THEN
    IF v_contrato.venta_id IS NULL THEN RAISE EXCEPTION 'Contrato confirmado sin venta asociada'; END IF;
+   -- Solo aceptar un reintento de la MISMA operación; no confundirlo con una nueva venta.
+   IF NOT EXISTS(
+     SELECT 1 FROM public.inv_ventas v
+     WHERE v.id=v_contrato.venta_id AND v.client_op_id=p_client_op_id
+   ) THEN RAISE EXCEPTION 'Contrato ya confirmado con otra operación'; END IF;
    RETURN v_contrato.venta_id;
  END IF;
  IF v_contrato.estado<>'borrador' OR v_contrato.venta_id IS NOT NULL
