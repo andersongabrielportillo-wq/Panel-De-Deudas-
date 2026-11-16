@@ -88,3 +88,19 @@ test('15J limita el nombre de referencias a 200 caracteres',()=>{
  const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
  assert.match(sql,/length\(pg_catalog\.btrim\(coalesce\(v_ref->>'nombre',''\)\)\) NOT BETWEEN 2 AND 200/);
 });
+
+test('15J valida UUID de artículo antes de convertir',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ assert.ok(sql.indexOf("Identificador de artículo inválido")>=0);
+ assert.ok(sql.indexOf("Identificador de artículo inválido")<sql.indexOf("v_item:=(v_line->>'item_id')::uuid"));
+});
+test('15J rechaza cantidades y precios JSON que no sean numéricos',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ assert.match(sql,/jsonb_typeof\(v_line->'cantidad'\)<>'number'/);
+ assert.match(sql,/jsonb_typeof\(v_line->'precio_credito_unitario'\)<>'number'/);
+ assert.match(sql,/jsonb_typeof\(v_line->'comision_linea'\)<>'number'/);
+});
+test('15J valida importes antes de conversión numeric',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ assert.ok(sql.indexOf("Importes de artículo inválidos")<sql.indexOf("v_precio:=(v_line->>'precio_credito_unitario')::numeric"));
+});
