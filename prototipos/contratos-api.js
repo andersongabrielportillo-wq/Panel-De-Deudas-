@@ -90,6 +90,7 @@ export function crearServicioContratos(supabase) {
     confirmarContrato:(contratoId,ubicaciones,operacionId)=>{
       if(typeof contratoId!=='string'||!contratoId.trim()||typeof operacionId!=='string'||!operacionId.trim()||!Array.isArray(ubicaciones)||ubicaciones.length===0)
         throw new Error('Faltan datos para confirmar el contrato');
+      if(ubicaciones.length>100)throw new Error('Máximo 100 ubicaciones por contrato');
       const ids=new Set();
       for(const linea of ubicaciones){
         if(!linea||typeof linea.detalleId!=='string'||!linea.detalleId.trim()||ids.has(linea.detalleId)||![1,2].includes(linea.ubicacionId))
