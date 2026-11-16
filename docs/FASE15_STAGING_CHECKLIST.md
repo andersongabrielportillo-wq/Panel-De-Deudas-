@@ -13,6 +13,7 @@
 - Ejecutar `tests/15aa_preflight_confirmacion_dependencias.sql` (7 verificaciones de funciones/columnas).
 - Ejecutar `tests/15ab_preflight_roles_y_rpc_solo_lectura.sql` (roles y privilegios sin identidades).
 - Ejecutar `tests/15ac_preflight_payload_ventas_solo_lectura.sql` (8 verificaciones de compatibilidad).
+- Ejecutar `tests/15ad_preflight_separacion_inventario_vendedores_solo_lectura.sql` (5 verificaciones sin nombres ni escrituras).
 - No interpretar resultados estáticos como ejecución exitosa de una venta.
 
 ## 3. Instalación aislada, solo tras autorización
@@ -40,3 +41,8 @@
 - Revisión final y autorización explícita para fusionar y publicar.
 
 **No ejecutar migraciones ni modificar datos en proyectos existentes como atajo.**
+
+## 6. Requisitos de negocio confirmados
+- El inventario proporcionado contiene artículos; **no usar sus nombres para precargar vendedores**. La sección Vendedores debe comenzar vacía y llenarse manualmente después.
+- No borrar registros históricos de vendedores ni romper referencias de ventas existentes para conseguir la lista vacía. La RPC actual de vendedores todavía lee la tabla poblada y requiere una solución de separación antes de publicar.
+- Al confirmar una venta, descontar stock mediante la RPC transaccional existente, una sola vez. Un borrador no descuenta; si falla cualquier artículo, no hay descuento parcial. Probar físicamente con datos ficticios antes de certificar.
