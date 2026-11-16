@@ -700,7 +700,7 @@ async function disconnectDebtChannel(){
  SY.doc=null;clearTimeout(SY.timer);
  if(SB_CH){const ch=SB_CH;SB_CH=null;await SB.removeChannel(ch)}
 }
-async function connectDebtData(){
+async function connectDebtData(reveal=true){
  if(!APP_READY)loadPrivate();
  SY.doc={set:cloudSet};
  const first=await cloudSnapshot();onRemote(first);
@@ -710,7 +710,7 @@ async function connectDebtData(){
   if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
   try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}
  }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
- showPrivate();gate(false);debtScreenVisible(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
+ if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
 }
 async function connectCloud(){
  const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
@@ -724,8 +724,8 @@ async function connectCloud(){
   load:async()=>{const report=window.DebtCachePreflight.inspectDebtCache(localStorage);
    if(!report.storageAccessible)throw Error("No se puede verificar la caché local");
    // Production cache encryption/migration must be reviewed before enabling.
-   await connectDebtData()},
-  show:()=>{showPrivate();debtScreenVisible(false)},
+   await connectDebtData(false)},
+  show:()=>{showPrivate();debtScreenVisible(false);if(SY.pend)schedulePush(0)},
   hide:()=>{debtScreenVisible(true)},
   disconnect:disconnectDebtChannel,
   hasPending:()=>SY.pend||lsGet("cp_pend")==="1",
