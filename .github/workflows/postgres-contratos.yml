@@ -47,3 +47,5 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
       - name: Validar clientes y contratos borrador sin descontar stock
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
+      - name: Validar ventas, idempotencia y rollback con motor ficticio de stock
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_stock_ficticio.sql
