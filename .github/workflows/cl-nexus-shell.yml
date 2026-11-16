@@ -48,4 +48,4 @@ jobs:
       - run: node --check debt-gate-client.cjs
       - run: node --check debt-module-controller.cjs
       - run: node --check debt-cache-preflight.cjs
-      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs
+      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs tests/debt-cache-preflight.test.mjs
