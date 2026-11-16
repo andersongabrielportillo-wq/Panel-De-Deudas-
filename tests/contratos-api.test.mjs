@@ -10,7 +10,7 @@ function clienteMock(error=null){
 }
 const base={
  numero:'TEST-001',clienteId:'cliente-uuid',vendedorId:'vendedor-uuid',
- fecha:'2026-11-15',comision:'0.30',prima:'1.20',
+ fecha:'2026-11-15',comision:'0.30',prima:'0.20',
  articulos:[{itemId:'articulo-uuid',cantidad:2,precio:'0.30',comision:'0.10'}]
 };
 test('buscar clientes usa RPC y no tablas públicas',async()=>{
@@ -25,7 +25,7 @@ test('catálogos y ficha pasan por RPC',async()=>{
 });
 test('acepta importes válidos con decimales',async()=>{
  const m=clienteMock();await crearServicioContratos(m.client).crearContratoBorrador(base);
- assert.equal(m.calls[0].args.p_prima,1.2);
+ assert.equal(m.calls[0].args.p_prima,0.2);
  assert.equal(m.calls[0].args.p_detalles[0].precio_credito_unitario,0.3);
 });
 test('rechaza cantidades fraccionarias o negativas',async()=>{
@@ -104,5 +104,28 @@ test('consulta historial y detalle de contrato por RPC',async()=>{
 test('confirmación requiere identificador de operación',()=>{
  const m=clienteMock(),api=crearServicioContratos(m.client);
  assert.throws(()=>api.confirmarContrato('c',[{detalleId:'d',ubicacionId:1}],null),/Faltan datos/);
+ assert.equal(m.calls.length,0);
+});
+
+test('rechaza prima superior al total y saldo inicial inconsistente',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:'0.61'}),/prima supera/);
+ assert.throws(()=>api.crearContratoBorrador({...base,saldoInicial:'0.50'}),/Saldo inicial/);
+ assert.equal(m.calls.length,0);
+});
+test('acepta saldo igual al total menos prima',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearContratoBorrador({...base,saldoInicial:'0.40'});
+ assert.equal(m.calls[0].args.p_saldo_inicial,0.4);
+});
+test('rechaza montos superiores a numeric 14,2',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,comision:'1000000000000'}),/Importe/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza más de cien líneas y cantidades fuera del límite SQL',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,articulos:Array(101).fill(base.articulos[0])}),/Máximo 100/);
+ assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad:1000000000}]}),/Cantidad/);
  assert.equal(m.calls.length,0);
 });
