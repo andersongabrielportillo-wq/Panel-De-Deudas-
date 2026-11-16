@@ -76,3 +76,33 @@ test('rechaza líneas repetidas o ubicaciones no autorizadas',()=>{
  ],'op'),/inválidas/);
  assert.equal(m.calls.length,0);
 });
+
+test('crea cliente con vivienda, trabajo y dos referencias',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearCliente({
+  nombre:'Cliente de prueba',dui:'01234567-8',vivienda:'propia',
+  lugarTrabajo:'Comercio',telefonoTrabajo:'2222-2222',
+  referencias:[{nombre:'Referencia A',telefono:'1111-1111'},
+              {nombre:'Referencia B',parentesco:'Familiar'}]
+ });
+ const llamada=m.calls[0];
+ assert.equal(llamada.name,'inv_crear_cliente');
+ assert.equal(llamada.args.p_dui,'012345678');
+ assert.equal(llamada.args.p_vivienda,'propia');
+ assert.equal(llamada.args.p_lugar_trabajo,'Comercio');
+ assert.equal(llamada.args.p_referencias.length,2);
+});
+test('consulta historial y detalle de contrato por RPC',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.historialCliente('cliente-1');
+ await api.detalleContrato('contrato-1');
+ assert.deepEqual(m.calls,[
+  {name:'inv_historial_cliente',args:{p_cliente_id:'cliente-1'}},
+  {name:'inv_detalle_contrato',args:{p_contrato_id:'contrato-1'}}
+ ]);
+});
+test('confirmación requiere identificador de operación',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.confirmarContrato('c',[{detalleId:'d',ubicacionId:1}],null),/Faltan datos/);
+ assert.equal(m.calls.length,0);
+});
