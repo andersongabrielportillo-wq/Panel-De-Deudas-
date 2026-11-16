@@ -28,7 +28,7 @@ BEGIN
   WHERE m.user_id=auth.uid() AND m.rol IN ('admin','secretaria')
  ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
  IF p_vendedor_id IS NULL OR NOT EXISTS(
-  SELECT 1 FROM public.inv_vendedores v WHERE v.id=p_vendedor_id
+  SELECT 1 FROM public.inv_vendedores_manual v WHERE v.id=p_vendedor_id
  ) THEN RAISE EXCEPTION 'Vendedor inexistente'; END IF;
  IF p_desde IS NOT NULL AND p_hasta IS NOT NULL AND p_desde>p_hasta
  THEN RAISE EXCEPTION 'Rango de fechas inválido'; END IF;
@@ -72,7 +72,7 @@ BEGIN
   WHERE m.user_id=auth.uid() AND m.rol IN ('admin','secretaria')
  ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
  IF p_vendedor_id IS NULL OR NOT EXISTS(
-  SELECT 1 FROM public.inv_vendedores v WHERE v.id=p_vendedor_id
+  SELECT 1 FROM public.inv_vendedores_manual v WHERE v.id=p_vendedor_id
  ) THEN RAISE EXCEPTION 'Vendedor inexistente'; END IF;
  IF p_desde IS NOT NULL AND p_hasta IS NOT NULL AND p_desde>p_hasta
  THEN RAISE EXCEPTION 'Rango de fechas inválido'; END IF;
