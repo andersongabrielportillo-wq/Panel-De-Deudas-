@@ -14,7 +14,8 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     throw new Error('Se requiere la sesión Supabase del anfitrión');
   if(montajes.has(contenedor))throw new Error('Contratos ya montados en este contenedor');
   // Se reserva antes de cualquier await para impedir doble montaje por clics rápidos.
-  montajes.set(contenedor,true);
+  const pendiente={cancelado:false};
+  montajes.set(contenedor,pendiente);
   let cancelado=false;
   try {
     const {data,error}=await supabase.auth.getUser();
@@ -26,7 +27,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     const {data:sesionFinal,error:errorFinal}=await supabase.auth.getUser();
     if(errorFinal || !sesionFinal?.user?.id || sesionFinal.user.id!==usuarioInicial)
       throw new Error('La sesión cambió durante la verificación; vuelve a ingresar');
-    if(cancelado)throw new Error('Montaje cancelado');
+    if(cancelado||pendiente.cancelado)throw new Error('Montaje cancelado');
     // No crear interfaz si la comprobación de permisos falla.
     const controlador=iniciarContratosDemo({supabase,root:contenedor});
     const registro={controlador,supabase,usuarioInicial,cancelar:null};
@@ -50,7 +51,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     }
     return controlador;
   }catch(e){
-    montajes.delete(contenedor);
+    if(montajes.get(contenedor)===pendiente)montajes.delete(contenedor);
     throw e;
   }
 }
@@ -59,7 +60,11 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
 export function desmontarContratosEnStaging(contenedor){
  const registro=montajes.get(contenedor);
  if(!registro)return false;
- if(registro===true)throw new Error('La verificación de acceso sigue en curso');
+ if(!registro.cancelar){
+   registro.cancelado=true;
+   montajes.delete(contenedor);
+   return true;
+ }
  registro.cancelar();
  return true;
 }
