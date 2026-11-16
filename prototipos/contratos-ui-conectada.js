@@ -219,15 +219,17 @@ export function iniciarContratosDemo({supabase,root}) {
   }
   function opcion(select,value,label){select.append(el('option',{value},label))}
   let guardandoVendedor=false;
+  let versionCatalogoVendedores=0;
   registrarVendedor.onclick=()=>tarea(async()=>{
     if(guardandoVendedor)throw new Error('El vendedor ya se está registrando');
     guardandoVendedor=true;registrarVendedor.disabled=true;
     try{
       const nombre=nombreVendedor.value.trim();
       const id=await api.crearVendedor(nombre);
+      const version=++versionCatalogoVendedores;
       if(destruido)return 'Interfaz cerrada';
       const lista=await api.catalogoVendedores();
-      if(destruido)return 'Interfaz cerrada';
+      if(destruido||version!==versionCatalogoVendedores)return 'Catálogo actualizado por otra operación';
       vendedor.replaceChildren();
       opcion(vendedor,'','Selecciona un vendedor');
       for(const v of lista||[])opcion(vendedor,v.id,v.nombre);
@@ -238,6 +240,7 @@ export function iniciarContratosDemo({supabase,root}) {
     }finally{guardandoVendedor=false;if(!destruido)registrarVendedor.disabled=false;}
   });
   async function cargarCatalogos(){
+    const version=versionCatalogoVendedores;
     // Solo campos mínimos: no mostrar DUI ni otros datos personales.
     const [v,i]=await Promise.all([
       api.catalogoVendedores().then(data=>({data,error:null})).catch(error=>({data:null,error})),
@@ -245,10 +248,13 @@ export function iniciarContratosDemo({supabase,root}) {
     ]);
     if(destruido)return;
     if(v.error)throw v.error;if(i.error)throw i.error;
-    vendedor.replaceChildren();item.replaceChildren();
+    item.replaceChildren();
+    for(const x of i.data||[])opcion(item,x.id,x.nombre);
+    // Una respuesta inicial tardía no puede borrar un vendedor registrado después.
+    if(version!==versionCatalogoVendedores)return;
+    vendedor.replaceChildren();
     opcion(vendedor,'','Selecciona un vendedor');
     for(const x of v.data||[])opcion(vendedor,x.id,x.nombre);
-    for(const x of i.data||[])opcion(item,x.id,x.nombre);
   }
   let solicitudBusqueda=0;
   busqueda.addEventListener('input',()=>{solicitudBusqueda++;resultados.replaceChildren();});
