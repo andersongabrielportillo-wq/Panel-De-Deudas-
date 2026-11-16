@@ -171,3 +171,13 @@ test('contratos e historiales rechazan vendedores historicos no registrados manu
  assert.equal((historial.match(/FROM public\.inv_vendedores_manual v WHERE v\.id=p_vendedor_id/g)||[]).length,2);
  assert.doesNotMatch(historial,/FROM public\.inv_vendedores v WHERE v\.id=p_vendedor_id/);
 });
+
+test('postmigracion de vendedores comprueba RLS y privilegios sin escribir datos',()=>{
+ const q=readFileSync(new URL('./15af_postmigracion_vendedores_manual_solo_lectura.sql',import.meta.url),'utf8');
+ for(const control of ['tabla_manual_instalada','rpc_catalogo_manual_instalada',
+ 'rpc_alta_manual_instalada','rls_manual_activo','sin_lectura_directa_authenticated',
+ 'sin_lectura_directa_anon','sin_ejecucion_anon_catalogo','sin_ejecucion_anon_alta']){
+   assert.ok(q.includes(control),control);
+ }
+ assert.doesNotMatch(q,/^\s*(?:INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP|ALTER)\b/mi);
+});
