@@ -26,16 +26,26 @@ export function crearServicioContratos(supabase) {
     fichaCliente:clienteId=>rpc('inv_ficha_cliente',{p_cliente_id:clienteId}),
     historialCliente:clienteId=>rpc('inv_historial_cliente',{p_cliente_id:clienteId}),
     detalleContrato:contratoId=>rpc('inv_detalle_contrato',{p_contrato_id:contratoId}),
-    crearCliente: c=>rpc('inv_crear_cliente',{
-      p_nombre:c.nombre,p_dui:c.dui?limpiarDui(c.dui):null,
+    crearCliente: c=>{
+      if(!c||typeof c.nombre!=='string'||c.nombre.trim().length<2||c.nombre.trim().length>200)
+        throw new Error('Nombre de cliente inválido');
+      const referencias=c.referencias??[];
+      if(!Array.isArray(referencias)||referencias.length>2||
+         referencias.some(r=>!r||typeof r.nombre!=='string'||r.nombre.trim().length<2))
+        throw new Error('Se admiten hasta dos referencias con nombre válido');
+      const dui=c.dui?limpiarDui(c.dui):null;
+      if(dui && dui.length!==9)throw new Error('DUI inválido');
+      return rpc('inv_crear_cliente',{
+      p_nombre:c.nombre,p_dui:dui,
       p_direccion:c.direccion||null,p_ubicacion:c.ubicacion||null,
       p_telefono:c.telefono||null,p_vivienda:c.vivienda||null,
       p_lugar_trabajo:c.lugarTrabajo||null,p_telefono_trabajo:c.telefonoTrabajo||null,
-      p_referencias:(c.referencias||[]).map(r=>({
+      p_referencias:referencias.map(r=>({
         nombre:r.nombre,telefono:r.telefono||null,
         direccion:r.direccion||null,parentesco:r.parentesco||null
       }))
-    }),
+      });
+    },
     crearContratoBorrador: c=>{
       if(!Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
       if(c.articulos.length>100) throw new Error('Máximo 100 artículos por contrato');
