@@ -51,3 +51,41 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_stock_ficticio.sql
       - name: Verificar permisos de roles PostgreSQL y accesos directos
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/permisos_roles_reales.sql
+
+  postgres-motor-autentico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporal_ci
+          POSTGRES_DB: contratos_real_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d contratos_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: temporal_ci
+      PGDATABASE: contratos_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear esquema aislado compatible con motor autentico
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/fixture_motor_autentico.sql
+      - name: Instalar funciones originales de inventario
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/motor_autentico_funciones.sql
+      - name: Aplicar migraciones reales de contratos
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/aplicar_migraciones.sql
+      - name: Preparar vendedores y clientes ficticios
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
+      - name: Ejecutar venta E2E con motor autentico de inventario
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico.sql
