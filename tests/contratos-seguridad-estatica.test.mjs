@@ -68,3 +68,21 @@ test('auditoría de roles inspecciona las tres RPC existentes',()=>{
   assert.ok(q.includes("'"+rpc+"'"));
  assert.match(q,/p\.prosecdef/);
 });
+
+test('preflight de ventas comprueba ocho puntos sin escribir inventario',()=>{
+ const q=readFileSync(new URL('./15ac_preflight_payload_ventas_solo_lectura.sql',import.meta.url),'utf8');
+ for(const campo of ['item_id','location_id','cantidad','precio_unitario','descuento'])
+  assert.ok(q.includes("'"+campo+"'"),campo);
+ assert.match(q,/inv_private\.verificar_reintento_venta/);
+ assert.match(q,/public\.inv_registrar_movimiento/);
+ assert.match(q,/pg_catalog\.pg_get_functiondef/);
+ assert.doesNotMatch(q,/^\s*(?:INSERT\s+INTO|UPDATE\s+|DELETE\s+FROM|CREATE\s+|ALTER\s+|DROP\s+)/mi);
+});
+test('confirmación usa la RPC existente y conserva el identificador de operación',()=>{
+ const q=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ for(const campo of ['item_id','location_id','cantidad','precio_unitario','descuento'])
+  assert.ok(q.includes("'"+campo+"'"),campo);
+ assert.match(q,/v_venta_id:=public\.inv_registrar_venta\(/);
+ assert.match(q,/p_client_op_id\s*\n\s*\);/);
+ assert.match(q,/pg_advisory_xact_lock/);
+});
