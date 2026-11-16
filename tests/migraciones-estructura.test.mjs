@@ -52,3 +52,15 @@ test('15Q valida límites de líneas y monto antes de registrar venta',()=>{
  assert.match(sql,/v_total>999999999999\.99/);
  assert.match(sql,/v_prima<0 OR v_prima>v_total/);
 });
+
+test('15Q rechaza UUID de línea inválido antes de convertir',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ const validar=sql.indexOf("Identificador de línea inválido");
+ const convertir=sql.indexOf("(v_linea->>'detalle_id')::uuid");
+ assert.ok(validar>=0 && convertir>validar);
+});
+test('15Q exige ubicación numérica sin coerción de texto',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ assert.match(sql,/jsonb_typeof\(v_linea->'location_id'\)<>'number'/);
+ assert.match(sql,/Solo se permiten ubicaciones numéricas 1 y 2/);
+});
