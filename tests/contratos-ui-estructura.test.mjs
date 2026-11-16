@@ -39,3 +39,13 @@ test('el formulario exige número y fecha antes de crear borrador',()=>{
  assert.match(ui,/if\(!numero\.value\.trim\(\)\)/);
  assert.match(ui,/if\(!fecha\.value\)/);
 });
+
+test('evita guardados concurrentes y restaura botón',()=>{
+ assert.match(ui,/let guardandoBorrador=false/);
+ assert.match(ui,/if\(guardandoBorrador\)throw new Error/);
+ assert.match(ui,/guardandoBorrador=true;guardar\.disabled=true/);
+ assert.match(ui,/finally \{guardandoBorrador=false;guardar\.disabled=false;\}/);
+});
+test('limita el formulario a cien líneas',()=>{
+ assert.match(ui,/state\.items\.length>=100/);
+});
