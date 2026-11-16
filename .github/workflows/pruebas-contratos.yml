@@ -1,0 +1,27 @@
+name: Pruebas de contratos (aisladas)
+on:
+  push:
+    branches:
+      - integracion-inventario-fase15
+    paths:
+      - 'prototipos/contratos-api.js'
+      - 'tests/contratos-api.test.mjs'
+      - '.github/workflows/pruebas-contratos.yml'
+  pull_request:
+    paths:
+      - 'prototipos/contratos-api.js'
+      - 'tests/contratos-api.test.mjs'
+      - '.github/workflows/pruebas-contratos.yml'
+permissions:
+  contents: read
+jobs:
+  contratos-unitarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Ejecutar pruebas unitarias sin credenciales
+        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs
