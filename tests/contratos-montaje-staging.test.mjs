@@ -21,3 +21,9 @@ test('montaje evita dobles clics y limpia reserva en caso de error',()=>{
 test('montaje no contiene credenciales incrustadas',()=>{
  assert.doesNotMatch(codigo,/\b(?:createClient|supabaseUrl|supabaseKey)\s*\(|https:\/\/[^\s]+\.supabase\.co/);
 });
+
+test('montaje revalida que no cambió el usuario durante el permiso',()=>{
+ assert.match(codigo,/const usuarioInicial=data\.user\.id/);
+ assert.match(codigo,/const \{data:sesionFinal,error:errorFinal\}=await supabase\.auth\.getUser\(\)/);
+ assert.match(codigo,/sesionFinal\.user\.id!==usuarioInicial/);
+});
