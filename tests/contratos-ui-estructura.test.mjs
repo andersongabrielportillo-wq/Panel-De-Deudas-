@@ -152,3 +152,8 @@ test('cambiar de cliente limpia ficha e invalida consultas pendientes',()=>{
 test('guardar borrador invalida revisiones anteriores de confirmación',()=>{
  assert.match(ui,/confirmarId\.value=id;\s*revisionSolicitud\+\+;\s*invalidarRevision\(\)/);
 });
+
+test('revisión de contrato rechaza booleanos en dinero y cantidades',()=>{
+ assert.match(ui,/typeof valor==='boolean'/);
+ assert.match(ui,/typeof articulo\.cantidad==='boolean'/);
+});
