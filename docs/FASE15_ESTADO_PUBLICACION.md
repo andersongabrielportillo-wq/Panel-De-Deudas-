@@ -4,8 +4,9 @@
 Integración de contratos, clientes, referencias, vendedores, primas y ventas de inventario en Comercial López. **No modificar main ni producción hasta completar las puertas de publicación.**
 
 ## Evidencia disponible
-- 53 casos preparados: 23 API con mock de Supabase, 16 UI y 14 SQL estructurales/estáticos. Se ejecutaron 23 API y los 16 UI actuales en un intérprete adaptado sin fallos; las otras pruebas estructurales se ejecutaron previamente. No se ha confirmado la ejecución de las 51 pruebas juntas en CI. Los 12 casos de interfaz se reejecutaron tras corregir revisiones obsoletas y altas duplicadas. **No equivale a Node.js CI ni a PostgreSQL real.**
-- Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales y 18/18 columnas de esquema compatibles en consultas realizadas.
+- 56 casos preparados: 24 API con mock de Supabase, 17 UI y 15 SQL estructurales/estáticos. Se ejecutaron 24 API y los 17 UI actuales en un intérprete adaptado sin fallos; las otras pruebas estructurales se ejecutaron previamente. No se ha confirmado la ejecución de las 51 pruebas juntas en CI. Los 12 casos de interfaz se reejecutaron tras corregir revisiones obsoletas y altas duplicadas. **No equivale a Node.js CI ni a PostgreSQL real.**
+- Preflight read-only del proyecto de inventario: 12/12 dependencias iniciales, 6/6 dependencias de ventas, 5/5 verificaciones adicionales, 18/18 columnas de esquema compatibles y 3/3 firmas de RPC de ventas/movimientos/anulación verificadas.
+- 15Q endurecida: si el contrato ya fue confirmado, solo admite reintento con el ID de operación original; no se ha aplicado al servidor.
 - Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
 - La rama de integración no es la rama de producción.
 
@@ -23,4 +24,4 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - [ ] Aprobación explícita para desplegar cambios a producción.
 
 ## Porcentaje orientativo
-**61% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
+**63% del trabajo de preparación**, no de certificación de lanzamiento. Las puertas de integración y pruebas reales siguen abiertas; este número es una estimación de gestión, no una métrica automatizada.
