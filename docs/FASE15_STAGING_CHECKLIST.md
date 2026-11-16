@@ -17,7 +17,7 @@
 - No interpretar resultados estáticos como ejecución exitosa de una venta.
 
 ## 3. Instalación aislada, solo tras autorización
-- Instalar las seis migraciones 15I, 15J, 15K, 15N, 15P, 15Q en ese orden.
+- Instalar las siete migraciones 15I, 15AE, 15J, 15K, 15N, 15P, 15Q en ese orden. 15AE debe existir antes de 15J y 15K porque sus RPC consultan `inv_vendedores_manual`.
 - Ejecutar `tests/15x_verificacion_postmigracion_solo_lectura.sql` y exigir que **todas** las tablas y las 12 RPC esperadas estén presentes y protegidas.
 - Crear tres cuentas ficticias independientes: admin, secretaria y empleado. Actualmente el proyecto poblado de inventario no tiene membresías empleado; no cambiar usuarios reales para resolverlo.
 
@@ -44,5 +44,5 @@
 
 ## 6. Requisitos de negocio confirmados
 - El inventario proporcionado contiene artículos; **no usar sus nombres para precargar vendedores**. La sección Vendedores debe comenzar vacía y llenarse manualmente después.
-- No borrar registros históricos de vendedores ni romper referencias de ventas existentes para conseguir la lista vacía. La RPC actual de vendedores todavía lee la tabla poblada y requiere una solución de separación antes de publicar.
+- No borrar registros históricos de vendedores ni romper referencias de ventas existentes para conseguir la lista vacía. La nueva UI y sus RPC apuntan al registro manual vacío, pero faltan pruebas de integración real con JWT y vendedores ficticios antes de publicar.
 - Al confirmar una venta, descontar stock mediante la RPC transaccional existente, una sola vez. Un borrador no descuenta; si falla cualquier artículo, no hay descuento parcial. Probar físicamente con datos ficticios antes de certificar.
