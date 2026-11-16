@@ -31,19 +31,19 @@ export function crearServicioContratos(supabase) {
         throw new Error('Nombre de cliente inválido');
       const referencias=c.referencias??[];
       if(!Array.isArray(referencias)||referencias.length>2||
-         referencias.some(r=>!r||typeof r.nombre!=='string'||r.nombre.trim().length<2))
+         referencias.some(r=>!r||typeof r.nombre!=='string'||r.nombre.trim().length<2||r.nombre.trim().length>200))
         throw new Error('Se admiten hasta dos referencias con nombre válido');
       if(c.dui!==null && c.dui!==undefined && typeof c.dui!=='string')throw new Error('DUI inválido');
       if(c.dui && /[^0-9\s-]/.test(c.dui))throw new Error('DUI inválido');
       const dui=c.dui?limpiarDui(c.dui):null;
       if(dui && dui.length!==9)throw new Error('DUI inválido');
       return rpc('inv_crear_cliente',{
-      p_nombre:c.nombre,p_dui:dui,
+      p_nombre:c.nombre.trim(),p_dui:dui,
       p_direccion:c.direccion||null,p_ubicacion:c.ubicacion||null,
       p_telefono:c.telefono||null,p_vivienda:c.vivienda||null,
       p_lugar_trabajo:c.lugarTrabajo||null,p_telefono_trabajo:c.telefonoTrabajo||null,
       p_referencias:referencias.map(r=>({
-        nombre:r.nombre,telefono:r.telefono||null,
+        nombre:r.nombre.trim(),telefono:r.telefono||null,
         direccion:r.direccion||null,parentesco:r.parentesco||null
       }))
       });
