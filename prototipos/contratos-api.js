@@ -14,7 +14,7 @@ export function crearServicioContratos(supabase) {
   }
   const limpiarDui = valor => String(valor||'').replace(/\D/g,'');
   const dinero = valor => {
-    if(valor===null || valor===undefined || (typeof valor==='string' && !valor.trim())) throw new Error('Importe monetario inválido');
+    if(valor===null || valor===undefined || typeof valor==='boolean' || (typeof valor!=='number' && typeof valor!=='string') || (typeof valor==='string' && !valor.trim())) throw new Error('Importe monetario inválido');
     const n=Number(valor);
     if(!Number.isFinite(n)||n<0||n>999999999999.99||Math.abs(n*100-Math.round(n*100))>1e-7) throw new Error('Importe monetario inválido');
     return Math.round(n*100)/100;
@@ -33,6 +33,8 @@ export function crearServicioContratos(supabase) {
       if(!Array.isArray(referencias)||referencias.length>2||
          referencias.some(r=>!r||typeof r.nombre!=='string'||r.nombre.trim().length<2))
         throw new Error('Se admiten hasta dos referencias con nombre válido');
+      if(c.dui!==null && c.dui!==undefined && typeof c.dui!=='string')throw new Error('DUI inválido');
+      if(c.dui && /[^0-9\s-]/.test(c.dui))throw new Error('DUI inválido');
       const dui=c.dui?limpiarDui(c.dui):null;
       if(dui && dui.length!==9)throw new Error('DUI inválido');
       return rpc('inv_crear_cliente',{
@@ -47,7 +49,7 @@ export function crearServicioContratos(supabase) {
       });
     },
     crearContratoBorrador: c=>{
-      if(!Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
+      if(!c || !Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
       if(c.articulos.length>100) throw new Error('Máximo 100 artículos por contrato');
       // Centavos enteros: evita errores acumulados de coma flotante.
       let totalCentavos=0;
@@ -55,7 +57,7 @@ export function crearServicioContratos(supabase) {
       for(const a of c.articulos){
         if(!a || typeof a.itemId!=='string' || !a.itemId.trim())
           throw new Error('Selecciona un artículo válido');
-        if(a.cantidad===null || a.cantidad===undefined || String(a.cantidad).trim()==='' || !Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
+        if(a.cantidad===null || a.cantidad===undefined || (typeof a.cantidad!=='number' && typeof a.cantidad!=='string') || String(a.cantidad).trim()==='' || !Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
           throw new Error('Cantidad de artículo inválida');
         const centavos=Math.round(dinero(a.precio)*100);
         totalCentavos+=Number(a.cantidad)*centavos;
