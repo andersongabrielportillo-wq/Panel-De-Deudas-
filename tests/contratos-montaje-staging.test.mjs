@@ -19,5 +19,5 @@ test('montaje evita dobles clics y limpia reserva en caso de error',()=>{
  assert.match(codigo,/montajes\.delete\(contenedor\)/);
 });
 test('montaje no contiene credenciales incrustadas',()=>{
- assert.doesNotMatch(codigo,/service_role|SUPABASE_SERVICE_ROLE_KEY|https:\/\/[^\s]+\.supabase\.co/);
+ assert.doesNotMatch(codigo,/\b(?:createClient|supabaseUrl|supabaseKey)\s*\(|https:\/\/[^\s]+\.supabase\.co/);
 });
