@@ -204,3 +204,11 @@ test('desmontar invalida tareas pendientes y borra la interfaz',()=>{
  assert.match(ui,/tareaActual\+\+;solicitudBusqueda\+\+;solicitudPerfil\+\+;solicitudHistorial\+\+;revisionSolicitud\+\+/);
  assert.match(ui,/root\.replaceChildren\(\)/);
 });
+
+test('cierre de sesión impide reescrituras tardías de confirmación y expediente',()=>{
+ assert.match(ui,/if\(destruido\|\|solicitud!==solicitudPerfil\|\|clienteConsultado!==state\.clienteId\)/);
+ assert.match(ui,/if\(!destruido && revision===revisionEnviada && operacionConfirmacion===operacionEnviada\)/);
+ assert.match(ui,/if\(!destruido\)crearCliente\.disabled=false/);
+ assert.match(ui,/if\(!destruido\)guardar\.disabled=false/);
+ assert.match(ui,/if\(!destruido\)cargarDetalle\.disabled=false/);
+});
