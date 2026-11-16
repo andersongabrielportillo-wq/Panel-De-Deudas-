@@ -39,7 +39,10 @@ function createDebtModuleController({gate,load,show,hide,disconnect,hasPending,c
   await gate.lock();return true;
  }
  async function logout(){invalidate();gate.reset();await disconnect()}
- return Object.freeze({open,verify,lock,logout,state:()=>phase});
+ // A new login may begin while a stale unlock promise is unresolved; old replies
+ // are ignored by epoch checks, but cannot be allowed to reopen the module.
+ function cancel(){invalidate();gate.reset()}
+ return Object.freeze({open,verify,lock,logout,cancel,state:()=>phase});
 }
 const api=Object.freeze({createDebtModuleController});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
