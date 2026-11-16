@@ -37,7 +37,8 @@ BEGIN
  ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
  IF length(pg_catalog.btrim(coalesce(p_nombre,''))) NOT BETWEEN 2 AND 200 THEN RAISE EXCEPTION 'Nombre inválido'; END IF;
  IF p_dui IS NOT NULL AND pg_catalog.btrim(p_dui)<>'' AND
-    pg_catalog.btrim(p_dui) !~ '^[0-9]{9}$|^[0-9]{8}-[0-9]
+    pg_catalog.btrim(p_dui) !~ '^[0-9]{9}$|^[0-9]{8}-[0-9]$' THEN
+   RAISE EXCEPTION 'DUI inválido'; END IF;
  v_dui:=NULLIF(pg_catalog.regexp_replace(coalesce(p_dui,''),'[^0-9]','','g'),'');
  IF v_dui IS NOT NULL THEN
    IF length(v_dui)<>9 THEN RAISE EXCEPTION 'DUI inválido'; END IF;
