@@ -6,9 +6,11 @@ on:
     paths:
       - 'prototipos/contratos-api.js'
       - 'prototipos/contratos-ui-conectada.js'
+      - 'prototipos/contratos-montaje-staging.js'
       - 'tests/contratos-api.test.mjs'
       - 'tests/migraciones-estructura.test.mjs'
       - 'tests/contratos-ui-estructura.test.mjs'
+      - 'tests/contratos-montaje-staging.test.mjs'
       - 'tests/contratos-seguridad-estatica.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
@@ -16,9 +18,11 @@ on:
     paths:
       - 'prototipos/contratos-api.js'
       - 'prototipos/contratos-ui-conectada.js'
+      - 'prototipos/contratos-montaje-staging.js'
       - 'tests/contratos-api.test.mjs'
       - 'tests/migraciones-estructura.test.mjs'
       - 'tests/contratos-ui-estructura.test.mjs'
+      - 'tests/contratos-montaje-staging.test.mjs'
       - 'tests/contratos-seguridad-estatica.test.mjs'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/pruebas-contratos.yml'
@@ -37,9 +41,11 @@ jobs:
         run: |
           node --experimental-default-type=module --check prototipos/contratos-api.js
           node --experimental-default-type=module --check prototipos/contratos-ui-conectada.js
+          node --experimental-default-type=module --check prototipos/contratos-montaje-staging.js
           node --check tests/contratos-api.test.mjs
           node --check tests/migraciones-estructura.test.mjs
           node --check tests/contratos-ui-estructura.test.mjs
-          node --check tests/contratos-seguridad-estatica.test.mjs
+          node --check tests/contratos-montaje-staging.test.mjs
+          node --check tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs
       - name: Ejecutar pruebas unitarias sin credenciales
         run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs
