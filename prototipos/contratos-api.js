@@ -58,6 +58,21 @@ export function crearServicioContratos(supabase) {
         p_observaciones:c.observaciones||null
       });
     },
+    confirmarContrato:(contratoId,ubicaciones,operacionId)=>{
+      if(!contratoId||!operacionId||!Array.isArray(ubicaciones)||ubicaciones.length===0)
+        throw new Error('Faltan datos para confirmar el contrato');
+      const ids=new Set();
+      for(const linea of ubicaciones){
+        if(!linea.detalleId||ids.has(linea.detalleId)||![1,2].includes(Number(linea.ubicacionId)))
+          throw new Error('Ubicaciones o líneas de contrato inválidas');
+        ids.add(linea.detalleId);
+      }
+      return rpc('inv_confirmar_contrato',{
+        p_contrato_id:contratoId,
+        p_ubicaciones:ubicaciones.map(x=>({detalle_id:x.detalleId,location_id:Number(x.ubicacionId)})),
+        p_client_op_id:operacionId
+      });
+    },
     marcarPrimaRecibida:(contratoId,observaciones)=>rpc('inv_marcar_prima_recibida',{
       p_contrato_id:contratoId,p_observaciones:observaciones
     }),
