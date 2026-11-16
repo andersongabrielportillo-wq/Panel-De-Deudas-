@@ -237,3 +237,18 @@ test('no envía más de cien ubicaciones al confirmar',()=>{
  assert.throws(()=>api.confirmarContrato('contrato',ubicaciones,'op'),/Máximo 100/);
  assert.equal(m.calls.length,0);
 });
+
+test('prima recibida requiere booleano real',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const primaRecibida of ['false','true',1,0,null])
+  assert.throws(()=>api.crearContratoBorrador({...base,primaRecibida}),/Estado de prima/);
+ assert.equal(m.calls.length,0);
+});
+test('comisiones booleanas no se convierten a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const comision of [false,true]){
+  assert.throws(()=>api.crearContratoBorrador({...base,comision}),/Importe/);
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],comision}]}),/Importe/);
+ }
+ assert.equal(m.calls.length,0);
+});
