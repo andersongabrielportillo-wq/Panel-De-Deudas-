@@ -54,3 +54,17 @@ test('confirma visualmente el cliente creado y seleccionado',()=>{
  assert.match(ui,/state\.clienteId=clienteNuevo/);
  assert.match(ui,/return 'Cliente creado y seleccionado: '/);
 });
+
+test('invalida revisiones de contratos cambiados durante la consulta',()=>{
+ assert.match(ui,/let revisionSolicitud=0/);
+ assert.match(ui,/revisionSolicitud\+\+;invalidarRevision\(\)/);
+ assert.match(ui,/solicitud!==revisionSolicitud \|\| confirmarId\.value\.trim\(\)!==contratoId/);
+ assert.match(ui,/cargarDetalle\.disabled=true/);
+ assert.match(ui,/finally \{cargarDetalle\.disabled=false;\}/);
+});
+test('evita dar de alta dos veces al mismo cliente por doble clic',()=>{
+ assert.match(ui,/let creandoCliente=false/);
+ assert.match(ui,/if\(creandoCliente\)throw new Error/);
+ assert.match(ui,/creandoCliente=true;crearCliente\.disabled=true/);
+ assert.match(ui,/finally \{creandoCliente=false;crearCliente\.disabled=false;\}/);
+});
