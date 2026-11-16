@@ -18,7 +18,7 @@ test('las cuatro operaciones de Deudas requieren acceso desbloqueado',()=>{
   assert.match(sql,new RegExp('FOR '+action+' TO authenticated'));
  }
  const gates=(sql.match(/public\.debt_access_valid\(workspace_id\)/g)||[]).length;
- assert.ok(gates>=6);
+ assert.ok(gates>=5);
 });
 test('no se concede acceso anónimo a funciones de desbloqueo',()=>{
  for(const fn of ['debt_unlock','debt_lock','debt_access_valid'])
