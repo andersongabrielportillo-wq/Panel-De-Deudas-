@@ -51,7 +51,11 @@ export function iniciarContratosDemo({supabase,root}) {
   }
   confirmarId.addEventListener('input',()=>{revisionSolicitud++;invalidarRevision();});
   let revisionSolicitud=0;
+  let revisionEnCurso=false;
   cargarDetalle.onclick=()=>tarea(async()=>{
+    if(revisionEnCurso)throw new Error('La revisión ya está en curso');
+    revisionEnCurso=true;
+    try {
     invalidarRevision();
     const solicitud=++revisionSolicitud;
     const contratoId=confirmarId.value.trim();
@@ -101,6 +105,7 @@ export function iniciarContratosDemo({supabase,root}) {
     if(!operacionConfirmacion)throw new Error('Este navegador no admite identificadores seguros');
     confirmarVenta.disabled=false;
     return 'Revisa las ubicaciones antes de confirmar la venta';
+    } finally {revisionEnCurso=false;}
   });
   confirmarVenta.onclick=()=>tarea(async()=>{
     if(!revision||revision.id!==confirmarId.value.trim()||!operacionConfirmacion)
