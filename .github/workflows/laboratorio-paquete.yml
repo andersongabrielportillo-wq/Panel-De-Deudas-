@@ -1,0 +1,31 @@
+name: Laboratorio aislado - paquete descargable
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'laboratorio/**'
+      - 'tests/laboratorio-aislamiento.test.mjs'
+      - '.github/workflows/laboratorio-paquete.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  laboratorio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar aislamiento del laboratorio
+        run: node --test tests/laboratorio-aislamiento.test.mjs
+      - name: Empaquetar HTML sin credenciales
+        run: |
+          mkdir -p dist/laboratorio
+          cp laboratorio/index.html dist/laboratorio/index.html
+      - name: Subir artefacto descargable sin publicar web
+        uses: actions/upload-artifact@v4
+        with:
+          name: laboratorio-pwa-sin-datos
+          path: dist/laboratorio/
+          retention-days: 14
