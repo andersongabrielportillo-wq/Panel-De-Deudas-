@@ -153,7 +153,8 @@ test('registro manual de vendedores comienza sin precarga de inventario',()=>{
  assert.match(q,/REVOKE ALL ON public\.inv_vendedores_manual FROM anon,authenticated/);
  assert.match(q,/CREATE OR REPLACE FUNCTION public\.inv_catalogo_vendedores_manual\(\)/);
  assert.match(q,/CREATE OR REPLACE FUNCTION public\.inv_crear_vendedor_manual\(p_nombre text\)/);
- assert.equal((q.match(/rol IN \('admin','secretaria'\)/g)||[]).length,2);
+ assert.equal((q.match(/rol IN \('admin','secretaria'\)/g)||[]).length,1);
+ assert.match(q,/WHERE m\.user_id=auth\.uid\(\) AND m\.rol='admin'/);
  assert.doesNotMatch(q,/\b(?:FROM|JOIN|INSERT INTO|UPDATE|DELETE FROM)\s+public\.inv_items\b/i);
  assert.doesNotMatch(q,/\b(?:FROM|JOIN|UPDATE|DELETE FROM)\s+public\.inv_vendedores\s/i);
  assert.match(q,/id uuid PRIMARY KEY REFERENCES public\.inv_vendedores\(id\) ON DELETE RESTRICT/);
