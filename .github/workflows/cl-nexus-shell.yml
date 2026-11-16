@@ -1,0 +1,27 @@
+name: CL Nexus shell - validacion estatica
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'index.html'
+      - 'cl-nexus-shell.js'
+      - 'tests/cl-nexus-shell.test.mjs'
+      - '.github/workflows/cl-nexus-shell.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'cl-nexus-shell.js'
+      - 'tests/cl-nexus-shell.test.mjs'
+      - '.github/workflows/cl-nexus-shell.yml'
+permissions:
+  contents: read
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check cl-nexus-shell.js
+      - run: node --test tests/cl-nexus-shell.test.mjs
