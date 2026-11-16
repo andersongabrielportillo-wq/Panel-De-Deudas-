@@ -30,6 +30,15 @@ jobs:
         run: |
           mkdir -p dist
           cp laboratorio/conectado-lectura.html dist/index.html
+      - name: Empaquetar staging aislado
+        run: |
+          mkdir -p dist-staging
+          cp staging/index.html dist-staging/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-cl-nexus-ficticio
+          path: dist-staging/index.html
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: laboratorio-conectado-lectura
