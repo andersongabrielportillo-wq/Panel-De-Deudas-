@@ -1,6 +1,6 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v3-cln-preparacion';
-const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-shell.js', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'panel-de-deudas-shell-v4-debt-gate-preparacion';
+const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-shell.js', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
 self.addEventListener('install', event => {
