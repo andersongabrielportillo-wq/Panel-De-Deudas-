@@ -15,6 +15,7 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
   if(montajes.has(contenedor))throw new Error('Contratos ya montados en este contenedor');
   // Se reserva antes de cualquier await para impedir doble montaje por clics rápidos.
   montajes.set(contenedor,true);
+  let cancelado=false;
   try {
     const {data,error}=await supabase.auth.getUser();
     if(error || !data?.user?.id)throw new Error('Inicia sesión para acceder a contratos');
@@ -25,12 +26,40 @@ export async function montarContratosEnStaging({supabase,contenedor}={}) {
     const {data:sesionFinal,error:errorFinal}=await supabase.auth.getUser();
     if(errorFinal || !sesionFinal?.user?.id || sesionFinal.user.id!==usuarioInicial)
       throw new Error('La sesión cambió durante la verificación; vuelve a ingresar');
+    if(cancelado)throw new Error('Montaje cancelado');
     // No crear interfaz si la comprobación de permisos falla.
     const controlador=iniciarContratosDemo({supabase,root:contenedor});
-    montajes.set(contenedor,controlador);
+    const registro={controlador,supabase,usuarioInicial,cancelar:null};
+    const cancelar=()=>{
+      if(cancelado)return;
+      cancelado=true;
+      registro.suscripcion?.unsubscribe?.();
+      controlador.destruir?.();
+      contenedor.replaceChildren();
+      if(montajes.get(contenedor)===registro)montajes.delete(contenedor);
+    };
+    registro.cancelar=cancelar;
+    montajes.set(contenedor,registro);
+    if(typeof supabase.auth.onAuthStateChange==='function'){
+      const {data:escucha,error:errorEscucha}=supabase.auth.onAuthStateChange((_evento,sesion)=>{
+        if(!sesion?.user?.id || sesion.user.id!==usuarioInicial)cancelar();
+      });
+      if(errorEscucha){cancelar();throw errorEscucha;}
+      registro.suscripcion=escucha?.subscription;
+      if(cancelado)registro.suscripcion?.unsubscribe?.();
+    }
     return controlador;
   }catch(e){
     montajes.delete(contenedor);
     throw e;
   }
+}
+
+/** Desmonta la interfaz sin cerrar la sesión global del anfitrión. */
+export function desmontarContratosEnStaging(contenedor){
+ const registro=montajes.get(contenedor);
+ if(!registro)return false;
+ if(registro===true)throw new Error('La verificación de acceso sigue en curso');
+ registro.cancelar();
+ return true;
 }
