@@ -21,6 +21,7 @@ DECLARE
  v_cantidad_lineas int;
  v_existing_venta uuid;
  v_total numeric := 0;
+ v_prima numeric;
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS (
   SELECT 1 FROM public.inv_members m
@@ -71,9 +72,13 @@ BEGIN
      )
    );
  END LOOP;
+ SELECT p.monto INTO v_prima FROM public.inv_contrato_primas p
+ WHERE p.contrato_id=p_contrato_id;
+ IF v_prima IS NULL THEN RAISE EXCEPTION 'El contrato no tiene prima registrada'; END IF;
+ IF v_prima>v_total THEN RAISE EXCEPTION 'La prima supera el total del contrato'; END IF;
  IF v_contrato.saldo_inicial IS NOT NULL
-   AND v_contrato.saldo_inicial>v_total THEN
-   RAISE EXCEPTION 'Saldo inicial supera el valor del contrato'; END IF;
+   AND v_contrato.saldo_inicial<>v_total-v_prima THEN
+   RAISE EXCEPTION 'El saldo inicial no coincide con total menos prima'; END IF;
  -- Serializa también operaciones con el mismo ID, incluso de contratos distintos.
  PERFORM pg_catalog.pg_advisory_xact_lock(
    pg_catalog.hashtextextended(p_client_op_id::text,0)
