@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs';
 // controlador visual para no requerir DOM ni tocar servicios reales.
 const fuente=readFileSync(new URL('../prototipos/contratos-montaje-staging.js',import.meta.url),'utf8')
   .replace("import {iniciarContratosDemo} from './contratos-ui-conectada.js';",
-    "const iniciarContratosDemo=globalThis.__montajeContratosPrueba;");
+    "const iniciarContratosDemo=(args)=>globalThis.__montajeContratosPrueba(args);");
 const modulo=await import('data:text/javascript;base64,'+Buffer.from(fuente).toString('base64'));
 const contenedor=()=>({replaceChildren(){}});
 const usuario=id=>({data:{user:{id}},error:null});
