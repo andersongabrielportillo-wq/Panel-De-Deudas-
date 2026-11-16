@@ -32,9 +32,19 @@ export function crearNavegadorContratosPWA({supabase,contenedor,mostrarModuloExt
     throw e;
    }
   }
-  // Nunca concede acceso a Deudas: el anfitrión debe verificarlo en backend.
+  // La ruta externa no se abre sin sesión. El anfitrión aplica sus propios permisos backend.
+  const {data:inicio,error:errorInicio}=await supabase.auth.getUser();
+  if(destruido||solicitud!==revision)return false;
+  if(errorInicio||!inicio?.user?.id)throw new Error('Inicia sesión antes de abrir el módulo');
+  const usuario=inicio.user.id;
   await mostrarModuloExterno(modulo,{supabase});
   if(destruido||solicitud!==revision)return false;
+  const {data:final,error:errorFinal}=await supabase.auth.getUser();
+  if(destruido||solicitud!==revision)return false;
+  if(errorFinal||final?.user?.id!==usuario){
+   // El anfitrión debe limpiar su módulo externo al cambiar de usuario.
+   throw new Error('La sesión cambió durante la navegación; vuelve a ingresar');
+  }
   actual=modulo;
   return true;
  }
