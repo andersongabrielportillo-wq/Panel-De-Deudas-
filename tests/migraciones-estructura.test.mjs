@@ -28,7 +28,7 @@ test('15J valida cantidades antes de convertir a integer',()=>{
 });
 test('15Q exige prima y saldo consistentes antes de registrar venta',()=>{
  const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
- const prima=sql.indexOf("IF v_prima>v_total");
+ const prima=sql.indexOf("IF v_prima<0 OR v_prima>v_total");
  const saldo=sql.indexOf("v_contrato.saldo_inicial<>v_total-v_prima");
  const venta=sql.indexOf("v_venta_id:=public.inv_registrar_venta");
  assert.ok(prima>=0 && saldo>prima && venta>saldo);
