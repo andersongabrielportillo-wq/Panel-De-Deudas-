@@ -23,6 +23,8 @@ export function crearServicioContratos(supabase) {
     catalogoVendedores:()=>rpc('inv_catalogo_vendedores',{}),
     catalogoArticulos:()=>rpc('inv_catalogo_articulos_contratos',{}),
     fichaCliente:clienteId=>rpc('inv_ficha_cliente',{p_cliente_id:clienteId}),
+    historialCliente:clienteId=>rpc('inv_historial_cliente',{p_cliente_id:clienteId}),
+    detalleContrato:contratoId=>rpc('inv_detalle_contrato',{p_contrato_id:contratoId}),
     crearCliente: c=>rpc('inv_crear_cliente',{
       p_nombre:c.nombre,p_dui:c.dui?limpiarDui(c.dui):null,
       p_direccion:c.direccion||null,p_ubicacion:c.ubicacion||null,
