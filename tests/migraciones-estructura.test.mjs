@@ -33,3 +33,10 @@ test('15Q exige prima y saldo consistentes antes de registrar venta',()=>{
  const venta=sql.indexOf("v_venta_id:=public.inv_registrar_venta");
  assert.ok(prima>=0 && saldo>prima && venta>saldo);
 });
+
+test('15Q reintento de contrato confirmado exige el mismo ID de operación',()=>{
+ const sql=readFileSync(new URL('../migrations/20261115_fase15q_confirmar_contrato.sql',import.meta.url),'utf8');
+ assert.match(sql,/v\.id=v_contrato\.venta_id AND v\.client_op_id=p_client_op_id/);
+ assert.match(sql,/Contrato ya confirmado con otra operación/);
+ assert.match(sql,/IF v_contrato\.estado='confirmado' THEN[\s\S]*?RETURN v_contrato\.venta_id;/);
+});
