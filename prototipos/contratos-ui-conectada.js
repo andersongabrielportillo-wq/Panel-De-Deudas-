@@ -68,13 +68,13 @@ export function iniciarContratosDemo({supabase,root}) {
   async function cargarCatalogos(){
     // Solo campos mínimos: no mostrar DUI ni otros datos personales.
     const [v,i]=await Promise.all([
-      supabase.from('inv_vendedores').select('id,nombre').eq('activo',true).order('nombre').limit(200),
-      supabase.from('inv_items').select('id,nombre_original').eq('estado','activo').order('nombre_original').limit(500)
+      supabase.rpc('inv_catalogo_vendedores'),
+      supabase.rpc('inv_catalogo_articulos_contratos')
     ]);
     if(v.error)throw v.error;if(i.error)throw i.error;
     vendedor.replaceChildren();item.replaceChildren();
     for(const x of v.data||[])opcion(vendedor,x.id,x.nombre);
-    for(const x of i.data||[])opcion(item,x.id,x.nombre_original);
+    for(const x of i.data||[])opcion(item,x.id,x.nombre);
   }
   buscar.onclick=()=>tarea(async()=>{
     const rows=await api.buscarClientes(busqueda.value);
