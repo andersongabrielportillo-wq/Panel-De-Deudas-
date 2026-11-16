@@ -15,7 +15,7 @@ export function crearServicioContratos(supabase) {
   const limpiarDui = valor => String(valor||'').replace(/\D/g,'');
   const dinero = valor => {
     const n=Number(valor);
-    if(!Number.isFinite(n)||n<0||Math.abs(n*100-Math.round(n*100))>1e-7) throw new Error('Importe monetario inválido');
+    if(!Number.isFinite(n)||n<0||n>999999999999.99||Math.abs(n*100-Math.round(n*100))>1e-7) throw new Error('Importe monetario inválido');
     return Math.round(n*100)/100;
   };
   return Object.freeze({
@@ -37,9 +37,18 @@ export function crearServicioContratos(supabase) {
     }),
     crearContratoBorrador: c=>{
       if(!Array.isArray(c.articulos)||c.articulos.length===0) throw new Error('Agrega artículos');
+      if(c.articulos.length>100) throw new Error('Máximo 100 artículos por contrato');
+      let total=0;
       for(const a of c.articulos){
-        if(!Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0) throw new Error('Cantidad de artículo inválida');
+        if(!Number.isSafeInteger(Number(a.cantidad)) || Number(a.cantidad)<=0 || Number(a.cantidad)>999999999)
+          throw new Error('Cantidad de artículo inválida');
+        total+=Number(a.cantidad)*dinero(a.precio);
+        if(total>999999999999.99)throw new Error('Total del contrato fuera de rango');
       }
+      const prima=dinero(c.prima??0);
+      if(prima>total+1e-7)throw new Error('La prima supera el total del contrato');
+      if(c.saldoInicial!=null && c.saldoInicial!=='' && Math.abs(dinero(c.saldoInicial)-(total-prima))>1e-7)
+        throw new Error('Saldo inicial no coincide con total menos prima');
       return rpc('inv_crear_contrato_borrador',{
         p_numero:c.numero,p_cliente_id:c.clienteId,p_vendedor_id:c.vendedorId,
         p_fecha:c.fecha,p_modalidad:c.modalidad||'credito',
@@ -48,7 +57,7 @@ export function crearServicioContratos(supabase) {
         p_saldo_inicial:c.saldoInicial==null?null:dinero(c.saldoInicial),
         p_fecha_plan:c.fechaPlan||null,p_ruta:c.ruta||null,
         p_dia_cobro:c.diaCobro||null,p_receptor_alterno:c.receptorAlterno||null,
-        p_comision:dinero(c.comision||0),p_prima:dinero(c.prima||0),
+        p_comision:dinero(c.comision||0),p_prima:prima,
         p_prima_recibida:!!c.primaRecibida,
         p_detalles:c.articulos.map(a=>({
           item_id:a.itemId,cantidad:Number(a.cantidad),
