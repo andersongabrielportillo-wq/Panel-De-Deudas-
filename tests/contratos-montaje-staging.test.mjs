@@ -15,7 +15,7 @@ test('montaje comprueba permiso RPC antes de crear interfaz',()=>{
 });
 test('montaje evita dobles clics y limpia reserva en caso de error',()=>{
  assert.match(codigo,/const montajes=new WeakMap\(\)/);
- assert.match(codigo,/montajes\.set\(contenedor,true\)/);
+ assert.match(codigo,/montajes\.set\(contenedor,pendiente\)/);
  assert.match(codigo,/montajes\.delete\(contenedor\)/);
 });
 test('montaje no contiene credenciales incrustadas',()=>{
