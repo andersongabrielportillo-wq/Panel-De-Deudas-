@@ -91,3 +91,15 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico.sql
       - name: Verificar multibodega, secretaria y vendedor inactivo en motor original
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico_multibodega.sql
+      - name: Confirmaciones simultaneas reales en dos sesiones PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_preparar.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_confirmar.sql > /tmp/ci-confirmacion-1.log 2>&1 &
+          p1=$!
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_confirmar.sql > /tmp/ci-confirmacion-2.log 2>&1 &
+          p2=$!
+          wait "$p1"
+          wait "$p2"
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_verificar.sql
