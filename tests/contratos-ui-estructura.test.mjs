@@ -97,3 +97,11 @@ test('impide revisiones concurrentes del mismo formulario',()=>{
  assert.match(ui,/revisionEnCurso=true/);
  assert.match(ui,/finally \{revisionEnCurso=false;\}/);
 });
+
+test('catalogo vacio no rompe la pantalla al agregar articulo',()=>{
+ assert.match(ui,/if\(!selected\)\{estado\.textContent='Selecciona un artículo del catálogo';return;\}/);
+});
+test('quitar articulo no elimina otra linea si ya fue removido',()=>{
+ assert.match(ui,/const indice=state\.items\.indexOf\(line\)/);
+ assert.match(ui,/if\(indice!==-1\)state\.items\.splice\(indice,1\)/);
+});
