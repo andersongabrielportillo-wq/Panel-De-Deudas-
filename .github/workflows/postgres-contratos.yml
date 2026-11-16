@@ -45,3 +45,5 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/aplicar_migraciones.sql
       - name: Validar vendedores manuales y permisos con PostgreSQL real
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
+      - name: Validar clientes y contratos borrador sin descontar stock
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
