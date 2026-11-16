@@ -200,10 +200,16 @@ export function iniciarContratosDemo({supabase,root}) {
   const histLista=el('div');histBox.append(verHistorial,histLista);
   root.append(estado);
 
+  let tareaActual=0;
   async function tarea(fn){
+    const solicitud=++tareaActual;
     estado.textContent='Procesando…';
-    try{const mensaje=await fn();estado.textContent=mensaje||'Operación completada.'}
-    catch(e){estado.textContent='Error: '+(e?.message||String(e))}
+    try{
+      const mensaje=await fn();
+      if(solicitud===tareaActual)estado.textContent=mensaje||'Operación completada.';
+    }catch(e){
+      if(solicitud===tareaActual)estado.textContent='Error: '+(e?.message||String(e));
+    }
   }
   function opcion(select,value,label){select.append(el('option',{value},label))}
   async function cargarCatalogos(){
@@ -327,8 +333,15 @@ export function iniciarContratosDemo({supabase,root}) {
     return 'Borrador creado: '+id+' · Puedes revisarlo para confirmar';
     } finally {guardandoBorrador=false;guardar.disabled=false;}
   });
+  let solicitudHistorial=0;
+  vendedor.addEventListener('change',()=>{solicitudHistorial++;histLista.replaceChildren();});
   verHistorial.onclick=()=>tarea(async()=>{
-    const rows=await api.historialVendedor(vendedor.value);
+    if(!vendedor.value)throw new Error('Selecciona un vendedor');
+    const solicitud=++solicitudHistorial;
+    const vendedorConsultado=vendedor.value;
+    const rows=await api.historialVendedor(vendedorConsultado);
+    if(solicitud!==solicitudHistorial||vendedorConsultado!==vendedor.value)
+      return 'Cambió el vendedor; consulta el historial de nuevo';
     histLista.replaceChildren();
     for(const r of rows||[]){
       histLista.append(el('p',{},[r.numero,r.fecha,r.cliente_nombre,r.estado,
