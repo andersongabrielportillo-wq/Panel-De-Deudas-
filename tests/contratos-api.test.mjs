@@ -1,4 +1,4 @@
-// Pruebas aisladas: node --test tests/contratos-api.test.mjs
+// Pruebas aisladas: node --experimental-default-type=module --test tests/contratos-api.test.mjs
 // No necesitan Supabase ni credenciales; solo verifican argumentos y errores.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +31,7 @@ test('acepta importes válidos con decimales',async()=>{
 test('rechaza cantidades fraccionarias o negativas',async()=>{
  const m=clienteMock(),api=crearServicioContratos(m.client);
  for(const cantidad of [0,-1,1.5,'abc']){
-  await assert.rejects(()=>api.crearContratoBorrador({
+  assert.throws(()=>api.crearContratoBorrador({
    ...base,articulos:[{...base.articulos[0],cantidad}]
   }),/Cantidad/);
  }
@@ -40,7 +40,7 @@ test('rechaza cantidades fraccionarias o negativas',async()=>{
 test('rechaza importes negativos y con más de dos decimales',async()=>{
  const m=clienteMock(),api=crearServicioContratos(m.client);
  for(const prima of ['-1','1.234']){
-  await assert.rejects(()=>api.crearContratoBorrador({...base,prima}),/Importe/);
+  assert.throws(()=>api.crearContratoBorrador({...base,prima}),/Importe/);
  }
  assert.equal(m.calls.length,0);
 });
