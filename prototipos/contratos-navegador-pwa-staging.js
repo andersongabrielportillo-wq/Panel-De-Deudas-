@@ -23,10 +23,7 @@ export function crearNavegadorContratosPWA({supabase,contenedor,mostrarModuloExt
   if(modulo==='contratos'){
    try{
     await montarContratosEnStaging({supabase,contenedor});
-    if(destruido||solicitud!==revision){
-     limpiar();
-     return false;
-    }
+    if(destruido||solicitud!==revision)return false;
     actual='contratos';
     return true;
    }catch(e){
