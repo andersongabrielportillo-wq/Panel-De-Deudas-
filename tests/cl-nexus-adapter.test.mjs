@@ -5,6 +5,6 @@ const require=createRequire(import.meta.url);
 const {makeAdapter}=require('../cl-nexus-adapter.cjs');
 test('adapter fails closed without explicit enable',async()=>{const a=makeAdapter({client:{rpc:()=>{throw Error('should not call')}}});await assert.rejects(a.inventario(),/no habilitada/)});
 test('allowlisted inventory RPC uses sandbox argument',async()=>{let call;const a=makeAdapter({client:{rpc:async(...args)=>{call=args;return {data:[],error:null}}},enabled:true});await a.inventario();assert.deepEqual(call,['cl2_sandbox_list',{p_module:'inventario'}])});
-test('rejects invalid client IDs before RPC',async()=>{const a=makeAdapter({client:{rpc:async()=>({data:[],error:null})},enabled:true});await assert.rejects(a.ficha('bad'),/inválido/)});
+test('rejects invalid client IDs before RPC',async()=>{const a=makeAdapter({client:{rpc:async()=>({data:[],error:null})},enabled:true});assert.throws(()=>a.ficha('bad'),/inválido/)});
 test('discards late results after session closes',async()=>{let finish;const a=makeAdapter({client:{rpc:()=>new Promise(resolve=>{finish=resolve})},enabled:true});const pending=a.vendedores();a.disable();finish({data:['secret'],error:null});await assert.rejects(pending,/descartado/)});
-test('rejects unrecognized RPC methods',async()=>{const a=makeAdapter({client:{rpc:async()=>({data:[],error:null})},enabled:true});await assert.rejects(a.clientes('ab'),/Búsqueda/)});
+test('rejects unrecognized RPC methods',async()=>{const a=makeAdapter({client:{rpc:async()=>({data:[],error:null})},enabled:true});assert.throws(()=>a.clientes('ab'),/Búsqueda/)});
