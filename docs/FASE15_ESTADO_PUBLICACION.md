@@ -19,6 +19,13 @@ Integración de contratos, clientes, referencias, vendedores, primas y ventas de
 - Seis migraciones SQL preparadas (15I/J/K/N/P/Q), **no aplicadas**. Tablas y RPC nuevos no instalados en el proyecto de pruebas al momento de la revisión.
 - La rama de integración no es la rama de producción.
 
+
+## Auditoría adicional de roles y dependencias (solo lectura)
+- En el proyecto de inventario de pruebas, el conteo actual de membresías por rol es **admin: 4, secretaria: 1, empleado: 0**. No se consultaron identidades ni se modificaron miembros. Por lo tanto, **no se puede declarar aprobada una prueba JWT real del rol empleado** hasta preparar un usuario ficticio en una base aislada.
+- Las RPC existentes `inv_registrar_venta`, `inv_registrar_movimiento` e `inv_anular_venta` conceden EXECUTE a `authenticated`, no a `anon`, y son SECURITY DEFINER. Esto **no prueba** que el control de rol interno sea correcto; hace falta probar JWT y acceso directo.
+- Firma real de `inv_registrar_venta`: `(uuid,text,jsonb,numeric,text,uuid) RETURNS uuid`, compatible en tipos y orden con la llamada de 15Q. Su ejecución transaccional aún no ha sido probada con las nuevas tablas.
+- Auditoría reproducible: `tests/15ab_preflight_roles_y_rpc_solo_lectura.sql`.
+
 ## Puertas obligatorias antes de publicar
 - [x] GitHub Actions / Node 22: ejecuciones #184 y #187 aprobadas; la #187 incluye las 110 pruebas preparadas.
 - [ ] PostgreSQL aislado con copia anonimizada o datos ficticios: aplicar migraciones 15I/J/K/N/P/Q en orden, registrar resultados y comprobar reversibilidad. Ejecutar luego tests/15x_verificacion_postmigracion_solo_lectura.sql para auditar RLS, permisos y funciones.
