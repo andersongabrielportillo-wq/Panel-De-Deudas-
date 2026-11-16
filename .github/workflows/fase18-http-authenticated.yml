@@ -5,6 +5,7 @@ on:
     branches: [integracion-inventario-fase15]
     paths:
       - "tests/fase18-http-authenticated.test.mjs"
+      # Revalidación controlada después de configurar secretos de laboratorio
       - ".github/workflows/fase18-http-authenticated.yml"
 permissions:
   contents: read
