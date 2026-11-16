@@ -86,3 +86,18 @@ test('confirmaciÃ³n usa la RPC existente y conserva el identificador de operaciÃ
  assert.match(q,/p_client_op_id\s*\n\s*\);/);
  assert.match(q,/pg_advisory_xact_lock/);
 });
+
+test('registrar prima bloquea primero el contrato y rechaza anulados',()=>{
+ const q=readFileSync(new URL('../migrations/20261115_fase15j_contratos_rpc.sql',import.meta.url),'utf8');
+ const inicio=q.indexOf('CREATE OR REPLACE FUNCTION public.inv_marcar_prima_recibida(');
+ const fin=q.indexOf('END $$;',inicio);
+ const fn=q.slice(inicio,fin);
+ assert.ok(inicio>=0 && fin>inicio);
+ const lockContrato=fn.indexOf('FROM public.inv_contratos');
+ const lockPrima=fn.indexOf('FROM public.inv_contrato_primas');
+ assert.ok(lockContrato>=0 && lockPrima>lockContrato,'Bloquear contrato antes que prima');
+ assert.match(fn,/v_contrato_estado='anulado'/);
+ assert.match(fn,/No se puede recibir prima de un contrato anulado/);
+ assert.match(fn,/WHERE id=p_contrato_id FOR UPDATE/);
+ assert.match(fn,/WHERE contrato_id=p_contrato_id FOR UPDATE/);
+});
