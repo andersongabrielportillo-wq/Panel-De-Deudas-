@@ -6,6 +6,8 @@ DECLARE
  v uuid; c uuid; i uuid; k uuid;
 BEGIN
  PERFORM pg_catalog.set_config('request.jwt.claim.sub',a::text,true);
+ -- Restaurar vendedor FICTICIO desactivado por la prueba anterior.
+ UPDATE public.inv_vendedores_manual SET activo=true WHERE activo=false;
  SELECT id INTO v FROM public.inv_vendedores_manual WHERE activo=true LIMIT 1;
  SELECT id INTO c FROM public.inv_clientes LIMIT 1;
  INSERT INTO public.inv_items(nombre_original,categoria) VALUES('Articulo concurrencia ficticio','Ficticio') RETURNING id INTO i;
