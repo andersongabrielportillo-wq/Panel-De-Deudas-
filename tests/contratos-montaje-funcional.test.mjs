@@ -126,3 +126,23 @@ test('cancelar durante getUser evita consultar RPC y montar',async()=>{
  assert.equal(consultas,0);
  assert.equal(montajes,0);
 });
+
+test('cancelacion antigua no borra reserva de un montaje nuevo',async()=>{
+ let liberar,primeraLectura=true;
+ const espera=new Promise(resolve=>{liberar=resolve});
+ let montajes=0;
+ globalThis.__montajeContratosPrueba=()=>{montajes++;return {destruir(){}}};
+ const root=contenedor();
+ const supabase={auth:{getUser:async()=>{
+  if(primeraLectura){primeraLectura=false;await espera}
+  return usuario('u1');
+ }},rpc:async()=>({data:[],error:null})};
+ const antiguo=modulo.montarContratosEnStaging({supabase,contenedor:root});
+ assert.equal(modulo.desmontarContratosEnStaging(root),true);
+ const nuevo=modulo.montarContratosEnStaging({supabase,contenedor:root});
+ await nuevo;
+ liberar();
+ await assert.rejects(antiguo,/Montaje cancelado/);
+ assert.equal(montajes,1);
+ assert.equal(modulo.desmontarContratosEnStaging(root),true);
+});
