@@ -112,3 +112,17 @@ test('error de observador de sesión destruye controlador y libera contenedor',a
  assert.equal(limpiezas,1);
  assert.equal(modulo.desmontarContratosEnStaging(root),false);
 });
+
+test('cancelar durante getUser evita consultar RPC y montar',async()=>{
+ let liberar,consultas=0,montajes=0;
+ const espera=new Promise(resolve=>{liberar=resolve});
+ globalThis.__montajeContratosPrueba=()=>{montajes++;return {}};
+ const root=contenedor();
+ const supabase={auth:{getUser:async()=>{await espera;return usuario('u1')}},rpc:async()=>{consultas++;return {data:[],error:null}}};
+ const intento=modulo.montarContratosEnStaging({supabase,contenedor:root});
+ assert.equal(modulo.desmontarContratosEnStaging(root),true);
+ liberar();
+ await assert.rejects(intento,/Montaje cancelado/);
+ assert.equal(consultas,0);
+ assert.equal(montajes,0);
+});
