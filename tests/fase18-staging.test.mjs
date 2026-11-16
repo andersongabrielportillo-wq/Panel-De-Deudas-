@@ -4,3 +4,5 @@ test('staging renueva JWT de pruebas y no persiste tokens',()=>{assert.match(htm
 test('las respuestas tardías no restauran datos tras logout',()=>{assert.match(html,/ticket===seq&&session===s/);assert.match(html,/seq\+\+;session=null/)});
 
 test('consultas de inventario se cancelan al cambiar modulo o cerrar sesión',()=>{assert.match(html,/new AbortController\(\)/);assert.match(html,/signal:controller\.signal/);assert.match(html,/activeRequest\.abort\(\)/);assert.match(html,/if\(e\.name==="AbortError"\)return/)});
+
+test('contratos solo lee catálogos protegidos, sin escribir contratos',()=>{assert.match(html,/inv_catalogo_vendedores/);assert.match(html,/inv_catalogo_articulos_contratos/);assert.match(html,/Contratos: catálogos protegidos en solo lectura/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/);assert.doesNotMatch(html,/rpc\/(?:inv_registrar_venta|inv_marcar_prima_recibida)/)});
