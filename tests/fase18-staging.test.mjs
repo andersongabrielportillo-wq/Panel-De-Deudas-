@@ -13,3 +13,6 @@ test('el umbral de búsqueda coincide con la validación SQL (3 caracteres)',()=
 
 test('cambio de módulo cancela solicitud y desbloquea nueva lectura',()=>{assert.match(html,/requestedView=view/);assert.match(html,/view===requestedView/);assert.match(html,/activeRequest\.abort\(\);activeRequest=null;busy=false/);assert.match(html,/if\(activeRequest===controller\)\{busy=false;activeRequest=null\}/)});
 test('login no cancela su propia lectura inicial',()=>{assert.match(html,/stop\(\);show\("inventario"\);timer=setInterval\(load,5000\)/);assert.doesNotMatch(html,/show\("inventario"\);stop\(\)/)});
+
+test('login tardío no reabre sesión después de invalidación',()=>{assert.match(html,/loginEpoch=\+\+authEpoch/);assert.match(html,/if\(loginEpoch!==authEpoch\)return/);assert.match(html,/authEpoch\+\+;stop\(\);seq\+\+;session=null/)});
+test('búsqueda reemplazada no muestra respuesta anterior',()=>{assert.match(html,/view==="contratos"&&clientRequest===controller/);assert.match(html,/session===s&&clientRequest===controller/)});
