@@ -150,7 +150,7 @@ CREATE OR REPLACE FUNCTION public.inv_marcar_prima_recibida(p_contrato_id uuid,p
 RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $$
-DECLARE v_prima uuid;v_estado text;v_contrato_estado text;
+DECLARE v_prima uuid;v_estado text;v_contrato_estado text;v_venta_id uuid;
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS (
  SELECT 1 FROM public.inv_members WHERE user_id=auth.uid() AND rol IN ('admin','secretaria')
@@ -158,11 +158,15 @@ BEGIN
  IF NULLIF(pg_catalog.btrim(coalesce(p_observaciones,'')),'') IS NULL THEN RAISE EXCEPTION 'Indica cómo se entregó la prima'; END IF;
  -- Mismo orden de bloqueo que inv_confirmar_contrato: contrato antes de prima.
  -- Impide marcar una prima después de anular el contrato y evita carreras.
- SELECT estado INTO v_contrato_estado FROM public.inv_contratos
+ SELECT estado,venta_id INTO v_contrato_estado,v_venta_id FROM public.inv_contratos
  WHERE id=p_contrato_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Contrato no encontrado'; END IF;
  IF v_contrato_estado='anulado' THEN
    RAISE EXCEPTION 'No se puede recibir prima de un contrato anulado'; END IF;
+ IF v_venta_id IS NOT NULL AND EXISTS (
+   SELECT 1 FROM public.inv_ventas v
+   WHERE v.id=v_venta_id AND v.anulada_en IS NOT NULL
+ ) THEN RAISE EXCEPTION 'La venta asociada fue anulada; revisar prima'; END IF;
  SELECT id,estado INTO v_prima,v_estado FROM public.inv_contrato_primas
  WHERE contrato_id=p_contrato_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Prima no encontrada'; END IF;
