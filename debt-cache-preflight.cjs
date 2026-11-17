@@ -14,6 +14,8 @@ function inspectDebtCache(storage){
   legacyPlaintextKeys:Object.freeze(present),
   hasLegacyPlaintext:present.length>0,
   hasPendingChanges:pending,
+  hasUnknownPendingMarker:unknown,
+  inaccessibleKeys:Object.freeze(errors),
   storageAccessible:errors.length===0&&!unknown,
   safeToPurge:false, // Never infer that sync completed from cp_pend alone.
   requiresMigration:present.length>0||pending||errors.length>0||unknown
