@@ -19,5 +19,8 @@ jobs:
         run: |
           node --check debt-legacy-backup.cjs
           node --check debt-encrypted-backup.cjs
+          node --check debt-cache-preflight.cjs
+          node --check debt-gate-client.cjs
+          node --check debt-module-controller.cjs
       - name: Run debt backup tests
-        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs
+        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
