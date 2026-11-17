@@ -3,7 +3,7 @@
 const KEYS=Object.freeze(['cp_v2','cp_v2_bak','cp_v2_corrupt','cp_prev','cp_items','cp_pend']);
 function capture(storage){
  if(!storage||typeof storage.getItem!=='function')throw Error('Almacenamiento inválido');
- const entries={};
+ const entries=Object.create(null);
  for(const key of KEYS){
   const value=storage.getItem(key);
   if(value!==null){if(typeof value!=='string')throw Error('Dato local inválido');entries[key]=value}
@@ -13,7 +13,7 @@ function capture(storage){
 function validate(backup){
  if(!backup||backup.format!=='debt-legacy-backup-v1'||!backup.entries||typeof backup.entries!=='object'||Array.isArray(backup.entries))throw Error('Respaldo inválido');
  for(const key of Object.keys(backup.entries)){
-  if(!KEYS.includes(key)||typeof backup.entries[key]!=='string')throw Error('Entrada de respaldo inválida');
+  if(!KEYS.includes(key)||!Object.prototype.hasOwnProperty.call(backup.entries,key)||typeof backup.entries[key]!=='string')throw Error('Entrada de respaldo inválida');
  }
  return true;
 }
@@ -24,7 +24,7 @@ function restoreEmpty(storage,backup){
  // Preflight ALL keys before writing ANY: never overwrite local edits.
  for(const key of keys)if(storage.getItem(key)!==null)throw Error('Restauración detenida: existen datos locales');
  const written=[];
- try{for(const key of keys){storage.setItem(key,backup.entries[key]);written.push(key)}}
+ try{for(const key of keys){storage.setItem(key,backup.entries[key]);written.push(key);if(storage.getItem(key)!==backup.entries[key])throw Error('No se pudo verificar la restauración')}}
  catch(err){
   // Best effort rollback of newly created entries only. Never touch preexisting data.
   if(typeof storage.removeItem==='function')for(const key of written.reverse())try{if(storage.getItem(key)===backup.entries[key])storage.removeItem(key)}catch(_){}
