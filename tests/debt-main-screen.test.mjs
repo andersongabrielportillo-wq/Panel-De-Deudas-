@@ -82,3 +82,15 @@ test('verificación de respaldo no modifica almacenamiento local',()=>{
  assert.ok(!handler.includes('localStorage.removeItem('));
  assert.ok(handler.includes('file.size>20*1024*1024'));
 });
+
+test('fallo de carga protegida desconecta Realtime y limpia estado en memoria',()=>{
+ const start=html.indexOf('async function connectDebtData(reveal=true)');
+ const end=html.indexOf('async function connectCloud()',start);
+ const flow=html.slice(start,end);
+ assert.ok(flow.includes('}catch(error){'));
+ assert.ok(flow.includes('if(DEBT_GATE_ENABLED){'));
+ assert.ok(flow.includes('await disconnectDebtChannel()'));
+ assert.ok(flow.includes('hidePrivate()'));
+ assert.ok(flow.includes('debtScreenVisible(true,'));
+ assert.ok(flow.includes('throw error;'));
+});
