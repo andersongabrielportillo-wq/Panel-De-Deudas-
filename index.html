@@ -710,6 +710,7 @@ async function disconnectDebtChannel(){
 }
 async function connectDebtData(reveal=true){
  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))throw Error("Acceso a Deudas no confirmado por el servidor");
+ try{
  if(!APP_READY)loadPrivate();
  SY.doc={set:cloudSet};
  const first=await cloudSnapshot();
@@ -722,6 +723,14 @@ async function connectDebtData(reveal=true){
   try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}
  }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
  if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
+ }catch(error){
+  if(DEBT_GATE_ENABLED){
+   await disconnectDebtChannel();
+   hidePrivate();
+   debtScreenVisible(true,"No se pudo verificar Deudas. Vuelve a desbloquear.");
+  }
+  throw error;
+ }
 }
 async function connectCloud(){
  const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
