@@ -41,3 +41,14 @@ test('vistas de hub solo muestran interfaz informativa sin operaciones reales',(
  assert.ok(html.includes('Consultas y operaciones desactivadas hasta verificar los permisos'));
  assert.ok(html.includes('clnHubDetail.replaceChildren()'));
 });
+
+test('volver a módulos limpia contraseña sin leer Deudas',()=>{
+ assert.ok(html.includes('id="debtUnlockBack"'));
+ assert.ok(html.includes('document.getElementById("debtUnlockPassword").value="";showModuleHub(true)'));
+});
+test('logout desde hub respeta marca persistente de cambios offline',()=>{
+ assert.ok(html.includes('const offlinePending=SY.pend||lsGet("cp_pend")==="1"'));
+ assert.ok(html.includes('if(offlinePending&&!confirm('));
+ assert.ok(html.includes('const pending=offlinePending;'));
+ assert.ok(html.includes('if(!pending){["cp_v2"'));
+});
