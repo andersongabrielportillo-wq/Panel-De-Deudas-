@@ -20,4 +20,4 @@ jobs:
           node --check debt-legacy-backup.cjs
           node --check debt-encrypted-backup.cjs
       - name: Run debt backup tests
-        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-main-screen.test.mjs
+        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs
