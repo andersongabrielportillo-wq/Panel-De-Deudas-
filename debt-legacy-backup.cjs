@@ -12,6 +12,7 @@ function capture(storage){
 }
 function validate(backup){
  if(!backup||backup.format!=='debt-legacy-backup-v1'||!backup.entries||typeof backup.entries!=='object'||Array.isArray(backup.entries))throw Error('Respaldo inválido');
+ if(Object.prototype.hasOwnProperty.call(backup.entries,'cp_pend')&&!['0','1'].includes(backup.entries.cp_pend))throw Error('Marcador de cambios pendientes desconocido');
  for(const key of Object.keys(backup.entries)){
   if(!KEYS.includes(key)||!Object.prototype.hasOwnProperty.call(backup.entries,key)||typeof backup.entries[key]!=='string')throw Error('Entrada de respaldo inválida');
  }
