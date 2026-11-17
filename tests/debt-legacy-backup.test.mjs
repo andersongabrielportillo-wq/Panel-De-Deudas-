@@ -32,3 +32,16 @@ test('un error de escritura no deja restauración parcial cuando hay removeItem'
  assert.throws(()=>restoreEmpty(target,backup),/sin espacio/);
  assert.deepEqual(target.data,{});
 });
+
+test('revierte incluso cuando setItem escribe y luego falla',()=>{
+ const target=store(),backup=capture(store({cp_v2:'datos',cp_pend:'1'}));
+ const set=target.setItem;target.setItem=(k,v)=>{set(k,v);if(k==='cp_pend')throw Error('escritura interrumpida')};
+ assert.throws(()=>restoreEmpty(target,backup),/escritura interrumpida/);
+ assert.deepEqual(target.data,{});
+});
+test('detecta cuando almacenamiento ignora silenciosamente una escritura',()=>{
+ const target=store(),backup=capture(store({cp_v2:'datos'}));
+ target.setItem=()=>{};
+ assert.throws(()=>restoreEmpty(target,backup),/verificar la restauración/);
+ assert.deepEqual(target.data,{});
+});
