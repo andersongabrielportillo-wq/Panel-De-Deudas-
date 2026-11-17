@@ -101,6 +101,8 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <script src="./debt-gate-client.cjs"></script>
 <script src="./debt-module-controller.cjs"></script>
 <script src="./debt-cache-preflight.cjs"></script>
+<script src="./debt-legacy-backup.cjs"></script>
+<script src="./debt-encrypted-backup.cjs"></script>
 <div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
 <div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
@@ -662,7 +664,7 @@ S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=!DEBT_GATE_ENABLED;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -743,6 +745,33 @@ async function connectCloud(){
  });
  showModuleHub(true);
 }
+// Manual encrypted backup: available only after server-verified Deudas access.
+const debtBackupButton=document.createElement("button");
+debtBackupButton.type="button";debtBackupButton.className="g2";
+debtBackupButton.textContent="Exportar respaldo cifrado de Deudas";
+debtBackupButton.hidden=true;
+document.getElementById("privateApp").querySelector("header").append(debtBackupButton);
+debtBackupButton.onclick=async()=>{
+ if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify()){toast("Autoriza Deudas antes de exportar",1);return}
+ if(!window.DebtLegacyBackup||!window.DebtEncryptedBackup){toast("Respaldo no disponible",1);return}
+ const pass=prompt("Frase de respaldo (mínimo 12 caracteres). No la guardamos. Si la pierdes, no podrás recuperar el archivo.");
+ if(pass===null)return;
+ if(pass.length<12){toast("La frase debe tener al menos 12 caracteres",1);return}
+ debtBackupButton.disabled=true;
+ try{
+  const backup=window.DebtLegacyBackup.capture(localStorage);
+  const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
+  if(!await debtController.verify())throw Error("La autorización expiró antes de exportar");
+  const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="deudas-respaldo-cifrado-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast("Respaldo cifrado preparado. Guárdalo fuera de este dispositivo.");
+ }catch(e){toast("No se pudo exportar: "+(e.message||e),1)}
+ finally{debtBackupButton.disabled=false}
+};
+
 document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true);
 document.getElementById("clnHubLogout").onclick=()=>document.getElementById("debtUnlockLogout").click();
 // CL Nexus stays independent from Deudas. A separate authenticated view
