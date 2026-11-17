@@ -24,7 +24,7 @@ function restoreEmpty(storage,backup){
  // Preflight ALL keys before writing ANY: never overwrite local edits.
  for(const key of keys)if(storage.getItem(key)!==null)throw Error('Restauración detenida: existen datos locales');
  const written=[];
- try{for(const key of keys){storage.setItem(key,backup.entries[key]);written.push(key);if(storage.getItem(key)!==backup.entries[key])throw Error('No se pudo verificar la restauración')}}
+ try{for(const key of keys){written.push(key);storage.setItem(key,backup.entries[key]);if(storage.getItem(key)!==backup.entries[key])throw Error('No se pudo verificar la restauración')}}
  catch(err){
   // Best effort rollback of newly created entries only. Never touch preexisting data.
   if(typeof storage.removeItem==='function')for(const key of written.reverse())try{if(storage.getItem(key)===backup.entries[key])storage.removeItem(key)}catch(_){}
