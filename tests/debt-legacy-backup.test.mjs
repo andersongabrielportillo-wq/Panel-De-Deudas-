@@ -45,3 +45,12 @@ test('detecta cuando almacenamiento ignora silenciosamente una escritura',()=>{
  assert.throws(()=>restoreEmpty(target,backup),/verificar la restauración/);
  assert.deepEqual(target.data,{});
 });
+
+test('rechaza marcadores ambiguos de sincronización sin perder origen',()=>{
+ for(const marker of ['true','pendiente','2','']){
+  const source=store({cp_v2:'datos',cp_pend:marker});
+  const backup=capture(source);
+  assert.throws(()=>validate(backup),/Marcador/);
+  assert.deepEqual(source.data,{cp_v2:'datos',cp_pend:marker});
+ }
+});
