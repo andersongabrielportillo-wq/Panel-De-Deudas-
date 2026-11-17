@@ -42,3 +42,23 @@ test('indicador cero reconocido no implica por sí solo migración',()=>{
  assert.equal(r.hasPendingChanges,false);
  assert.equal(r.requiresMigration,false);
 });
+
+test('diagnóstico distingue marcador desconocido sin modificar almacenamiento',()=>{
+ const {inspectDebtCache}=require('../debt-cache-preflight.cjs');
+ const data={cp_v2:'datos',cp_pend:'desconocido'};
+ const storage={getItem:k=>Object.hasOwn(data,k)?data[k]:null};
+ const result=inspectDebtCache(storage);
+ assert.equal(result.hasUnknownPendingMarker,true);
+ assert.equal(result.storageAccessible,false);
+ assert.equal(result.requiresMigration,true);
+ assert.deepEqual(result.inaccessibleKeys,[]);
+ assert.deepEqual(data,{cp_v2:'datos',cp_pend:'desconocido'});
+});
+test('diagnóstico identifica claves inaccesibles sin purgar caché',()=>{
+ const {inspectDebtCache}=require('../debt-cache-preflight.cjs');
+ const storage={getItem:k=>{if(k==='cp_v2')throw Error('denegado');return null}};
+ const result=inspectDebtCache(storage);
+ assert.deepEqual(result.inaccessibleKeys,['cp_v2']);
+ assert.equal(result.safeToPurge,false);
+ assert.equal(result.storageAccessible,false);
+});
