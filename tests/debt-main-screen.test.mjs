@@ -94,3 +94,12 @@ test('fallo de carga protegida desconecta Realtime y limpia estado en memoria',(
  assert.ok(flow.includes('debtScreenVisible(true,'));
  assert.ok(flow.includes('throw error;'));
 });
+
+test('respuesta tardía de sincronización no borra pendientes después de bloqueo',()=>{
+ const start=html.indexOf('async function push()');
+ const end=html.indexOf('function uiRefresh()',start);
+ const flow=html.slice(start,end);
+ assert.ok(flow.includes('const activeState=S,sg=sig(S),rev=S.rev'));
+ assert.ok(flow.includes('if(DEBT_GATE_ENABLED&&(!APP_READY||S!==activeState||!debtGate||!debtGate.isUnlocked()))return'));
+ assert.ok(flow.indexOf('S!==activeState')<flow.indexOf('lsDel("cp_pend")'));
+});
