@@ -371,6 +371,7 @@ function save(){
 function schedulePush(ms){clearTimeout(SY.timer);if(!SY.doc)return;SY.timer=setTimeout(push,ms)}
 async function push(){
   if(!SY.doc||SY.pushing||!SY.pend)return;
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())){sv("Deudas bloqueadas: no se enviarán cambios pendientes",1);return}
   if(typeof navigator!=="undefined"&&navigator.onLine===false){sv("⚠ Sin conexión: cambios guardados aquí, pendientes de sincronizar",1);return}
   SY.pushing=true;const sg=sig(S),rev=S.rev;sv("Sincronizando…");
   try{
@@ -659,11 +660,11 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 // Los datos privados se cargan y renderizan solo después de autorizar la sesión.
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
-function loadPrivate(){S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
+function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
 function showPrivate(){document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
-window.addEventListener("storage",e=>{if(!APP_READY||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
+window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
 window.addEventListener("online",()=>{SY.fail=0;if(SY.pend)push();else if(SY.doc)sv("Sincronizado "+hm())});
 window.addEventListener("offline",()=>sv("⚠ Sin conexión: los cambios se guardan aquí y se enviarán al reconectar",1));
