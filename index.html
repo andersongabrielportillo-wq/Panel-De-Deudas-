@@ -787,7 +787,8 @@ document.getElementById("authLogin").onclick=async()=>{const email=document.getE
 document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("authLogin").click()});
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
-  const cacheAudit=window.DebtCachePreflight?.inspectDebtCache(localStorage);
+  let cacheAudit=null;
+  try{cacheAudit=window.DebtCachePreflight?.inspectDebtCache(localStorage)||null}catch(_){cacheAudit=null}
   const offlinePending=SY.pend||!cacheAudit||!cacheAudit.storageAccessible||cacheAudit.hasPendingChanges;
   if(offlinePending&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
   if(debtController){debtController.cancel();debtController=null}debtGate=null;showModuleHub(false);debtScreenVisible(false);
