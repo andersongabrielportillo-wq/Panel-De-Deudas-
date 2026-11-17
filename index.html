@@ -725,7 +725,7 @@ async function connectDebtData(reveal=true){
  if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
  }catch(error){
   if(DEBT_GATE_ENABLED){
-   await disconnectDebtChannel();
+   try{await disconnectDebtChannel()}catch(_){SY.doc=null;clearTimeout(SY.timer)}
    hidePrivate();
    debtScreenVisible(true,"No se pudo verificar Deudas. Vuelve a desbloquear.");
   }
