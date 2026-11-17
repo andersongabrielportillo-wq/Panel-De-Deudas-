@@ -9,7 +9,7 @@ function inspectDebtCache(storage){
   catch(_){errors.push(key)}
  }
  let pending=false,unknown=false;
- try{pending=storage.getItem('cp_pend')==='1'}catch(_){unknown=true}
+ try{const marker=storage.getItem('cp_pend');pending=marker==='1';if(marker!==null&&marker!=='0'&&marker!=='1')unknown=true}catch(_){unknown=true}
  return Object.freeze({
   legacyPlaintextKeys:Object.freeze(present),
   hasLegacyPlaintext:present.length>0,
