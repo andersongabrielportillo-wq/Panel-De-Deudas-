@@ -69,3 +69,16 @@ test('respaldo cifrado solo se ofrece en la vista de Deudas protegida',()=>{
  assert.ok(html.includes('DebtLegacyBackup.capture(localStorage)'));
  assert.ok(html.includes('DebtEncryptedBackup.encryptBackup(backup,pass)'));
 });
+
+test('verificación de respaldo no modifica almacenamiento local',()=>{
+ assert.ok(html.includes('debtRecoveryButton.textContent="Verificar respaldo cifrado (sin restaurar)"'));
+ const start=html.indexOf('debtRecoveryInput.onchange=async()=>');
+ const end=html.indexOf('document.getElementById("clnHubDebts").onclick',start);
+ assert.ok(start>0&&end>start);
+ const handler=html.slice(start,end);
+ assert.ok(handler.includes('DebtEncryptedBackup.decryptBackup(envelope,pass)'));
+ assert.ok(!handler.includes('restoreEmpty('));
+ assert.ok(!handler.includes('localStorage.setItem('));
+ assert.ok(!handler.includes('localStorage.removeItem('));
+ assert.ok(handler.includes('file.size>20*1024*1024'));
+});
