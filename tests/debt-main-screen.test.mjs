@@ -60,3 +60,12 @@ test('caché heredada y cambios offline se bloquean cuando Deudas exige autoriza
  assert.match(html,/async function push\(\)\{[\s\S]*?if\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)/);
  assert.match(html,/window\.addEventListener\("storage",e=>\{if\(!APP_READY\|\|\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!debtGate\.isUnlocked\(\)\)\)/);
 });
+
+test('respaldo cifrado solo se ofrece en la vista de Deudas protegida',()=>{
+ assert.ok(html.includes('<script src="./debt-legacy-backup.cjs"></script>'));
+ assert.ok(html.includes('<script src="./debt-encrypted-backup.cjs"></script>'));
+ assert.ok(html.includes('debtBackupButton.hidden=!DEBT_GATE_ENABLED'));
+ assert.ok(html.includes('!await debtController.verify()'));
+ assert.ok(html.includes('DebtLegacyBackup.capture(localStorage)'));
+ assert.ok(html.includes('DebtEncryptedBackup.encryptBackup(backup,pass)'));
+});
