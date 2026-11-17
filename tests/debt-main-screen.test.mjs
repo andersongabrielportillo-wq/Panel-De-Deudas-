@@ -40,3 +40,17 @@ test('consultas y escrituras cloud requieren autorización al habilitar gate',()
  assert.match(html,/async function cloudSet\(payload\)\{\s*if\(DEBT_GATE_ENABLED/);
  assert.ok(html.includes('debtGate.isUnlocked()'));
 });
+
+test('el flujo protegido verifica al servidor antes de cargar caché y después de recibir nube',()=>{
+ const start=html.indexOf('async function connectDebtData(reveal=true)');
+ const end=html.indexOf('async function connectCloud()',start);
+ assert.ok(start>=0&&end>start);
+ const flow=html.slice(start,end);
+ const verify=flow.indexOf('await debtController.verify()');
+ const load=flow.indexOf('loadPrivate()');
+ const snapshot=flow.indexOf('await cloudSnapshot()');
+ const reverify=flow.indexOf('await debtController.verify()',verify+1);
+ const apply=flow.indexOf('onRemote(first)');
+ assert.ok(verify>=0&&verify<load,'verificar antes de leer caché');
+ assert.ok(snapshot>load&&reverify>snapshot&&reverify<apply,'revalidar antes de aplicar nube');
+});
