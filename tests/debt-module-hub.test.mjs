@@ -47,8 +47,9 @@ test('volver a módulos limpia contraseña sin leer Deudas',()=>{
  assert.ok(html.includes('document.getElementById("debtUnlockPassword").value="";showModuleHub(true)'));
 });
 test('logout desde hub respeta marca persistente de cambios offline',()=>{
- assert.ok(html.includes('const offlinePending=SY.pend||lsGet("cp_pend")==="1"'));
+ assert.ok(html.includes('const cacheAudit=window.DebtCachePreflight?.inspectDebtCache(localStorage)'));
+ assert.ok(html.includes('const offlinePending=SY.pend||!cacheAudit||!cacheAudit.storageAccessible||cacheAudit.hasPendingChanges'));
  assert.ok(html.includes('if(offlinePending&&!confirm('));
  assert.ok(html.includes('const pending=offlinePending;'));
- assert.ok(html.includes('if(!pending){["cp_v2"'));
+ assert.ok(html.includes('if(!pending&&cacheAudit&&cacheAudit.storageAccessible){["cp_v2"'));
 });
