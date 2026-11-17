@@ -54,3 +54,9 @@ test('el flujo protegido verifica al servidor antes de cargar caché y después 
  assert.ok(verify>=0&&verify<load,'verificar antes de leer caché');
  assert.ok(snapshot>load&&reverify>snapshot&&reverify<apply,'revalidar antes de aplicar nube');
 });
+
+test('caché heredada y cambios offline se bloquean cuando Deudas exige autorización',()=>{
+ assert.match(html,/function loadPrivate\(\)\{if\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!debtGate\.isUnlocked\(\)\)\)throw Error/);
+ assert.match(html,/async function push\(\)\{[\s\S]*?if\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)/);
+ assert.match(html,/window\.addEventListener\("storage",e=>\{if\(!APP_READY\|\|\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!debtGate\.isUnlocked\(\)\)\)/);
+});
