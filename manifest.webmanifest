@@ -1,7 +1,7 @@
 {
-  "name": "Panel de Deudas",
-  "short_name": "Deudas",
-  "description": "Panel personal para control de deudas, pagos y vencimientos.",
+  "name": "Comercial López 2",
+  "short_name": "Comercial López 2",
+  "description": "Gestión administrativa de Comercial López 2: deudas, inventario y operaciones.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
