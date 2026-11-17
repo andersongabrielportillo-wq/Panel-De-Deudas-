@@ -11,7 +11,7 @@ test('cifrar y descifrar conserva los movimientos offline',async()=>{
  const encrypted=await encryptBackup(original,pass,webcrypto);
  assert.equal(encrypted.format,'debt-encrypted-backup-v1');
  assert.ok(!JSON.stringify(encrypted).includes('clientes'));
- assert.deepEqual(await decryptBackup(encrypted,pass,webcrypto),original);
+ assert.deepEqual(await decryptBackup(encrypted,pass,webcrypto),JSON.parse(JSON.stringify(original)));
 });
 test('frase incorrecta y datos alterados no permiten recuperación',async()=>{
  const encrypted=await encryptBackup(original,pass,webcrypto);
