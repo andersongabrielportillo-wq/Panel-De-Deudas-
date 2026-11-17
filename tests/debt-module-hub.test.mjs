@@ -14,7 +14,7 @@ test('hub ofrece módulos independientes con botón de acceso a Deudas',()=>{
  assert.ok(html.includes('document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true)'));
 });
 test('hub no accede a caché ni realiza consultas de deudas',()=>{
- const start=html.indexOf('for(const [id,label] of [["clnHubInventory"');
+ const start=html.indexOf('function openIndependentModule(id)');
  const end=html.indexOf('document.getElementById("debtUnlockButton")',start);
  const handler=html.slice(start,end);
  assert.ok(start>0&&end>start);
