@@ -26,3 +26,18 @@ test('hub solo se habilitará al activar gate con migración coordinada',()=>{
  assert.ok(html.includes('if(!DEBT_GATE_ENABLED){await connectDebtData();return}'));
  assert.ok(html.includes('showModuleHub(true)'));
 });
+
+test('vistas independientes tienen secciones reales de interfaz sin consultar Deudas',()=>{
+ assert.ok(html.includes('id="clnHubDetail"'));
+ assert.ok(html.includes('function openIndependentModule(id)'));
+ const start=html.indexOf('function openIndependentModule(id)');
+ const end=html.indexOf('document.getElementById("debtUnlockButton")',start);
+ const code=html.slice(start,end);
+ for(const forbidden of ['loadPrivate(', 'cloudSnapshot(', 'cloudSet(', 'localStorage', 'SB.from(', 'SB.rpc('])
+  assert.equal(code.includes(forbidden),false,forbidden);
+ assert.ok(code.includes('if(!config||!SB_UID||!DEBT_GATE_ENABLED)return'));
+});
+test('vistas de hub solo muestran interfaz informativa sin operaciones reales',()=>{
+ assert.ok(html.includes('Consultas y operaciones desactivadas hasta verificar los permisos'));
+ assert.ok(html.includes('clnHubDetail.replaceChildren()'));
+});
