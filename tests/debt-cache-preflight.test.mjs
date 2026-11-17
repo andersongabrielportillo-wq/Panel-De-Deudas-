@@ -27,3 +27,18 @@ test('inspección nunca elimina ni modifica almacenamiento',()=>{
  let reads=0;const store={getItem(){reads++;return null},removeItem(){throw Error('NO BORRAR')},setItem(){throw Error('NO ESCRIBIR')}};
  inspectDebtCache(store);assert.ok(reads>0);
 });
+
+test('indicadores offline desconocidos requieren migración y revisión',()=>{
+ for(const marker of ['pendiente','true','2','']){
+  const r=inspectDebtCache(storage({cp_pend:marker}));
+  assert.equal(r.storageAccessible,false);
+  assert.equal(r.requiresMigration,true);
+  assert.equal(r.safeToPurge,false);
+ }
+});
+test('indicador cero reconocido no implica por sí solo migración',()=>{
+ const r=inspectDebtCache(storage({cp_pend:'0'}));
+ assert.equal(r.storageAccessible,true);
+ assert.equal(r.hasPendingChanges,false);
+ assert.equal(r.requiresMigration,false);
+});
