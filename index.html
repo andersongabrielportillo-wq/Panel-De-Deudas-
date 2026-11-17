@@ -664,7 +664,7 @@ S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=!DEBT_GATE_ENABLED;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=!DEBT_GATE_ENABLED;debtRecoveryButton.hidden=!DEBT_GATE_ENABLED;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -772,6 +772,36 @@ debtBackupButton.onclick=async()=>{
  finally{debtBackupButton.disabled=false}
 };
 
+// Recovery preview is deliberately read-only: never import into a live synced session.
+const debtRecoveryInput=document.createElement("input");
+debtRecoveryInput.type="file";debtRecoveryInput.accept=".json,application/json";debtRecoveryInput.hidden=true;
+const debtRecoveryButton=document.createElement("button");
+debtRecoveryButton.type="button";debtRecoveryButton.className="g2";
+debtRecoveryButton.textContent="Verificar respaldo cifrado (sin restaurar)";
+debtRecoveryButton.hidden=true;
+document.getElementById("privateApp").querySelector("header").append(debtRecoveryButton,debtRecoveryInput);
+debtRecoveryButton.onclick=async()=>{
+ if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify()){toast("Autoriza Deudas antes de revisar respaldos",1);return}
+ debtRecoveryInput.value="";debtRecoveryInput.click();
+};
+debtRecoveryInput.onchange=async()=>{
+ const file=debtRecoveryInput.files&&debtRecoveryInput.files[0];
+ if(!file)return;
+ if(file.size>20*1024*1024){toast("Archivo demasiado grande para verificar",1);return}
+ if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify())return;
+ const pass=prompt("Frase del respaldo cifrado (solo para verificar; no se restaurarán datos)");
+ if(pass===null)return;
+ debtRecoveryButton.disabled=true;
+ try{
+  const envelope=JSON.parse(await file.text());
+  const backup=await window.DebtEncryptedBackup.decryptBackup(envelope,pass);
+  if(!await debtController.verify())throw Error("Autorización caducada");
+  const keys=Object.keys(backup.entries);
+  const pending=backup.entries.cp_pend==="1";
+  alert("Respaldo válido. Claves presentes: "+keys.length+". Indicador de cambios pendientes: "+(pending?"SÍ":"no confirmado")+". No se ha restaurado ni modificado ningún dato.");
+ }catch(e){toast("No se pudo verificar el respaldo: "+(e.message||e),1)}
+ finally{debtRecoveryButton.disabled=false;debtRecoveryInput.value=""}
+};
 document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true);
 document.getElementById("clnHubLogout").onclick=()=>document.getElementById("debtUnlockLogout").click();
 // CL Nexus stays independent from Deudas. A separate authenticated view
