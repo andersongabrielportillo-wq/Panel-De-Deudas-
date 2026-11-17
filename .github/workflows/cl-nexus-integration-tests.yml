@@ -1,0 +1,23 @@
+name: CL Nexus integration tests
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check debt-legacy-backup.cjs
+          node --check debt-encrypted-backup.cjs
+      - name: Run debt backup tests
+        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-main-screen.test.mjs
