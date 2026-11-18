@@ -774,7 +774,7 @@ document.getElementById("privateApp").querySelector("header").append(debtBackupB
 debtBackupButton.onclick=async()=>{
  if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))){toast("Inicia sesión y autoriza Deudas antes de exportar",1);return}
  if(!window.DebtLegacyBackup||!window.DebtEncryptedBackup){toast("Respaldo no disponible",1);return}
- const pass=prompt("Frase de respaldo (mínimo 12 caracteres). No la guardamos. Si la pierdes, no podrás recuperar el archivo.");
+ const pass=prompt("Respaldo SOLO de los datos locales de este navegador; NO sustituye una copia de la nube. Frase de respaldo (mínimo 12 caracteres). No la guardamos. Si la pierdes, no podrás recuperar el archivo.");
  if(pass===null)return;
  if(pass.length<12){toast("La frase debe tener al menos 12 caracteres",1);return}
  debtBackupButton.disabled=true;
@@ -787,7 +787,7 @@ debtBackupButton.onclick=async()=>{
   const a=document.createElement("a");a.href=url;a.download="deudas-respaldo-cifrado-"+new Date().toISOString().slice(0,10)+".json";
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
-  toast("Respaldo cifrado preparado. Guárdalo fuera de este dispositivo.");
+  toast("Respaldo LOCAL cifrado preparado. Comprueba el archivo descargado con Verificar respaldo; conserva otra copia de la nube.");
  }catch(e){toast("No se pudo exportar: "+(e.message||e),1)}
  finally{debtBackupButton.disabled=false}
 };
