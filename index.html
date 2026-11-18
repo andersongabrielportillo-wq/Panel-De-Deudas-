@@ -1106,6 +1106,35 @@ async function openIndependentModule(id){
     finally{customerButton.disabled=false}
    };
    clnHubDetail.append(customerForm);
+   const confirmForm=document.createElement("form");
+   const confirmHeading=document.createElement("h4");confirmHeading.textContent="Confirmar contrato borrador";
+   const draftId=document.createElement("input");draftId.required=true;draftId.placeholder="ID del contrato borrador (UUID)";draftId.setAttribute("aria-label","ID de contrato");
+   const allocation=document.createElement("textarea");allocation.required=true;allocation.placeholder='Ubicaciones JSON, ejemplo: [{"item_id":"UUID","location_id":1,"cantidad":1}]';allocation.setAttribute("aria-label","Asignaciones de inventario JSON");
+   const confirmButton=document.createElement("button");confirmButton.type="submit";confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
+   confirmForm.append(confirmHeading,draftId,allocation,confirmButton);
+   let pendingContractOp=null,pendingContractPayload=null;
+   confirmForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    let allocations;
+    try{allocations=JSON.parse(allocation.value)}catch{status.textContent="JSON de ubicaciones inválido.";return}
+    if(!Array.isArray(allocations)||!allocations.length||allocations.some(line=>!line||typeof line!=="object"||!line.item_id||![1,2].includes(Number(line.location_id))||!Number.isInteger(Number(line.cantidad))||Number(line.cantidad)<=0)){status.textContent="Cada línea requiere artículo, ubicación 1/2 y cantidad positiva.";return}
+    const payload=JSON.stringify({contract:draftId.value.trim(),allocations});
+    if(pendingContractOp&&pendingContractPayload!==payload){status.textContent="Existe una confirmación anterior sin verificar. Comprueba su resultado antes de cambiar datos.";return}
+    if(!confirm("¿Confirmar contrato? El servidor validará y descontará las existencias."))return;
+    if(!pendingContractOp){pendingContractOp=crypto.randomUUID();pendingContractPayload=payload}
+    confirmButton.disabled=true;status.textContent="Confirmando contrato…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("confirmContract",{p_contrato_id:draftId.value.trim(),p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Contrato confirmado por el servidor: "+String(result);
+     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación incierta: verifica el contrato antes de reintentar. Operación "+pendingContractOp+". "+e.message}
+    finally{confirmButton.disabled=false}
+   };
+   clnHubDetail.append(confirmForm);
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
