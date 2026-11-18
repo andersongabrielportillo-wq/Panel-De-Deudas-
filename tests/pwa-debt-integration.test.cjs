@@ -58,3 +58,13 @@ test('encrypted pre-cutover backup is available to signed-in users without enabl
  assert.match(html,/window\.DebtEncryptedBackup\.encryptBackup\(backup,pass\)/);
  assert.match(html,/Verificar respaldo cifrado \(sin restaurar\)/);
 });
+
+test('pre-cutover encrypted backup verification does not require an uninitialized gate controller',()=>{
+ const start=html.indexOf('debtRecoveryInput.onchange=async()=>');
+ const end=html.indexOf('document.getElementById("clnHubDebts").onclick',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ assert.match(body,/DebtEncryptedBackup\.decryptBackup\(envelope,pass\)/);
+ assert.match(body,/if\(!APP_READY\|\|!SB_UID\|\|\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)\)throw Error\("Autorización caducada"\)/);
+ assert.doesNotMatch(body,/if\(!await debtController\.verify\(\)\)throw Error\("Autorización caducada"\)/);
+});
