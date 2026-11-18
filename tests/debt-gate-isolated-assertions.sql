@@ -44,6 +44,7 @@ BEGIN
  PERFORM set_config('request.jwt.claims','{"session_id":"00000000-0000-0000-0000-000000000003"}',false);
  IF public.debt_access_valid(w) IS DISTINCT FROM false
  THEN RAISE EXCEPTION 'No provisioned secret must deny access'; END IF;
+ RAISE NOTICE 'diagnostic uid=%, session=%, member=%',auth.uid(),auth.jwt()->>'session_id',public.is_workspace_member(w);
  exp:=public.debt_unlock(w,'synthetic-password');
  IF exp IS NOT NULL THEN RAISE EXCEPTION 'Missing secret must not unlock'; END IF;
  IF public.debt_access_valid(w) IS DISTINCT FROM false
