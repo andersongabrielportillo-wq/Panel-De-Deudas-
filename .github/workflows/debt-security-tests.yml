@@ -11,6 +11,7 @@ on:
       - 'tests/**'
       - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
       - 'sql/deudas_preflight_SOLO_LECTURA.sql'
+      - 'sql/deudas_auditoria_rls_SOLO_LECTURA.sql'
       - 'docs/CORTE_SEGURO_DEUDAS_NO_EJECUTAR.md'
       - '.github/workflows/debt-security-tests.yml'
   push:
