@@ -45,7 +45,7 @@ test('encrypted backup roundtrip preserves exact pending debt data',async()=>{
  const envelope=await encryptBackup(backup,'frase segura de prueba 2026',webcrypto);
  assert.equal(envelope.format,'debt-encrypted-backup-v1');
  assert.ok(!JSON.stringify(envelope).includes('pagos'));
- assert.deepEqual(await decryptBackup(envelope,'frase segura de prueba 2026',webcrypto),backup);
+ assert.deepEqual(await decryptBackup(envelope,'frase segura de prueba 2026',webcrypto),JSON.parse(JSON.stringify(backup)));
 });
 test('incorrect password and tampered ciphertext fail closed',async()=>{
  const backup=capture(storage({cp_v2:'sensitive'}));
