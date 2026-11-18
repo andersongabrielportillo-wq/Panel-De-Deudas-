@@ -963,7 +963,7 @@ async function openIndependentModule(id){
    const resolveTitle=document.createElement("h4");resolveTitle.textContent="Resolver reparación";
    const resolveId=document.createElement("input");resolveId.required=true;resolveId.placeholder="ID de reparación (UUID)";resolveId.setAttribute("aria-label","ID de reparación a resolver");
    const resolveAction=document.createElement("select");resolveAction.setAttribute("aria-label","Operación de reparación");
-   for(const value of ["recibir","baja","cerrar"]){const option=document.createElement("option");option.value=value;option.textContent=value;resolveAction.append(option)}
+   for(const value of ["recepcion","baja"]){const option=document.createElement("option");option.value=value;option.textContent=value;resolveAction.append(option)}
    const resolveQty=document.createElement("input");resolveQty.type="number";resolveQty.min="1";resolveQty.step="1";resolveQty.required=true;resolveQty.placeholder="Cantidad";resolveQty.setAttribute("aria-label","Cantidad resuelta");
    const resolveNotes=document.createElement("textarea");resolveNotes.required=true;resolveNotes.placeholder="Observaciones obligatorias";resolveNotes.setAttribute("aria-label","Observaciones de resolución");
    const resolveButton=document.createElement("button");resolveButton.type="submit";resolveButton.className="g2";resolveButton.textContent="Registrar resolución";
