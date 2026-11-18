@@ -5,7 +5,9 @@ on:
     paths:
       - 'debt-cache-preflight.cjs'
       - 'debt-legacy-backup.cjs'
+      - 'debt-encrypted-backup.cjs'
       - 'tests/debt-offline-safety.test.cjs'
+      - 'tests/debt-encrypted-backup.test.cjs'
       - '.github/workflows/debt-offline-safety.yml'
   workflow_dispatch:
 jobs:
@@ -19,4 +21,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run synthetic offline safety tests
-        run: node --test tests/debt-offline-safety.test.cjs
+        run: node --test tests/debt-offline-safety.test.cjs tests/debt-encrypted-backup.test.cjs
