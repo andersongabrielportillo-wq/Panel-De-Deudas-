@@ -1,0 +1,49 @@
+name: CL Nexus debt gate SQL isolated
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
+      - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
+      - 'tests/debt-gate-isolated-assertions.sql'
+      - '.github/workflows/debt-gate-isolated.yml'
+  pull_request:
+    paths:
+      - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
+      - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
+      - 'tests/debt-gate-isolated-assertions.sql'
+      - '.github/workflows/debt-gate-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  debt-gate-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test_only
+          POSTGRES_DB: cln_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cln_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test_only
+      PGDATABASE: cln_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision disposable roles and synthetic schema
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN;"
+          psql -v ON_ERROR_STOP=1 -f tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql
+      - name: Apply draft to disposable PostgreSQL only
+        run: psql -v ON_ERROR_STOP=1 -f sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql
+      - name: Verify restrictive RLS and protected RPCs
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-isolated-assertions.sql
