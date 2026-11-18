@@ -1047,6 +1047,29 @@ async function openIndependentModule(id){
     finally{sellerSubmit.disabled=false}
    };
    clnHubDetail.append(sellerForm);
+   const depositForm=document.createElement("form");
+   const contractId=document.createElement("input");contractId.required=true;contractId.placeholder="ID del contrato (UUID)";contractId.setAttribute("aria-label","ID del contrato");
+   const depositNotes=document.createElement("textarea");depositNotes.required=true;depositNotes.placeholder="Observaciones sobre la prima recibida";depositNotes.setAttribute("aria-label","Observaciones de prima");
+   const depositButton=document.createElement("button");depositButton.type="submit";depositButton.className="g2";depositButton.textContent="Marcar prima recibida";
+   depositForm.append(contractId,depositNotes,depositButton);
+   depositForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const notes=depositNotes.value.trim();
+    if(!notes){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Confirmar que se recibió la prima de este contrato?"))return;
+    depositButton.disabled=true;status.textContent="Actualizando prima…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("markDeposit",{p_contrato_id:contractId.value.trim(),p_observaciones:notes});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent=result===true?"Prima recibida confirmada por el servidor.":"Respuesta del servidor: "+String(result);
+     if(result===true)depositForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Prima no confirmada: "+e.message}
+    finally{depositButton.disabled=false}
+   };
+   clnHubDetail.append(depositForm);
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
