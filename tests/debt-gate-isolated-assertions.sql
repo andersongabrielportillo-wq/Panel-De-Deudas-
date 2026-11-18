@@ -53,3 +53,37 @@ BEGIN
  IF public.debt_access_valid(w) IS DISTINCT FROM false
  THEN RAISE EXCEPTION 'Nonmember must be denied'; END IF;
 END $$;
+
+-- Synthetic password exists ONLY in disposable CI; never provision production here.
+INSERT INTO debt_gate_secure.secrets(workspace_id,password_hash)
+VALUES('00000000-0000-0000-0000-000000000001',extensions.crypt('synthetic-password',extensions.gen_salt('bf')));
+
+DO $$
+DECLARE
+ w uuid:='00000000-0000-0000-0000-000000000001';
+ u uuid:='00000000-0000-0000-0000-000000000002';
+ s1 text:='00000000-0000-0000-0000-000000000003';
+ s2 text:='00000000-0000-0000-0000-000000000005';
+ exp timestamptz;
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub',u::text,false);
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('session_id',s1)::text,false);
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Access before unlock'; END IF;
+ exp:=public.debt_unlock(w,'synthetic-password');
+ IF exp IS NULL OR exp<=now() THEN RAISE EXCEPTION 'Valid password failed'; END IF;
+ IF NOT public.debt_access_valid(w) THEN RAISE EXCEPTION 'Unlock not recognized'; END IF;
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('session_id',s2)::text,false);
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Session isolation failed'; END IF;
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('session_id',s1)::text,false);
+ PERFORM public.debt_lock(w);
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Lock failed'; END IF;
+ exp:=public.debt_unlock(w,'synthetic-password');
+ IF exp IS NULL THEN RAISE EXCEPTION 'Reunlock failed'; END IF;
+ UPDATE debt_gate_secure.unlocks SET expires_at=now()-interval '1 minute'
+ WHERE workspace_id=w AND user_id=u AND session_id=s1::uuid;
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Expired unlock accepted'; END IF;
+ UPDATE debt_gate_secure.secrets SET revision=revision+1 WHERE workspace_id=w;
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Revision rotation did not revoke'; END IF;
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Nonmember with valid session accepted'; END IF;
+END $$;
