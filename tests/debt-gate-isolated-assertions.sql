@@ -87,3 +87,44 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
  IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Nonmember with valid session accepted'; END IF;
 END $$;
+
+-- Failed-attempt throttle: five invalid passwords lock the member for 15 minutes.
+-- Synthetic user and secret only; no real credentials or customer data.
+DO $$
+DECLARE
+ w uuid:='00000000-0000-0000-0000-000000000001';
+ u uuid:='00000000-0000-0000-0000-000000000002';
+ attempt integer;
+ expiry timestamptz;
+ got_block boolean:=false;
+BEGIN
+ PERFORM set_config('request.jwt.claim.sub',u::text,false);
+ PERFORM set_config('request.jwt.claims','{"session_id":"00000000-0000-0000-0000-000000000006"}',false);
+ FOR attempt IN 1..5 LOOP
+   IF public.debt_unlock(w,'wrong-password') IS NOT NULL
+   THEN RAISE EXCEPTION 'Invalid password unlocked on attempt %',attempt; END IF;
+ END LOOP;
+ SELECT blocked_until INTO expiry FROM debt_gate_secure.attempts
+ WHERE workspace_id=w AND user_id=u;
+ IF expiry IS NULL OR expiry<now()+interval '14 minutes' OR expiry>now()+interval '16 minutes'
+ THEN RAISE EXCEPTION 'Fifth invalid password did not set 15 minute lockout'; END IF;
+ IF public.debt_access_valid(w) THEN RAISE EXCEPTION 'Locked user gained access'; END IF;
+ BEGIN
+   PERFORM public.debt_unlock(w,'synthetic-password');
+ EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM='Acceso temporalmente bloqueado' THEN got_block:=true;
+   ELSE RAISE; END IF;
+ END;
+ IF NOT got_block THEN RAISE EXCEPTION 'Correct password bypassed active lockout'; END IF;
+ UPDATE debt_gate_secure.attempts
+ SET blocked_until=now()-interval '1 second'
+ WHERE workspace_id=w AND user_id=u;
+ IF public.debt_unlock(w,'synthetic-password') IS NULL
+ THEN RAISE EXCEPTION 'Valid password rejected after lockout expiration'; END IF;
+ SELECT failed_count,blocked_until INTO attempt,expiry FROM debt_gate_secure.attempts
+ WHERE workspace_id=w AND user_id=u;
+ IF attempt<>0 OR expiry IS NOT NULL
+ THEN RAISE EXCEPTION 'Successful unlock did not reset attempt counter'; END IF;
+ IF NOT public.debt_access_valid(w)
+ THEN RAISE EXCEPTION 'Access not granted after lockout expiration'; END IF;
+END $$;
