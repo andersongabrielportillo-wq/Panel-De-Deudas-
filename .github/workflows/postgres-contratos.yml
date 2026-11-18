@@ -135,7 +135,37 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN;"
           psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_fixture.sql
+      - name: Test real pg_dump and pg_restore of synthetic Deudas before inventory migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_sql="SELECT encode(extensions.digest(convert_to(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),''),'UTF8'),'sha256'),'hex') FROM public.debts"
+          psql -X -Atq -c "$baseline_sql" > /tmp/cln_before_debts_sha
+          pg_dump --format=custom --no-owner --no-privileges --file=/tmp/cln_pre_cutover.dump
+          createdb cln_restored_backup_ci
+          pg_restore --exit-on-error --no-owner --no-privileges --dbname=cln_restored_backup_ci /tmp/cln_pre_cutover.dump
+          PGDATABASE=cln_restored_backup_ci psql -X -Atq -c "$baseline_sql" > /tmp/cln_after_restore_sha
+          cmp /tmp/cln_before_debts_sha /tmp/cln_after_restore_sha
+          PGDATABASE=cln_restored_backup_ci psql -X -Atq -c "SELECT (SELECT count(*) FROM public.debts WHERE id='__shared_state__')=1 AND (SELECT count(*) FROM public.workspace_members)=3 AND (SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename IN ('debts','transactions'))=8" | grep -qx t
       - name: Install complete lab inventory schema snapshot WITHOUT data
         run: psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql
       - name: Verify all inventory objects, RLS, API privileges and no copied data
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_assertions.sql
+      - name: Reject outsiders and incomplete role mapping without mutating inventory members
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000099","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_outsider.log 2>&1; then
+            echo 'Outsider mapping must fail'; exit 1
+          fi
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_incomplete.log 2>&1; then
+            echo 'Unmapped member must fail'; exit 1
+          fi
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
+      - name: Assign exactly three synthetic Admin and Secretaria accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000004","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=3 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=2 AND (SELECT count(*) FROM public.inv_members WHERE rol='secretaria')=1" | grep -qx t
