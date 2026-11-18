@@ -41,3 +41,23 @@ test('actual PWA logout revokes server grant before Supabase signout',()=>{
  assert.ok(revoke>=0&&signout>revoke,'Revoke before ending authenticated session');
  assert.match(handler,/debtRevokeFailed\s*=\s*true/);
 });
+
+test('laboratory logout invalidates local session before server revocation',()=>{
+ const handler=lab.slice(lab.indexOf('$("logout").onclick=async()=>'));
+ const clear=handler.indexOf('session=null');
+ const remote=handler.indexOf('"/auth/v1/logout"');
+ assert.ok(clear>=0&&remote>clear,'Clear local credentials before remote logout');
+ assert.match(handler,/authEpoch\+\+;stop\(\);seq\+\+/);
+});
+test('laboratory logout revokes the Supabase Auth session on its own origin',()=>{
+ assert.match(lab,/oldSession\.origin\+"\/auth\/v1\/logout"/);
+ assert.match(lab,/"Authorization":"Bearer "\+oldSession\.token/);
+ assert.match(lab,/cache:"no-store"/);
+});
+test('laboratory logout clears results and password inputs even if network fails',()=>{
+ const handler=lab.slice(lab.indexOf('$("logout").onclick=async()=>'));
+ for(const name of ['output','clientResults','detailResults','permissionsResult','concurrencyResult','password','key']){
+  assert.ok(handler.includes('$("'+name+'")'),'Missing cleanup for '+name);
+ }
+ assert.match(handler,/no se pudo confirmar el cierre remoto/);
+});
