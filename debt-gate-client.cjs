@@ -2,7 +2,8 @@
 (function(root){'use strict';
 function createDebtGate({client,workspaceId,rpcNames}={}){
  const names=rpcNames||{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'};
- const allowed=[{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'}, {unlock:'debt_unlock',verify:'debt_access_valid',lock:'debt_lock'}];
+ const allowed=[{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'}, {unlock:'debt_unlock',verify:'debt_access_valid',lock:'debt_lock'}, {unlock:'unlock_debts',verify:'has_debts_unlock',lock:'lock_debts'}];
+ const productionGate=names.unlock==='unlock_debts';
  if(!names||!allowed.some(set=>['unlock','verify','lock'].every(k=>names[k]===set[k])))throw Error('Conjunto RPC no autorizado');
  if(!client||typeof client.rpc!=='function')throw Error('Cliente Supabase inválido');
  if(typeof workspaceId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))throw Error('Workspace inválido');
@@ -14,10 +15,18 @@ function createDebtGate({client,workspaceId,rpcNames}={}){
   if(unlockPending)throw Error('Desbloqueo en curso');
   unlockPending=true;reset();const current=epoch;
   try {
-   const {data,error}=await client.rpc(names.unlock,{p_workspace_id:workspaceId,p_password:password});
+   const {data,error}=await client.rpc(names.unlock,productionGate?{p_password:password}:{p_workspace_id:workspaceId,p_password:password});
    if(current!==epoch)throw Error('Sesión modificada durante desbloqueo');
    if(error)throw Error(error.message||'Acceso denegado');
-   const expiry=data?Date.parse(data):NaN;
+   let expiry=data?Date.parse(data):NaN;
+   if(productionGate){
+    if(data!==true)throw Error('Contraseña incorrecta o acceso denegado');
+    const checked=await client.rpc(names.verify);
+    if(current!==epoch)throw Error('Sesión modificada durante desbloqueo');
+    if(checked.error||checked.data!==true)throw Error('Desbloqueo no confirmado por el servidor');
+    // Server authorizes for 15 minutes. Local cutoff is conservative; every operation still checks server.
+    expiry=Date.now()+14*60*1000;
+   }
    if(!Number.isFinite(expiry)||expiry<=Date.now())throw Error('Contraseña incorrecta o acceso expirado');
    // Password is not retained; RLS must independently validate every read and write.
    unlocked=true;expiresAt=expiry;return expiry;
@@ -27,7 +36,7 @@ function createDebtGate({client,workspaceId,rpcNames}={}){
   if(!unlocked||Date.now()>=expiresAt){reset();return false}
   const current=epoch;
   try {
-   const {data,error}=await client.rpc(names.verify,{p_workspace_id:workspaceId});
+   const {data,error}=await client.rpc(names.verify,productionGate?undefined:{p_workspace_id:workspaceId});
    if(current!==epoch)return false;
    if(error||data!==true){reset();return false}
    return true;
@@ -35,7 +44,7 @@ function createDebtGate({client,workspaceId,rpcNames}={}){
  }
  async function lock(){
   reset();lockPending=true;
-  try {const {error}=await client.rpc(names.lock,{p_workspace_id:workspaceId});
+  try {const {error}=await client.rpc(names.lock,productionGate?undefined:{p_workspace_id:workspaceId});
     if(error)throw Error(error.message||'No se pudo bloquear en el servidor');
   } finally {lockPending=false}
  }
