@@ -24,7 +24,7 @@ END $$;
 -- Seed in a separate SQL statement so STABLE membership functions see committed fixture rows.
 INSERT INTO public.workspaces(id,nombre) VALUES('00000000-0000-0000-0000-000000000001','CI only');
 INSERT INTO public.workspace_members(workspace_id,user_id) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002');
-DO $
+DO $$
 DECLARE
  w uuid:='00000000-0000-0000-0000-000000000001';
  u uuid:='00000000-0000-0000-0000-000000000002';
