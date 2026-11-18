@@ -913,6 +913,34 @@ async function openIndependentModule(id){
     finally{reviewReturnButton.disabled=false}
    };
    clnHubDetail.append(reviewReturn);
+   const repairForm=document.createElement("form");
+   const repairTitle=document.createElement("h4");repairTitle.textContent="Crear orden de reparación";
+   const repairItem=document.createElement("select");repairItem.required=true;repairItem.setAttribute("aria-label","Artículo para reparación");
+   const repairBlank=document.createElement("option");repairBlank.value="";repairBlank.textContent="Seleccionar artículo";repairItem.append(repairBlank);
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;repairItem.append(option)}
+   const repairQty=document.createElement("input");repairQty.type="number";repairQty.min="1";repairQty.step="1";repairQty.required=true;repairQty.placeholder="Cantidad";repairQty.setAttribute("aria-label","Cantidad a reparar");
+   const repairType=document.createElement("select");repairType.setAttribute("aria-label","Tipo de destino");
+   for(const value of ["proveedor","taller"]){const option=document.createElement("option");option.value=value;option.textContent=value==="taller"?"Taller":"Proveedor";repairType.append(option)}
+   const repairDestination=document.createElement("input");repairDestination.required=true;repairDestination.placeholder="Nombre del proveedor o taller";repairDestination.setAttribute("aria-label","Nombre del destino");
+   const repairReason=document.createElement("textarea");repairReason.required=true;repairReason.placeholder="Motivo de reparación";repairReason.setAttribute("aria-label","Motivo");
+   const repairNotes=document.createElement("textarea");repairNotes.required=true;repairNotes.placeholder="Observaciones";repairNotes.setAttribute("aria-label","Observaciones de reparación");
+   const repairButton=document.createElement("button");repairButton.type="submit";repairButton.className="g2";repairButton.textContent="Crear reparación pendiente";
+   repairForm.append(repairTitle,repairItem,repairQty,repairType,repairDestination,repairReason,repairNotes,repairButton);
+   repairForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_item_id:repairItem.value,p_cantidad:Number(repairQty.value),p_destino_tipo:repairType.value,p_destino_nombre:repairDestination.value.trim(),p_motivo:repairReason.value.trim(),p_observaciones:repairNotes.value.trim()};
+    if(Object.values(params).some(v=>v===""||v===null)){status.textContent="Completa los datos de reparación.";return}
+    if(!confirm("¿Crear orden de reparación? El envío se realizará por separado."))return;
+    repairButton.disabled=true;status.textContent="Creando reparación…";
+    try{
+     const result=await actions.execute("createRepair",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Reparación creada en el servidor. ID: "+String(result);repairForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Reparación no confirmada: "+e.message}
+    finally{repairButton.disabled=false}
+   };
+   clnHubDetail.append(repairForm);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
