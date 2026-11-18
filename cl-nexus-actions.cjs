@@ -33,7 +33,7 @@ function createNexusActions({client,authorized}={}){
   const keys=[...spec.required,...spec.optional];
   if(Object.keys(params).some(k=>!keys.includes(k)))throw Error('Parámetro inesperado');
   for(const key of spec.required){
-   if(!(key in params)||params[key]===null||params[key]===undefined||typeof params[key]==='string'&&!params[key].trim())throw Error('Falta '+key);
+   if(!(key in params)||params[key]===undefined||params[key]===null||typeof params[key]==='string'&&!params[key].trim()&&!(action==='createClient'&&key!=='p_nombre'&&key!=='p_dui'))throw Error('Falta '+key);
   }
   for(const [key,value] of Object.entries(params)){
    if(key.endsWith('_id')&&value!==null&&!uuid.test(String(value)))throw Error('ID inválido');
