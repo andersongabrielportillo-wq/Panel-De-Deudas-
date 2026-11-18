@@ -20,3 +20,19 @@ test('realtime snapshot rechecks server gate after network read before applying'
  assert.ok(fetchAt>=0&&verifyAt>fetchAt&&applyAt>verifyAt,'Post-read authorization must precede onRemote');
  assert.match(body,/if\(!APP_READY\)return;/);
 });
+
+test('initial cloud read cannot repaint debt module after lock or logout',()=>{
+ const start=html.indexOf('async function connectDebtData(reveal=true)');
+ const end=html.indexOf('async function connectCloud()',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ const fetchAt=body.indexOf('const first=await cloudSnapshot()');
+ const checkAt=body.indexOf('!await debtGate.verify()||!APP_READY',fetchAt);
+ const applyAt=body.indexOf('onRemote(first)',fetchAt);
+ assert.ok(fetchAt>=0&&checkAt>fetchAt&&applyAt>checkAt);
+});
+test('production gate cannot be enabled before cache migration is ready',()=>{
+ assert.match(html,/const DEBT_GATE_ENABLED=false;/);
+ assert.match(html,/inspectDebtCache\(localStorage\)/);
+ assert.match(html,/safeToPurge===true/);
+});
