@@ -92,8 +92,18 @@ test('pre-cutover backup refuses empty local data and warns on unsynced debt edi
  const end=html.indexOf('const debtRecoveryInput=',start);
  assert.ok(start>=0&&end>start);
  const body=html.slice(start,end);
- assert.match(body,/Object\.keys\(backup\.entries\)\.length===0/);
+ assert.match(body,/Object\.keys\(backup\.entries\)\.some\(key=>key!=="cp_pend"\)/);
  assert.match(body,/backup\.entries\.cp_pend==="1"/);
  assert.match(body,/no migres ni borres la caché/);
- assert.ok(body.indexOf('Object.keys(backup.entries).length===0')<body.indexOf('DebtEncryptedBackup.encryptBackup(backup,pass)'));
+ assert.ok(body.indexOf('Object.keys(backup.entries).some(key=>key!=="cp_pend")')<body.indexOf('DebtEncryptedBackup.encryptBackup(backup,pass)'));
+});
+
+test('backup export detects local changes while encryption is running',()=>{
+ const start=html.indexOf('debtBackupButton.onclick=async()=>');
+ const end=html.indexOf('const debtRecoveryInput=',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ assert.match(body,/const current=window\.DebtLegacyBackup\.capture\(localStorage\)/);
+ assert.match(body,/JSON\.stringify\(current\.entries\)!==JSON\.stringify\(backup\.entries\)/);
+ assert.ok(body.indexOf('const current=window.DebtLegacyBackup.capture(localStorage)')<body.indexOf('new Blob([JSON.stringify(encrypted)]'));
 });
