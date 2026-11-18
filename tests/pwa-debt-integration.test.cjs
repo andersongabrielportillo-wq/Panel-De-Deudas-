@@ -68,3 +68,9 @@ test('pre-cutover encrypted backup verification does not require an uninitialize
  assert.match(body,/if\(!APP_READY\|\|!SB_UID\|\|\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)\)throw Error\("Autorización caducada"\)/);
  assert.doesNotMatch(body,/if\(!await debtController\.verify\(\)\)throw Error\("Autorización caducada"\)/);
 });
+
+test('pre-cutover export explicitly warns that a browser backup is not a cloud backup',()=>{
+ assert.match(html,/Respaldo SOLO de los datos locales de este navegador; NO sustituye una copia de la nube/);
+ assert.match(html,/Respaldo LOCAL cifrado preparado/);
+ assert.match(html,/conserva otra copia de la nube/);
+});
