@@ -679,7 +679,7 @@ const SUPABASE_URL="https://josdmjjbnrugiwlwgjky.supabase.co";
 const SUPABASE_KEY="sb_publishable_0CHw4JtE92-07OMNAnvESA_44sf9dk4";
 const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
-let SB_UID=null,SB_WID=null,SB_CH=null;
+let SB_UID=null,SB_WID=null,SB_CH=null,authSessionGeneration=0;
 const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
  if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Acceso a Deudas no autorizado");
@@ -714,11 +714,14 @@ async function disconnectDebtChannel(){
  if(SB_CH){const ch=SB_CH;SB_CH=null;await SB.removeChannel(ch)}
 }
 async function connectDebtData(reveal=true){
+ const startingUser=SB_UID,startingWorkspace=SB_WID,startingGeneration=authSessionGeneration;
+ if(!startingUser||!startingWorkspace)throw Error("Sesión requerida");
  if(DEBT_GATE_ENABLED&&(!debtGate||!await debtGate.verify()))throw Error("Acceso a Deudas no confirmado por el servidor");
  try{
  if(!APP_READY)loadPrivate();
  SY.doc={set:cloudSet};
  const first=await cloudSnapshot();
+ if(SB_UID!==startingUser||SB_WID!==startingWorkspace||authSessionGeneration!==startingGeneration)throw Error("Sesión cambiada durante la lectura de Deudas");
  if(DEBT_GATE_ENABLED&&(!debtGate||!await debtGate.verify()||!APP_READY))throw Error("Autorización caducada durante la lectura de Deudas");
  onRemote(first);
  if(SB_CH)await SB.removeChannel(SB_CH);
@@ -744,7 +747,10 @@ async function connectDebtData(reveal=true){
  }
 }
 async function connectCloud(){
- const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
+ const startingUser=SB_UID,startingGeneration=authSessionGeneration;
+ if(!startingUser)throw Error("Sesión requerida");
+ const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",startingUser).limit(1).maybeSingle();
+ if(!SB_UID||SB_UID!==startingUser||startingGeneration!==authSessionGeneration)throw Error("La sesión cambió durante la autenticación");
  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
  if(!DEBT_GATE_ENABLED){await connectDebtData();return}
  // Fail closed if any required client/server gate component is absent.
@@ -1466,7 +1472,20 @@ document.getElementById("logoutBtn").onclick=async()=>{
   document.getElementById("authPass").value="";
   try{await SB.auth.signOut();sv(debtRevokeFailed?"Sesión cerrada; no se pudo confirmar la revocación remota de Deudas":"Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){if(debtController){debtController.cancel();debtController=null}debtScreenVisible(false);gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){
+  // Includes remote sign-out / revoked session events: no stale module or pending RPC response may repaint private data.
+  authSessionGeneration++;
+  nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
+  if(debtController){debtController.cancel();debtController=null}
+  if(debtGate){debtGate.reset();debtGate=null}
+  SB_UID=null;SB_WID=null;SY.doc=null;clearTimeout(SY.timer);
+  if(SB_CH){const old=SB_CH;SB_CH=null;SB.removeChannel(old).catch(()=>{})}
+  document.getElementById("clnHubDetail").replaceChildren();
+  document.getElementById("clnHubStatus").textContent="";
+  document.getElementById("debtUnlockPassword").value="";
+  showModuleHub(false);debtScreenVisible(false);gate(true);hidePrivate();
+  // Do not delete cp_v2 / cp_pend: offline edits require the documented safe recovery process.
+ }else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
