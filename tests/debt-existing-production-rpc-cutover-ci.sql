@@ -23,6 +23,13 @@ CREATE FUNCTION public.has_debts_unlock() RETURNS boolean LANGUAGE sql STABLE SE
 $$;
 CREATE FUNCTION public.unlock_debts(p_password text) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
 CREATE FUNCTION public.lock_debts() RETURNS void LANGUAGE plpgsql AS 'BEGIN RETURN; END;';
+-- Match production RPC EXECUTE permissions; no unrestricted PUBLIC access.
+REVOKE ALL ON FUNCTION public.has_debts_unlock() FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.unlock_debts(text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.lock_debts() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.has_debts_unlock() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.unlock_debts(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.lock_debts() TO authenticated;
 
 INSERT INTO public.workspaces(id,nombre) VALUES ('00000000-0000-0000-0000-000000000001','synthetic');
 INSERT INTO public.workspace_members(workspace_id,user_id) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002');
