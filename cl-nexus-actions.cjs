@@ -15,6 +15,9 @@ const specs=Object.freeze({
  sendRepair:{rpc:'inv_enviar_reparacion',required:['p_reparacion_id'],optional:[]},
  resolveRepair:{rpc:'inv_resolver_reparacion',required:['p_reparacion_id','p_operacion','p_cantidad','p_observaciones'],optional:[]},
  createSeller:{rpc:'inv_crear_vendedor_manual',required:['p_nombre'],optional:[]},
+ createClient:{rpc:'inv_crear_cliente',required:['p_nombre','p_dui','p_direccion','p_ubicacion','p_telefono','p_vivienda','p_lugar_trabajo','p_telefono_trabajo','p_referencias'],optional:[]},
+ createContract:{rpc:'inv_crear_contrato_borrador',required:['p_numero','p_cliente_id','p_vendedor_id','p_fecha','p_modalidad','p_frecuencia','p_plan','p_cuota','p_saldo_inicial','p_fecha_plan','p_ruta','p_dia_cobro','p_receptor_alterno','p_comision','p_prima','p_prima_recibida','p_detalles','p_observaciones'],optional:[]},
+
  confirmContract:{rpc:'inv_confirmar_contrato',required:['p_contrato_id','p_ubicaciones','p_client_op_id'],optional:[]},
  markDeposit:{rpc:'inv_marcar_prima_recibida',required:['p_contrato_id','p_observaciones'],optional:[]}
 });
