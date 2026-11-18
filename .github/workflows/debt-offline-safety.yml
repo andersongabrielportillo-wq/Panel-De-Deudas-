@@ -4,10 +4,12 @@ on:
     branches: [integracion-inventario-fase15]
     paths:
       - 'sw.js'
+      - 'debt-module-controller.cjs'
       - 'debt-cache-preflight.cjs'
       - 'debt-legacy-backup.cjs'
       - 'debt-encrypted-backup.cjs'
       - 'debt-migration-readiness.cjs'
+      - 'tests/debt-module-controller.test.cjs'
       - 'tests/sw-cache-safety.test.cjs'
       - 'tests/debt-offline-safety.test.cjs'
       - 'tests/debt-encrypted-backup.test.cjs'
@@ -25,4 +27,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run synthetic offline safety tests
-        run: node --test tests/sw-cache-safety.test.cjs tests/debt-offline-safety.test.cjs tests/debt-encrypted-backup.test.cjs tests/debt-migration-readiness.test.cjs
+        run: node --test tests/debt-module-controller.test.cjs tests/sw-cache-safety.test.cjs tests/debt-offline-safety.test.cjs tests/debt-encrypted-backup.test.cjs tests/debt-migration-readiness.test.cjs
