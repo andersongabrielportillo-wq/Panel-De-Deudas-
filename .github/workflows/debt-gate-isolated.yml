@@ -7,6 +7,7 @@ on:
       - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
       - 'tests/debt-gate-isolated-assertions.sql'
       - 'tests/debt-gate-authenticated-rls.sql'
+      - 'tests/debt-gate-authenticated-crud.sql'
       - '.github/workflows/debt-gate-isolated.yml'
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
       - 'tests/debt-gate-isolated-assertions.sql'
       - 'tests/debt-gate-authenticated-rls.sql'
+      - 'tests/debt-gate-authenticated-crud.sql'
       - '.github/workflows/debt-gate-isolated.yml'
 permissions:
   contents: read
@@ -51,3 +53,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-isolated-assertions.sql
       - name: Verify actual authenticated role RLS enforcement
         run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-rls.sql
+      - name: Verify authenticated CRUD requires unlock and re-lock revokes writes
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-crud.sql
