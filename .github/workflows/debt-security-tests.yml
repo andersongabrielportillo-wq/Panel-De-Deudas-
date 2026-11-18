@@ -9,6 +9,9 @@ on:
       - 'debt-legacy-backup.cjs'
       - 'debt-encrypted-backup.cjs'
       - 'tests/**'
+      - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
+      - 'sql/deudas_preflight_SOLO_LECTURA.sql'
+      - 'docs/CORTE_SEGURO_DEUDAS_NO_EJECUTAR.md'
       - '.github/workflows/debt-security-tests.yml'
   push:
     branches:
@@ -34,4 +37,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify debt gate and PWA integration
-        run: node --test tests/debt-gate-client.test.cjs tests/debt-module-controller.test.cjs tests/pwa-debt-integration.test.cjs tests/debt-backup-migration.test.cjs
+        run: node --test tests/debt-gate-client.test.cjs tests/debt-module-controller.test.cjs tests/pwa-debt-integration.test.cjs tests/debt-backup-migration.test.cjs tests/debt-production-cutover.test.cjs
