@@ -781,6 +781,9 @@ debtBackupButton.onclick=async()=>{
  try{
   const backup=window.DebtLegacyBackup.capture(localStorage);
   const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
+  // Verify the encrypted artifact before offering it for download; never alter the source cache.
+  const verified=await window.DebtEncryptedBackup.decryptBackup(encrypted,pass);
+  if(JSON.stringify(verified)!==JSON.stringify(backup))throw Error("La verificación del respaldo no coincide");
   if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("La sesión expiró antes de exportar");
   const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
