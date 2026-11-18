@@ -10,6 +10,8 @@
 
 ## P1 — Seguridad (bloquea el corte)
 - [ ] **BLOQUEADO:** el proyecto staging actual no contiene `public.workspaces`, `public.workspace_members` ni `public.debts`; crear/validar un entorno aislado con esquema equivalente (sin copiar datos personales) antes de probar la migración SQL, RLS, RPC y roles.
+- [x] **Auditoría de metadatos productivos (solo lectura, 18 nov 2026):** RLS de `public.debts` activo; cuatro políticas `PERMISSIVE` para `authenticated` (SELECT, INSERT, UPDATE, DELETE), todas basadas en membresía; todavía no existen las tres RPC del gate ni su esquema privado. Este resultado **no autoriza el corte**.
+- [x] **Inventario de staging (solo lectura, 18 nov 2026):** existen tablas `inv_*` pero faltan las tres tablas de Deudas indicadas arriba; no usar este proyecto como ensayo equivalente hasta preparar un esquema aislado compatible.
 - [ ] Provisionar hash bcrypt de contraseña por canal seguro **sin poner contraseña ni hash en GitHub**.
 - [ ] Confirmar que el JWT real contiene `session_id` UUID; verificar comportamiento cuando falta o expira.
 - [ ] Probar con admin, secretaria y usuario no autorizado; comprobar bloqueo tras intentos fallidos, expiración, cierre de sesión y revocación.
