@@ -46,5 +46,6 @@ test('malformed or missing JWT session IDs cannot cause an unguarded UUID cast',
  assert.doesNotMatch(sql,/NULLIF\(auth\.jwt\(\)->>'session_id',''\)\)::uuid/);
  assert.equal((sql.match(/CASE WHEN COALESCE\(\(auth\.jwt\(\)->>'session_id'\) ~\*/g)||[]).length,3);
  assert.equal((sql.match(/\[0-9a-f\]\{12\}\$'\,false\)/g)||[]).length,4,'all UUID patterns must retain closing anchor');
+ assert.equal((sql.match(/\\[0-9a-f\\]\\{8\\}-\\[0-9a-f\\]\\{4\\}-\\[0-9a-f\\]\\{4\\}-\\[0-9a-f\\]\\{4\\}-\\[0-9a-f\\]\\{12\\}/g)||[]).length,4,'UUID session regex must have the canonical 8-4-4-4-12 groups');
  assert.match(sql,/ELSE NULL END/);
 });
