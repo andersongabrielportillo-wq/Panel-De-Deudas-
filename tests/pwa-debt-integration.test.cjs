@@ -1,0 +1,11 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+test('debt gate remains disabled pending coordinated production migration',()=>{assert.match(html,/const DEBT_GATE_ENABLED=false;/)});
+test('main PWA wires exact production debt RPC set',()=>{assert.match(html,/createDebtGate\(\{client:SB,workspaceId:SB_WID,rpcNames:\{unlock:'debt_unlock',verify:'debt_access_valid',lock:'debt_lock'\}\}\)/)});
+test('gate verifies server before opening debt data',()=>{assert.match(html,/async function connectDebtData\(reveal=true\)\{\s*if\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!await debtGate\.verify\(\)\)\)/)});
+test('gate prevents pending cloud writes without authorization',()=>{assert.match(html,/async function cloudSet\(payload\)\{\s*if\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)/)});
+test('main PWA retains inventory and debt module hub',()=>{assert.match(html,/clnModuleHub/);assert.match(html,/debtUnlockScreen/)});
