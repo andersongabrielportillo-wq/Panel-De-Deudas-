@@ -86,3 +86,14 @@ test('backup export verifies encrypted roundtrip before creating downloadable fi
  const downloaded=body.indexOf('new Blob([JSON.stringify(encrypted)]');
  assert.ok(encrypted>=0&&verified>encrypted&&compared>verified&&downloaded>compared);
 });
+
+test('pre-cutover backup refuses empty local data and warns on unsynced debt edits',()=>{
+ const start=html.indexOf('debtBackupButton.onclick=async()=>');
+ const end=html.indexOf('const debtRecoveryInput=',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ assert.match(body,/Object\.keys\(backup\.entries\)\.length===0/);
+ assert.match(body,/backup\.entries\.cp_pend==="1"/);
+ assert.match(body,/no migres ni borres la caché/);
+ assert.ok(body.indexOf('Object.keys(backup.entries).length===0')<body.indexOf('DebtEncryptedBackup.encryptBackup(backup,pass)'));
+});
