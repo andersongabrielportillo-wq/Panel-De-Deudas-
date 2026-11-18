@@ -89,7 +89,7 @@ test('fallo de carga protegida desconecta Realtime y limpia estado en memoria',(
  const end=html.indexOf('async function connectCloud()',start);
  const flow=html.slice(start,end);
  assert.ok(flow.includes('}catch(error){'));
- assert.ok(flow.includes('if(DEBT_GATE_ENABLED){'));
+ assert.ok(flow.includes('if(DEBT_GATE_ENABLED&&SB_UID===startingUser&&authSessionGeneration===startingGeneration){'));
  assert.ok(flow.includes('await disconnectDebtChannel()'));
  assert.ok(flow.includes('hidePrivate()'));
  assert.ok(flow.includes('debtScreenVisible(true,'));
