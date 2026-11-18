@@ -723,7 +723,13 @@ async function connectDebtData(reveal=true){
  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{
   if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;
   if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
-  try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}
+  try{
+   const snapshot=await cloudSnapshot();
+   // An in-flight network read must not repaint Deudas after lock/logout.
+   if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
+   if(!APP_READY)return;
+   onRemote(snapshot);
+  }catch(e){if(APP_READY)sv("⚠ No se pudo leer la nube",1)}
  }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
  if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
  }catch(error){
