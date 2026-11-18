@@ -8,6 +8,9 @@ on:
       - 'tests/debt-gate-isolated-assertions.sql'
       - 'tests/debt-gate-authenticated-rls.sql'
       - 'tests/debt-gate-authenticated-crud.sql'
+      - 'sql/deudas_gate_existing_production_rpc_PREPARADO_NO_EJECUTAR.sql'
+      - 'sql/deudas_gate_existing_production_rpc_ROLLBACK_NO_EJECUTAR.sql'
+      - 'tests/debt-existing-production-rpc-cutover-ci.sql'
       - '.github/workflows/debt-gate-isolated.yml'
   pull_request:
     paths:
@@ -55,3 +58,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-rls.sql
       - name: Verify authenticated CRUD requires unlock and re-lock revokes writes
         run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-crud.sql
+      - name: Rehearse existing-production RPC gate and rollback in a separate disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE cln_gate_prod_contract_ci"
+          PGDATABASE=cln_gate_prod_contract_ci psql -X -v ON_ERROR_STOP=1 -f tests/debt-existing-production-rpc-cutover-ci.sql
