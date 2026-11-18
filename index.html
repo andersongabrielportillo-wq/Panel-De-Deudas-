@@ -836,18 +836,54 @@ async function openIndependentModule(id){
  try{
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
-  const kind=id==="clnHubInventory"?"inventory":id==="clnHubContracts"?"contracts":null;
-  if(!kind){status.textContent="Garantías: operaciones desactivadas hasta validar permisos y flujo del servidor.";return}
-  const rows=await nexusReader.list(kind);
-  if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
-  status.textContent=rows.length+" registros disponibles (solo lectura).";
-  const list=document.createElement("ul");
-  for(const item of rows.slice(0,100)){
-   const li=document.createElement("li");
-   li.textContent=kind==="inventory"?item.nombre+" · "+item.categoria:item.nombre+" · "+item.dui_mostrado;
-   list.append(li);
+  if(id==="clnHubWarranties"){
+   status.textContent="Garantías: operaciones desactivadas hasta validar permisos y flujo del servidor.";
+   return;
   }
-  clnHubDetail.append(list);
+  const kind=id==="clnHubInventory"?"inventory":"contracts";
+  const results=document.createElement("div");
+  const renderRows=rows=>{
+   if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
+   results.replaceChildren();
+   status.textContent=rows.length+" registros disponibles (solo lectura).";
+   const list=document.createElement("ul");
+   for(const item of rows.slice(0,100)){
+    const li=document.createElement("li");
+    li.textContent=kind==="inventory"?item.nombre+" · "+item.categoria:item.nombre+" · "+item.dui_mostrado;
+    list.append(li);
+   }
+   results.append(list);
+  };
+  if(kind==="contracts"){
+   const search=document.createElement("input");
+   search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
+   const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
+   const sellerButton=document.createElement("button");sellerButton.type="button";sellerButton.className="g2";sellerButton.textContent="Ver vendedores";
+   const doSearch=async()=>{
+    const query=search.value.trim();
+    searchButton.disabled=true;status.textContent="Buscando clientes…";
+    try{renderRows(await nexusReader.list("contracts",query))}
+    catch(e){if(token===nexusViewEpoch)status.textContent="Consulta denegada: "+e.message}
+    finally{searchButton.disabled=false}
+   };
+   searchButton.onclick=doSearch;
+   search.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch()});
+   sellerButton.onclick=async()=>{
+    sellerButton.disabled=true;status.textContent="Consultando vendedores…";
+    try{
+     const sellers=await nexusReader.list("sellers");
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     results.replaceChildren();status.textContent=sellers.length+" vendedores (solo lectura).";
+     const list=document.createElement("ul");
+     for(const seller of sellers.slice(0,100)){const li=document.createElement("li");li.textContent=seller.nombre;list.append(li)}
+     results.append(list);
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Consulta denegada: "+e.message}
+    finally{sellerButton.disabled=false}
+   };
+   clnHubDetail.append(search,searchButton,sellerButton);
+  }
+  clnHubDetail.append(results);
+  renderRows(await nexusReader.list(kind));
  }catch(e){
   if(token!==nexusViewEpoch)return;
   status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
