@@ -47,7 +47,12 @@ function createDebtModuleController({gate,load,show,hide,disconnect,hasPending,c
    return true;
   }finally{locking=false}
  }
- async function logout(){invalidate();gate.reset();await disconnect()}
+ async function logout(){
+  invalidate();gate.reset();
+  // A UI logout must revoke the server grant, not only hide local content.
+  // Always attempt revocation even if channel cleanup fails.
+  try{await disconnect()}finally{await gate.lock()}
+ }
  function cancel(){invalidate();gate.reset()}
  return Object.freeze({open,verify,lock,logout,cancel,state:()=>phase});
 }
