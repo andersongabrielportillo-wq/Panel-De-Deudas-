@@ -45,9 +45,6 @@ test('RLS policy audit reads metadata only and checks membership policy shapes',
 test('malformed or missing JWT session IDs cannot cause an unguarded UUID cast',()=>{
  assert.doesNotMatch(sql,/NULLIF\(auth\.jwt\(\)->>'session_id',''\)\)::uuid/);
  assert.equal((sql.match(/CASE WHEN COALESCE\(\(auth\.jwt\(\)->>'session_id'\) ~\*/g)||[]).length,3);
- assert.equal((sql.match(/\[0-9a-f\]\{12\}\
- assert.match(sql,/ELSE NULL END/);
-});
-\,false\)/g)||[]).length,4,'all JWT UUID regexes must be complete and anchored');
+ assert.equal((sql.match(/\[0-9a-f\]\{12\}\$'\,false\)/g)||[]).length,4,'all UUID patterns must retain closing anchor');
  assert.match(sql,/ELSE NULL END/);
 });
