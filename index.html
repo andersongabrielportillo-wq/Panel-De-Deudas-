@@ -780,12 +780,14 @@ debtBackupButton.onclick=async()=>{
  debtBackupButton.disabled=true;
  try{
   const backup=window.DebtLegacyBackup.capture(localStorage);
-  if(Object.keys(backup.entries).length===0)throw Error("Este navegador no tiene datos locales para respaldar; falta verificar el respaldo de la nube");
+  if(!Object.keys(backup.entries).some(key=>key!=="cp_pend"))throw Error("Este navegador no tiene datos de Deudas para respaldar; falta verificar el respaldo de la nube");
   if(backup.entries.cp_pend==="1")alert("ATENCIÓN: hay cambios de Deudas pendientes de sincronizar. Conserva este respaldo y no migres ni borres la caché hasta comprobar que esos cambios llegaron a la nube.");
   const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
   // Verify the encrypted artifact before offering it for download; never alter the source cache.
   const verified=await window.DebtEncryptedBackup.decryptBackup(encrypted,pass);
   if(JSON.stringify(verified)!==JSON.stringify(backup))throw Error("La verificación del respaldo no coincide");
+  const current=window.DebtLegacyBackup.capture(localStorage);
+  if(JSON.stringify(current.entries)!==JSON.stringify(backup.entries))throw Error("Los datos locales cambiaron durante el respaldo; vuelve a exportar para incluir los cambios recientes");
   if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("La sesión expiró antes de exportar");
   const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
