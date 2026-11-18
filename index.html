@@ -815,7 +815,7 @@ debtRecoveryInput.onchange=async()=>{
  try{
   const envelope=JSON.parse(await file.text());
   const backup=await window.DebtEncryptedBackup.decryptBackup(envelope,pass);
-  if(!await debtController.verify())throw Error("Autorización caducada");
+  if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("Autorización caducada");
   const keys=Object.keys(backup.entries);
   const pending=backup.entries.cp_pend==="1";
   alert("Respaldo válido. Claves presentes: "+keys.length+". Indicador de cambios pendientes: "+(pending?"SÍ":"no confirmado")+". No se ha restaurado ni modificado ningún dato.");
