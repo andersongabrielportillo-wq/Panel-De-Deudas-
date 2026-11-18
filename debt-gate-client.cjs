@@ -2,7 +2,7 @@
 (function(root){'use strict';
 function createDebtGate({client,workspaceId,rpcNames}={}){
  const names=rpcNames||{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'};
- if(!names||!['unlock','verify','lock'].every(k=>typeof names[k]==='string'&&/^debt_lab_(unlock|access_valid|lock)$/.test(names[k])))throw Error('RPC de laboratorio inválida');
+ if(!names||!['unlock','verify','lock'].every(k=>names[k]===({unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'})[k]))throw Error('RPC de laboratorio inválida');
  if(!client||typeof client.rpc!=='function')throw Error('Cliente Supabase inválido');
  if(typeof workspaceId!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(workspaceId))throw Error('Workspace inválido');
  let unlocked=false,epoch=0,expiresAt=0,lockPending=false,unlockPending=false;
