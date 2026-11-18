@@ -863,7 +863,14 @@ document.getElementById("logoutBtn").onclick=async()=>{
   try{cacheAudit=window.DebtCachePreflight?.inspectDebtCache(localStorage)||null}catch(_){cacheAudit=null}
   const offlinePending=SY.pend||!cacheAudit||!cacheAudit.storageAccessible||cacheAudit.hasPendingChanges;
   if(offlinePending&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
-  // Revoke the additional Deudas server grant before signing out of Supabase.\n  // Continue normal sign-out even when remote revocation fails; the UI remains locked.\n  let debtRevokeFailed=false;\n  if(debtController){\n    try{await debtController.logout()}catch(_){debtRevokeFailed=true}\n    debtController=null;\n  }\n  debtGate=null;showModuleHub(false);debtScreenVisible(false);
+  // Revoke the additional Deudas server grant before signing out of Supabase.
+  // Continue normal sign-out even when remote revocation fails; the UI remains locked.
+  let debtRevokeFailed=false;
+  if(debtController){
+    try{await debtController.logout()}catch(_){debtRevokeFailed=true}
+    debtController=null;
+  }
+  debtGate=null;showModuleHub(false);debtScreenVisible(false);
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
   const pending=offlinePending;
