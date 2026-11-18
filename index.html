@@ -869,6 +869,50 @@ async function openIndependentModule(id){
     finally{submit.disabled=false}
    };
    clnHubDetail.append(form);
+   const returnForm=document.createElement("form");
+   const returnTitle=document.createElement("h4");returnTitle.textContent="Solicitar devolución para revisión";
+   const returnItem=document.createElement("select");returnItem.required=true;returnItem.setAttribute("aria-label","Artículo devuelto");
+   const returnBlank=document.createElement("option");returnBlank.value="";returnBlank.textContent="Seleccionar artículo";returnItem.append(returnBlank);
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;returnItem.append(option)}
+   const returnQty=document.createElement("input");returnQty.type="number";returnQty.min="1";returnQty.step="1";returnQty.required=true;returnQty.placeholder="Cantidad devuelta";returnQty.setAttribute("aria-label","Cantidad devuelta");
+   const returnReason=document.createElement("textarea");returnReason.required=true;returnReason.placeholder="Motivo de devolución";returnReason.setAttribute("aria-label","Motivo de devolución");
+   const returnButton=document.createElement("button");returnButton.type="submit";returnButton.className="g2";returnButton.textContent="Enviar devolución a revisión";
+   returnForm.append(returnTitle,returnItem,returnQty,returnReason,returnButton);
+   returnForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!returnReason.value.trim()){status.textContent="Indica el motivo de devolución.";return}
+    if(!confirm("¿Enviar devolución para revisión? No aumentará existencias hasta su aprobación."))return;
+    returnButton.disabled=true;status.textContent="Enviando devolución…";
+    try{
+     const result=await actions.execute("requestReturn",{p_item_id:returnItem.value,p_cantidad:Number(returnQty.value),p_motivo:returnReason.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Devolución pendiente de revisión. Solicitud: "+String(result);returnForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Devolución no confirmada: "+e.message}
+    finally{returnButton.disabled=false}
+   };
+   clnHubDetail.append(returnForm);
+   const reviewReturn=document.createElement("form");
+   const reviewTitle=document.createElement("h4");reviewTitle.textContent="Revisar devolución pendiente";
+   const returnRequestId=document.createElement("input");returnRequestId.required=true;returnRequestId.placeholder="ID de solicitud (UUID)";returnRequestId.setAttribute("aria-label","ID de devolución");
+   const returnDecision=document.createElement("select");returnDecision.setAttribute("aria-label","Decisión de devolución");
+   for(const [value,label] of [["true","Aprobar devolución"],["false","Rechazar devolución"]]){const option=document.createElement("option");option.value=value;option.textContent=label;returnDecision.append(option)}
+   const reviewReturnButton=document.createElement("button");reviewReturnButton.type="submit";reviewReturnButton.className="g2";reviewReturnButton.textContent="Resolver devolución";
+   reviewReturn.append(reviewTitle,returnRequestId,returnDecision,reviewReturnButton);
+   reviewReturn.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const approve=returnDecision.value==="true";
+    if(!confirm(approve?"¿Aprobar devolución? El servidor verificará si corresponde aumentar existencias.":"¿Rechazar devolución?"))return;
+    reviewReturnButton.disabled=true;status.textContent="Revisando devolución…";
+    try{
+     const result=await actions.execute("reviewReturn",{p_solicitud_id:returnRequestId.value.trim(),p_aprobar:approve});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Decisión registrada: "+String(result);reviewReturn.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Revisión no confirmada: "+e.message}
+    finally{reviewReturnButton.disabled=false}
+   };
+   clnHubDetail.append(reviewReturn);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
