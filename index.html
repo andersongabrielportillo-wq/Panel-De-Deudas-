@@ -968,6 +968,61 @@ async function openIndependentModule(id){
     finally{voidButton.disabled=false}
    };
    clnHubDetail.append(voidForm);
+   const saleForm=document.createElement("form");
+   const saleHeading=document.createElement("h4");saleHeading.textContent="Registrar venta";
+   const seller=document.createElement("select");seller.required=true;seller.setAttribute("aria-label","Vendedor");
+   const sellerPlaceholder=document.createElement("option");sellerPlaceholder.value="";sellerPlaceholder.textContent="Seleccionar vendedor";seller.append(sellerPlaceholder);
+   const sellers=await nexusReader.list("sellers");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const entry of sellers){const option=document.createElement("option");option.value=entry.id;option.textContent=entry.nombre;seller.append(option)}
+   const mode=document.createElement("select");mode.setAttribute("aria-label","Modalidad");
+   for(const [value,label] of [["contado","Contado"],["credito","Crédito"]]){const option=document.createElement("option");option.value=value;option.textContent=label;mode.append(option)}
+   const lines=document.createElement("div");
+   const saleItems=[];
+   const addLine=document.createElement("button");addLine.type="button";addLine.className="g2";addLine.textContent="Añadir artículo";
+   const makeLine=()=>{
+    if(saleItems.length>=100)return;
+    const wrap=document.createElement("div");
+    const itemSelect=document.createElement("select");itemSelect.required=true;itemSelect.setAttribute("aria-label","Artículo de venta");
+    const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo";itemSelect.append(blank);
+    for(const entry of inventoryArticles){const option=document.createElement("option");option.value=entry.id;option.textContent=entry.nombre;itemSelect.append(option)}
+    const locationSelect=document.createElement("select");locationSelect.setAttribute("aria-label","Ubicación de venta");
+    for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;locationSelect.append(option)}
+    const qty=document.createElement("input");qty.type="number";qty.min="1";qty.step="1";qty.required=true;qty.placeholder="Cantidad";
+    const price=document.createElement("input");price.type="number";price.min="0";price.step="0.01";price.required=true;price.placeholder="Precio unitario";
+    const discount=document.createElement("input");discount.type="number";discount.min="0";discount.step="0.01";discount.value="0";discount.required=true;discount.placeholder="Descuento de línea";
+    const remove=document.createElement("button");remove.type="button";remove.textContent="Quitar";remove.className="g2";
+    const line={wrap,itemSelect,locationSelect,qty,price,discount};saleItems.push(line);
+    remove.onclick=()=>{if(saleItems.length<=1)return;const i=saleItems.indexOf(line);if(i>=0)saleItems.splice(i,1);wrap.remove()};
+    wrap.append(itemSelect,locationSelect,qty,price,discount,remove);lines.append(wrap);
+   };
+   const inventoryArticles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   addLine.onclick=makeLine;makeLine();
+   const overallDiscount=document.createElement("input");overallDiscount.type="number";overallDiscount.min="0";overallDiscount.step="0.01";overallDiscount.value="0";overallDiscount.required=true;overallDiscount.placeholder="Descuento general";overallDiscount.setAttribute("aria-label","Descuento general");
+   const saleNotes=document.createElement("textarea");saleNotes.placeholder="Observaciones";saleNotes.setAttribute("aria-label","Observaciones de venta");
+   const saleButton=document.createElement("button");saleButton.type="submit";saleButton.className="g2";saleButton.textContent="Confirmar venta";
+   saleForm.append(saleHeading,seller,mode,lines,addLine,overallDiscount,saleNotes,saleButton);
+   let pendingSaleOp=null;
+   saleForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const articles=saleItems.map(line=>({item_id:line.itemSelect.value,location_id:Number(line.locationSelect.value),cantidad:Number(line.qty.value),precio_unitario:Number(line.price.value),descuento:Number(line.discount.value)}));
+    if(articles.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||!Number.isFinite(line.precio_unitario)||line.precio_unitario<0||!Number.isFinite(line.descuento)||line.descuento<0)){status.textContent="Revisa cantidades, precios y descuentos.";return}
+    if(!confirm("¿Confirmar venta? El servidor descontará las existencias."))return;
+    if(!pendingSaleOp)pendingSaleOp=crypto.randomUUID();
+    saleButton.disabled=true;status.textContent="Registrando venta. No cierres esta pantalla…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("sale",{p_vendedor_id:seller.value,p_modalidad:mode.value,p_articulos:articles,p_descuento:Number(overallDiscount.value),p_observaciones:saleNotes.value.trim(),p_client_op_id:pendingSaleOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Venta confirmada. ID: "+String(result);
+     pendingSaleOp=null;saleForm.reset();lines.replaceChildren();saleItems.length=0;makeLine();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Venta no confirmada. Antes de reintentar comprueba si ya se registró. Operación: "+pendingSaleOp+". "+e.message}
+    finally{saleButton.disabled=false}
+   };
+   clnHubDetail.append(saleForm);
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
