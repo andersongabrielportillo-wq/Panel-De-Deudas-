@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const sql=fs.readFileSync(path.join(__dirname,'../sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'),'utf8');
 const preflight=fs.readFileSync(path.join(__dirname,'../sql/deudas_preflight_SOLO_LECTURA.sql'),'utf8');
+const policyAudit=fs.readFileSync(path.join(__dirname,'../sql/deudas_auditoria_rls_SOLO_LECTURA.sql'),'utf8');
 const checklist=fs.readFileSync(path.join(__dirname,'../docs/CORTE_SEGURO_DEUDAS_NO_EJECUTAR.md'),'utf8');
 
 test('production debt gate migration remains explicitly manual and fail-closed',()=>{
@@ -32,4 +33,11 @@ test('cutover checklist explicitly blocks schema mismatch and missing backups',(
  assert.match(checklist,/respaldo.*local cifrado/i);
  assert.match(checklist,/NO MIGRAR/);
  assert.match(checklist,/aprobación explícita/i);
+});
+
+test('RLS policy audit reads metadata only and checks membership policy shapes',()=>{
+ assert.match(policyAudit,/FROM pg_policies/);
+ assert.match(policyAudit,/permissive,roles,cmd/);
+ assert.match(policyAudit,/has_with_check/);
+ assert.doesNotMatch(policyAudit,/\b(?:INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP|CREATE)\s+(?:TABLE|FROM|INTO|SCHEMA|POLICY|FUNCTION|ON|public\.)/i);
 });
