@@ -30,3 +30,14 @@ test('production debt reads and writes have server-gate checks ready for cutover
  assert.match(index,/async function cloudSnapshot\(\)[\s\S]*?DEBT_GATE_ENABLED\s*&&\s*\(!debtGate\|\|!debtGate\.isUnlocked\(\)\)/);
  assert.match(index,/async function cloudSet\(payload\)[\s\S]*?DEBT_GATE_ENABLED\s*&&\s*\(!debtController\|\|!await debtController\.verify\(\)\)/);
 });
+
+test('actual PWA logout revokes server grant before Supabase signout',()=>{
+ const start=index.indexOf('document.getElementById("logoutBtn").onclick=async()=>');
+ const end=index.indexOf('SB.auth.onAuthStateChange',start);
+ assert.ok(start>=0&&end>start,'Logout handler must be present');
+ const handler=index.slice(start,end);
+ const revoke=handler.indexOf('await debtController.logout()');
+ const signout=handler.indexOf('await SB.auth.signOut()');
+ assert.ok(revoke>=0&&signout>revoke,'Revoke before ending authenticated session');
+ assert.match(handler,/debtRevokeFailed\s*=\s*true/);
+});
