@@ -51,3 +51,12 @@ test('action rejects stale success after reset',async()=>{
  actions.reset();finish({data:id});
  await assert.rejects(pending,/Sesión cerrada/);
 });
+
+test('warehouse location accepts numeric IDs and rejects UUID-like values',async()=>{
+ let calls=0;
+ const actions=createNexusActions({client:{rpc:async()=>{calls++;return {data:id}}},authorized:()=>true});
+ await actions.execute('requestEntry',{p_item_id:id,p_location_id:1,p_cantidad:2,p_observaciones:'Prueba'});
+ assert.equal(calls,1);
+ await assert.rejects(actions.execute('requestEntry',{p_item_id:id,p_location_id:id,p_cantidad:2,p_observaciones:'Prueba'}),/Cantidad o ubicación/);
+ assert.equal(calls,1);
+});
