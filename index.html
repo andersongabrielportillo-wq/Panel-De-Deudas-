@@ -838,7 +838,33 @@ async function openIndependentModule(id){
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
   if(id==="clnHubWarranties"){
-   status.textContent="Garantías: operaciones desactivadas hasta validar permisos y flujo del servidor.";
+   status.textContent="Liberación de garantía: requiere autorización del servidor.";
+   if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+   const form=document.createElement("form");
+   const item=document.createElement("input");item.required=true;item.placeholder="ID del artículo (UUID)";item.setAttribute("aria-label","ID del artículo");
+   const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
+   for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
+   const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
+   const notes=document.createElement("textarea");notes.required=true;notes.placeholder="Observaciones obligatorias";notes.setAttribute("aria-label","Observaciones");
+   const submit=document.createElement("button");submit.type="submit";submit.textContent="Solicitar liberación";submit.className="g2";
+   form.append(item,dest,quantity,notes,submit);
+   const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+   form.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_item_id:item.value.trim(),p_destino:Number(dest.value),p_cantidad:Number(quantity.value),p_observaciones:notes.value.trim()};
+    if(!params.p_observaciones){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Confirmar liberación de garantía? El servidor validará permisos y existencias."))return;
+    submit.disabled=true;status.textContent="Procesando liberación…";
+    try{
+     const result=await actions.execute("warrantyRelease",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Operación confirmada por el servidor. Movimiento: "+String(result);
+     form.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Operación no confirmada: "+e.message}
+    finally{submit.disabled=false}
+   };
+   clnHubDetail.append(form);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
