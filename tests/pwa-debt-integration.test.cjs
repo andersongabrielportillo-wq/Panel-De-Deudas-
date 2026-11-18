@@ -49,3 +49,12 @@ test('cloud write revalidates authorization after the preliminary read',()=>{
  assert.ok(readAt>=0&&verifyAt>readAt&&updateAt>verifyAt&&insertAt>verifyAt);
  assert.match(body,/!APP_READY/);
 });
+
+test('encrypted pre-cutover backup is available to signed-in users without enabling the debt gate',()=>{
+ assert.match(html,/debtBackupButton\.hidden=false/);
+ assert.match(html,/debtRecoveryButton\.hidden=false/);
+ assert.match(html,/if\(!APP_READY\|\|!SB_UID\|\|\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)\)/);
+ assert.match(html,/const backup=window\.DebtLegacyBackup\.capture\(localStorage\)/);
+ assert.match(html,/window\.DebtEncryptedBackup\.encryptBackup\(backup,pass\)/);
+ assert.match(html,/Verificar respaldo cifrado \(sin restaurar\)/);
+});
