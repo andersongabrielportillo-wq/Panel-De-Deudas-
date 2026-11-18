@@ -1,5 +1,5 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v5-debt-encrypted-backup-preparacion';
+const CACHE = 'panel-de-deudas-shell-v6-nav-safe-cache';
 const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-shell.js', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
@@ -24,6 +24,11 @@ self.addEventListener('fetch', event => {
   // Nunca interceptar Supabase, autenticación, CDNs ni otros orígenes.
   if (url.origin !== self.location.origin) return;
   const isNav = req.mode === 'navigate';
+  // Solo la portada pertenece al shell offline. No guardar callbacks de Auth,
+  // rutas desconocidas ni URLs con tokens/códigos en sus parámetros.
+  const home = new URL('./', self.registration.scope).pathname;
+  const index = new URL('./index.html', self.registration.scope).pathname;
+  if (isNav && (url.search || (url.pathname !== home && url.pathname !== index))) return;
   if (!isNav && !SHELL.has(url.pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
