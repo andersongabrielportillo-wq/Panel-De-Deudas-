@@ -23,4 +23,4 @@ jobs:
           node --check debt-gate-client.cjs
           node --check debt-module-controller.cjs
       - name: Run debt backup tests
-        run: node --test tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
+        run: node --test tests/debt-production-rpc-contract.test.mjs tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
