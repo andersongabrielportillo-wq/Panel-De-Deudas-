@@ -74,3 +74,15 @@ test('pre-cutover export explicitly warns that a browser backup is not a cloud b
  assert.match(html,/Respaldo LOCAL cifrado preparado/);
  assert.match(html,/conserva otra copia de la nube/);
 });
+
+test('backup export verifies encrypted roundtrip before creating downloadable file',()=>{
+ const start=html.indexOf('debtBackupButton.onclick=async()=>');
+ const end=html.indexOf('const debtRecoveryInput=',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ const encrypted=body.indexOf('DebtEncryptedBackup.encryptBackup(backup,pass)');
+ const verified=body.indexOf('DebtEncryptedBackup.decryptBackup(encrypted,pass)');
+ const compared=body.indexOf('JSON.stringify(verified)!==JSON.stringify(backup)');
+ const downloaded=body.indexOf('new Blob([JSON.stringify(encrypted)]');
+ assert.ok(encrypted>=0&&verified>encrypted&&compared>verified&&downloaded>compared);
+});
