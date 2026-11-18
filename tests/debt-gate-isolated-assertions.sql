@@ -21,14 +21,15 @@ BEGIN
 END $$;
 
 -- Behavioral checks with synthetic JWTs, no real user records.
-DO $$
+-- Seed in a separate SQL statement so STABLE membership functions see committed fixture rows.
+INSERT INTO public.workspaces(id,nombre) VALUES('00000000-0000-0000-0000-000000000001','CI only');
+INSERT INTO public.workspace_members(workspace_id,user_id) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002');
+DO $
 DECLARE
  w uuid:='00000000-0000-0000-0000-000000000001';
  u uuid:='00000000-0000-0000-0000-000000000002';
  exp timestamptz;
 BEGIN
- INSERT INTO public.workspaces(id,nombre) VALUES(w,'CI only');
- INSERT INTO public.workspace_members(workspace_id,user_id) VALUES(w,u);
  PERFORM set_config('request.jwt.claim.sub',u::text,false);
  PERFORM set_config('request.jwt.claims','{"session_id":"not-a-uuid"}',false);
  IF public.debt_access_valid(w) IS DISTINCT FROM false
