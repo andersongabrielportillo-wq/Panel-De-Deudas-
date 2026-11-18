@@ -29,8 +29,8 @@ async function debtGateAction(name){
   const token=await accessToken(s);if(session!==s||authEpoch!==epoch)return;
   const data=await request(s.origin+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(name==="debt_lab_unlock"?{p_workspace_id:id,p_password:password}:{p_workspace_id:id}),cache:"no-store"});
   if(session!==s||authEpoch!==epoch)return;
-  if(name==="debt_lab_unlock")report("debtAccessResult",data?"Desbloqueo aceptado por servidor; caduca "+new Date(data).toLocaleTimeString():"Contraseña incorrecta; acceso bloqueado");
-  else report("debtAccessResult","Bloqueo confirmado en servidor");
+  if(name==="debt_lab_unlock"){s.debtWorkspaceId=id;report("debtAccessResult",data?"Desbloqueo aceptado por servidor; caduca "+new Date(data).toLocaleTimeString():"Contraseña incorrecta; acceso bloqueado");}
+  else {if(s.debtWorkspaceId===id)s.debtWorkspaceId=null;report("debtAccessResult","Bloqueo confirmado en servidor");}
  }catch(e){if(session===s&&authEpoch===epoch)report("debtAccessResult","NO VERIFICADO: "+e.message)}
  finally{btn.disabled=false}
 }
@@ -62,6 +62,14 @@ $("refresh").onclick=load;$("logout").onclick=async()=>{
  report("authStatus","Cerrando sesión de laboratorio…");
  if(!oldSession){report("authStatus","Sesión local cerrada");return}
  try{
+  // Revoke the extra Deudas grant BEFORE ending the Auth session.
+  // Failure is reported but must never restore the locally closed session.
+  const wid=oldSession.debtWorkspaceId;
+  if(wid){
+   try{
+    await request(oldSession.origin+"/rest/v1/rpc/debt_lab_lock",{method:"POST",headers:{"apikey":oldSession.key,"Authorization":"Bearer "+oldSession.token,"Content-Type":"application/json"},body:JSON.stringify({p_workspace_id:wid}),cache:"no-store"});
+   }catch(_){report("authStatus","Sesión local cerrada; revocación adicional de Deudas no confirmada")}
+  }
   // Explicitly revoke the lab access token on Supabase Auth; never send it to another origin.
   await request(oldSession.origin+"/auth/v1/logout",{method:"POST",headers:{"apikey":oldSession.key,"Authorization":"Bearer "+oldSession.token},cache:"no-store"});
   report("authStatus","Sesión de laboratorio cerrada en el servidor");
