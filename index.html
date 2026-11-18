@@ -1286,6 +1286,84 @@ async function openIndependentModule(id){
     finally{confirmButton.disabled=false}
    };
    clnHubDetail.append(confirmForm);
+   const draftForm=document.createElement("form");
+   const draftTitle=document.createElement("h4");draftTitle.textContent="Crear contrato borrador";
+   draftForm.append(draftTitle);
+   const field=(label,type="text",required=false)=>{
+    const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
+   };
+   const number=field("Número de contrato", "text",true);
+   const customer=document.createElement("select");customer.required=true;customer.setAttribute("aria-label","Cliente del contrato");draftForm.append(customer);
+   const vendor=document.createElement("select");vendor.required=true;vendor.setAttribute("aria-label","Vendedor del contrato");draftForm.append(vendor);
+   const fillSelect=(select,items,label)=>{
+    select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
+    for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
+   };
+   const customers=await nexusReader.list("contracts");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   fillSelect(customer,customers,"Seleccionar cliente");
+   const vendors=await nexusReader.list("sellers");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   fillSelect(vendor,vendors,"Seleccionar vendedor");
+   const date=field("Fecha de contrato","date",true);date.value=new Date().toISOString().slice(0,10);
+   const choose=(label,options)=>{
+    const el=document.createElement("select");el.setAttribute("aria-label",label);
+    for(const [value,title] of options){const option=document.createElement("option");option.value=value;option.textContent=title;el.append(option)}
+    draftForm.append(el);return el;
+   };
+   const modality=choose("Modalidad",[["credito","Crédito"],["contado","Contado"]]);
+   const frequency=choose("Frecuencia",[["semanal","Semanal"],["quincenal","Quincenal"],["mensual","Mensual"]]);
+   const plan=choose("Plan",[["normal","Normal"],["3_pagos","3 pagos"],["6_pagos","6 pagos"]]);
+   const installment=field("Cuota","number");installment.min="0";installment.step="0.01";
+   const initialBalance=field("Saldo inicial","number");initialBalance.min="0";initialBalance.step="0.01";
+   const planDate=field("Fecha inicial del plan","date");
+   const route=field("Ruta");
+   const collectionDay=field("Día de cobro");
+   const alternate=field("Receptor alterno");
+   const commission=field("Comisión total","number",true);commission.min="0";commission.step="0.01";commission.value="0";
+   const deposit=field("Prima","number",true);deposit.min="0";deposit.step="0.01";deposit.value="0";
+   const depositReceived=document.createElement("label");
+   const depositCheckbox=document.createElement("input");depositCheckbox.type="checkbox";depositReceived.append(depositCheckbox,document.createTextNode(" Prima recibida"));draftForm.append(depositReceived);
+   const detailsTitle=document.createElement("h5");detailsTitle.textContent="Artículos del contrato";draftForm.append(detailsTitle);
+   const details=document.createElement("div");draftForm.append(details);
+   const contractLines=[];
+   const inventory=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   const addDetail=document.createElement("button");addDetail.type="button";addDetail.className="g2";addDetail.textContent="Agregar artículo";
+   const newDetail=()=>{
+    if(contractLines.length>=100)return;
+    const wrap=document.createElement("div"),item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo de contrato");
+    fillSelect(item,inventory,"Seleccionar artículo");
+    const qty=document.createElement("input");qty.type="number";qty.required=true;qty.min="1";qty.step="1";qty.placeholder="Cantidad";
+    const price=document.createElement("input");price.type="number";price.required=true;price.min="0";price.step="0.01";price.placeholder="Precio a crédito";
+    const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea";
+    const remove=document.createElement("button");remove.type="button";remove.className="g2";remove.textContent="Quitar";
+    const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
+    remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
+    wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+   };
+   addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
+   const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
+   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Guardar contrato borrador";draftForm.append(draftButton);
+   draftForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const contractDetails=contractLines.map(line=>({item_id:line.item.value,cantidad:Number(line.qty.value),precio_credito_unitario:Number(line.price.value),comision_linea:Number(line.lineCommission.value)}));
+    if(contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){status.textContent="Revisa artículos, cantidades y precios.";return}
+    const params={p_numero:number.value.trim(),p_cliente_id:customer.value,p_vendedor_id:vendor.value,p_fecha:date.value,p_modalidad:modality.value,p_frecuencia:frequency.value,p_plan:plan.value,p_cuota:installment.value===""?null:Number(installment.value),p_saldo_inicial:initialBalance.value===""?null:Number(initialBalance.value),p_fecha_plan:planDate.value||null,p_ruta:route.value.trim(),p_dia_cobro:collectionDay.value.trim(),p_receptor_alterno:alternate.value.trim(),p_comision:Number(commission.value),p_prima:Number(deposit.value),p_prima_recibida:depositCheckbox.checked,p_detalles:contractDetails,p_observaciones:draftNotes.value.trim()};
+    if(!confirm("¿Crear contrato borrador? No se descontará inventario hasta su confirmación."))return;
+    draftButton.disabled=true;status.textContent="Guardando contrato borrador…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createContract",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Borrador creado en el servidor. ID: "+String(result)+". Confírmalo por separado para descontar existencias.";
+     draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Borrador no confirmado; verifica antes de reintentar: "+e.message}
+    finally{draftButton.disabled=false}
+   };
+   clnHubDetail.append(draftForm);
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
