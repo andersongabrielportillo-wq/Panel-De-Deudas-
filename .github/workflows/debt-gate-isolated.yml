@@ -6,12 +6,14 @@ on:
       - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
       - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
       - 'tests/debt-gate-isolated-assertions.sql'
+      - 'tests/debt-gate-authenticated-rls.sql'
       - '.github/workflows/debt-gate-isolated.yml'
   pull_request:
     paths:
       - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
       - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
       - 'tests/debt-gate-isolated-assertions.sql'
+      - 'tests/debt-gate-authenticated-rls.sql'
       - '.github/workflows/debt-gate-isolated.yml'
 permissions:
   contents: read
@@ -47,3 +49,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql
       - name: Verify restrictive RLS and protected RPCs
         run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-isolated-assertions.sql
+      - name: Verify actual authenticated role RLS enforcement
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-rls.sql
