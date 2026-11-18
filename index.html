@@ -692,6 +692,8 @@ async function cloudSet(payload){
   const state=JSON.parse(payload.j);
   const {data:old,error:re}=await SB.from("debts").select("id").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(re)throw re;
+  // An authorization can expire while the preliminary database read is in flight.
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()||!APP_READY))throw Error("Autorización caducada antes de guardar Deudas");
   if(old){const {error}=await SB.from("debts").update({data:state,updated_by:SB_UID,updated_at:new Date().toISOString()}).eq("workspace_id",SB_WID).eq("id","__shared_state__");if(error)throw error}
   else{const {error}=await SB.from("debts").insert({id:"__shared_state__",workspace_id:SB_WID,data:state,created_by:SB_UID,updated_by:SB_UID});if(error)throw error}
 }
