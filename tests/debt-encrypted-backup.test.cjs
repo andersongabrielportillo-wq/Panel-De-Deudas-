@@ -17,7 +17,10 @@ test('encrypted round trip preserves all keys including pending changes',async()
  assert.equal(encrypted.format,'debt-encrypted-backup-v1');
  assert.equal(JSON.stringify(encrypted).includes('saldo'),false);
  const decrypted=await decryptBackup(encrypted,pass,webcrypto);
- assert.deepEqual(decrypted,backup);
+ // JSON serialization normalizes Object.create(null) into an ordinary object.
+ assert.equal(decrypted.format,backup.format);
+ assert.equal(decrypted.createdAt,backup.createdAt);
+ assert.deepEqual(decrypted.entries,{...backup.entries});
  const target=storage();
  assert.equal(restoreEmpty(target,decrypted),3);
  assert.deepEqual(target.snapshot(),original.snapshot());
