@@ -2,6 +2,7 @@
 -- Run with psql in an approved, backed-up maintenance window, AFTER the inventory schema exists.
 -- Example: psql -v roles_json='[{"user_id":"...","rol":"admin"},{"user_id":"...","rol":"secretaria"},{"user_id":"...","rol":"admin"}]' -f THIS_FILE
 -- Never copy inv_members from LAB; authenticated identities are project-specific.
+-- Only explicitly listed users get inventory access; other Deudas members remain unprivileged here.
 \set ON_ERROR_STOP on
 BEGIN;
 DO $preflight$
@@ -32,8 +33,9 @@ BEGIN
  IF EXISTS (SELECT user_id FROM cln_roles_cutover
    EXCEPT SELECT id FROM auth.users)
  THEN RAISE EXCEPTION 'Role assignment includes an unknown Auth user'; END IF;
- IF (SELECT count(*) FROM cln_roles_cutover)<>(SELECT count(*) FROM public.workspace_members WHERE workspace_id=v_workspace)
- THEN RAISE EXCEPTION 'Unmapped workspace member: obtain explicit role assignment first'; END IF;
+ -- Intentionally do NOT require every Deudas workspace member to receive CL Nexus privileges.
+ -- The owner and secretary may be the only two authorized inventory operators.
+ -- A third Deudas-only user must NOT be silently promoted to CL Nexus admin.
 END $audit$;
 INSERT INTO public.inv_members(user_id,rol)
 SELECT user_id,rol FROM cln_roles_cutover;
