@@ -941,6 +941,47 @@ async function openIndependentModule(id){
     finally{repairButton.disabled=false}
    };
    clnHubDetail.append(repairForm);
+   const dispatchForm=document.createElement("form");
+   const dispatchTitle=document.createElement("h4");dispatchTitle.textContent="Enviar reparación pendiente";
+   const dispatchId=document.createElement("input");dispatchId.required=true;dispatchId.placeholder="ID de reparación (UUID)";dispatchId.setAttribute("aria-label","ID de reparación");
+   const dispatchButton=document.createElement("button");dispatchButton.type="submit";dispatchButton.className="g2";dispatchButton.textContent="Enviar a proveedor o taller";
+   dispatchForm.append(dispatchTitle,dispatchId,dispatchButton);
+   dispatchForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!confirm("¿Marcar esta reparación como enviada? El servidor comprobará su estado."))return;
+    dispatchButton.disabled=true;status.textContent="Registrando envío…";
+    try{
+     const result=await actions.execute("sendRepair",{p_reparacion_id:dispatchId.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Envío confirmado por el servidor: "+String(result);dispatchForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Envío no confirmado: "+e.message}
+    finally{dispatchButton.disabled=false}
+   };
+   clnHubDetail.append(dispatchForm);
+   const resolveForm=document.createElement("form");
+   const resolveTitle=document.createElement("h4");resolveTitle.textContent="Resolver reparación";
+   const resolveId=document.createElement("input");resolveId.required=true;resolveId.placeholder="ID de reparación (UUID)";resolveId.setAttribute("aria-label","ID de reparación a resolver");
+   const resolveAction=document.createElement("select");resolveAction.setAttribute("aria-label","Operación de reparación");
+   for(const value of ["recibir","baja","cerrar"]){const option=document.createElement("option");option.value=value;option.textContent=value;resolveAction.append(option)}
+   const resolveQty=document.createElement("input");resolveQty.type="number";resolveQty.min="1";resolveQty.step="1";resolveQty.required=true;resolveQty.placeholder="Cantidad";resolveQty.setAttribute("aria-label","Cantidad resuelta");
+   const resolveNotes=document.createElement("textarea");resolveNotes.required=true;resolveNotes.placeholder="Observaciones obligatorias";resolveNotes.setAttribute("aria-label","Observaciones de resolución");
+   const resolveButton=document.createElement("button");resolveButton.type="submit";resolveButton.className="g2";resolveButton.textContent="Registrar resolución";
+   resolveForm.append(resolveTitle,resolveId,resolveAction,resolveQty,resolveNotes,resolveButton);
+   resolveForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!resolveNotes.value.trim()){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Registrar "+resolveAction.value+"? El servidor comprobará el estado y las cantidades."))return;
+    resolveButton.disabled=true;status.textContent="Resolviendo reparación…";
+    try{
+     const result=await actions.execute("resolveRepair",{p_reparacion_id:resolveId.value.trim(),p_operacion:resolveAction.value,p_cantidad:Number(resolveQty.value),p_observaciones:resolveNotes.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Resolución confirmada por el servidor: "+String(result);resolveForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Resolución no confirmada: "+e.message}
+    finally{resolveButton.disabled=false}
+   };
+   clnHubDetail.append(resolveForm);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
