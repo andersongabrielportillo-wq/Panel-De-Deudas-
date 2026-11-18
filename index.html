@@ -924,6 +924,28 @@ async function openIndependentModule(id){
    clnHubDetail.append(form);
   }
   if(kind==="contracts"){
+   const sellerForm=document.createElement("form");
+   const sellerName=document.createElement("input");sellerName.required=true;sellerName.maxLength=120;sellerName.placeholder="Nombre del nuevo vendedor";sellerName.setAttribute("aria-label","Nombre del vendedor");
+   const sellerSubmit=document.createElement("button");sellerSubmit.type="submit";sellerSubmit.className="g2";sellerSubmit.textContent="Registrar vendedor";
+   sellerForm.append(sellerName,sellerSubmit);
+   sellerForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const name=sellerName.value.trim();
+    if(!name){status.textContent="Ingresa el nombre del vendedor.";return}
+    if(!confirm("¿Registrar al vendedor "+name+"?"))return;
+    sellerSubmit.disabled=true;status.textContent="Registrando vendedor…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createSeller",{p_nombre:name});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Vendedor registrado por el servidor. ID: "+String(result);
+     sellerForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
+    finally{sellerSubmit.disabled=false}
+   };
+   clnHubDetail.append(sellerForm);
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
