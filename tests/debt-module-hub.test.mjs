@@ -35,11 +35,14 @@ test('vistas independientes tienen secciones reales de interfaz sin consultar De
  const code=html.slice(start,end);
  for(const forbidden of ['loadPrivate(', 'cloudSnapshot(', 'cloudSet(', 'localStorage', 'SB.from(', 'SB.rpc('])
   assert.equal(code.includes(forbidden),false,forbidden);
- assert.ok(code.includes('if(!config||!SB_UID||!DEBT_GATE_ENABLED)return'));
+ assert.ok(code.includes('if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return'));
 });
-test('vistas de hub solo muestran interfaz informativa sin operaciones reales',()=>{
- assert.ok(html.includes('Consultas y operaciones desactivadas hasta verificar los permisos'));
+test('vistas del hub incluyen formularios RPC, pero gate sigue apagado hasta autorización del servidor',()=>{
+ assert.ok(html.includes('createNexusActions'));
+ assert.ok(html.includes('createContract'));
+ assert.ok(html.includes('requestReturn'));
  assert.ok(html.includes('clnHubDetail.replaceChildren()'));
+ assert.ok(html.includes('const DEBT_GATE_ENABLED=false'));
 });
 
 test('volver a módulos limpia contraseña sin leer Deudas',()=>{
