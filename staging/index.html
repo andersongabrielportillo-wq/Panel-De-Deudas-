@@ -29,6 +29,8 @@ async function debtGateAction(name){
   const token=await accessToken(s);if(session!==s||authEpoch!==epoch)return;
   const data=await request(s.origin+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(name==="debt_lab_unlock"?{p_workspace_id:id,p_password:password}:{p_workspace_id:id}),cache:"no-store"});
   if(session!==s||authEpoch!==epoch)return;
+  // A previous valid grant must never make a rejected password look successful.
+  if(name==="debt_lab_unlock"&&(!data||Number.isNaN(Date.parse(data))))throw Error("El servidor no confirmó la contraseña");
   // Always ask the server again after unlocking or locking; never trust a UI-only state.
   const verified=await request(s.origin+"/rest/v1/rpc/debt_lab_access_valid",{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({p_workspace_id:id}),cache:"no-store"});
   if(session!==s||authEpoch!==epoch)return;
@@ -74,6 +76,9 @@ $("refresh").onclick=load;$("logout").onclick=async()=>{
  try{
   // Revoke the extra Deudas grant BEFORE ending the Auth session.
   // Failure is reported but must never restore the locally closed session.
+  // Refresh if needed before revoking the grant and logging out.
+  // A stale access token could otherwise prevent server-side revocation.
+  try{await accessToken(oldSession)}catch(_){report("authStatus","Sesión local cerrada; token vencido, revocación remota no confirmada")}
   const wid=oldSession.debtWorkspaceId;
   if(wid){
    try{
