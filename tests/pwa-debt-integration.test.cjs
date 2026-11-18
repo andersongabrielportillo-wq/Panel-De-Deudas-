@@ -36,3 +36,16 @@ test('production gate cannot be enabled before cache migration is ready',()=>{
  assert.match(html,/inspectDebtCache\(localStorage\)/);
  assert.match(html,/safeToPurge===true/);
 });
+
+test('cloud write revalidates authorization after the preliminary read',()=>{
+ const start=html.indexOf('async function cloudSet(payload)');
+ const end=html.indexOf('// Corte de Deudas requiere migración',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ const readAt=body.indexOf('.select("id")');
+ const verifyAt=body.indexOf('await debtController.verify()',readAt);
+ const updateAt=body.indexOf('.update({data:state',readAt);
+ const insertAt=body.indexOf('.insert({id:"__shared_state__"',readAt);
+ assert.ok(readAt>=0&&verifyAt>readAt&&updateAt>verifyAt&&insertAt>verifyAt);
+ assert.match(body,/!APP_READY/);
+});
