@@ -9,9 +9,10 @@
 - [ ] Guardar procedimiento probado de restauración y designar ventana de mantenimiento.
 
 ## P1 — Seguridad (bloquea el corte)
-- [ ] **BLOQUEADO:** el proyecto staging actual no contiene `public.workspaces`, `public.workspace_members` ni `public.debts`; crear/validar un entorno aislado con esquema equivalente (sin copiar datos personales) antes de probar la migración SQL, RLS, RPC y roles.
+- [ ] **BLOQUEADO para ensayo con Auth real:** el proyecto staging actual no contiene `public.workspaces`, `public.workspace_members` ni `public.debts`; crear/validar un entorno aislado con esquema equivalente (sin copiar datos personales) antes de probar la migración SQL, RLS, RPC y roles.
 - [x] **Auditoría de metadatos productivos (solo lectura, 18 nov 2026):** RLS de `public.debts` activo; cuatro políticas `PERMISSIVE` para `authenticated` (SELECT, INSERT, UPDATE, DELETE), todas basadas en membresía; todavía no existen las tres RPC del gate ni su esquema privado. Este resultado **no autoriza el corte**.
 - [x] **Inventario de staging (solo lectura, 18 nov 2026):** existen tablas `inv_*` pero faltan las tres tablas de Deudas indicadas arriba; no usar este proyecto como ensayo equivalente hasta preparar un esquema aislado compatible.
+- [x] **Ensayo SQL aislado con datos ficticios (18 nov 2026):** siete flujos CI aprobados; contraseña correcta, separación de sesiones, bloqueo manual, caducidad, revocación por revisión, rechazo de no miembro, cinco fallos consecutivos, bloqueo de 15 minutos, rechazo de contraseña correcta durante bloqueo y recuperación tras vencimiento. **No sustituye** pruebas reales de JWT, roles, RLS bajo `authenticated` ni APIs/Realtime.
 - [ ] Provisionar hash bcrypt de contraseña por canal seguro **sin poner contraseña ni hash en GitHub**.
 - [ ] Confirmar que el JWT real contiene `session_id` UUID; verificar comportamiento cuando falta o expira.
 - [ ] Probar con admin, secretaria y usuario no autorizado; comprobar bloqueo tras intentos fallidos, expiración, cierre de sesión y revocación.
