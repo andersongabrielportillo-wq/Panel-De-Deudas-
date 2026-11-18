@@ -76,3 +76,19 @@ test('staging debt permission probe cannot unlock or mutate debt records',()=>{
  assert.doesNotMatch(probe,/debt_lab_unlock|debt_lab_lock|\/rest\/v1\/debts|\.insert\(|\.update\(|\.delete\(/);
  assert.match(probe,/session!==s\|\|authEpoch!==epoch/);
 });
+
+test('staging debt unlock and lock call only lab server RPCs',()=>{
+ assert.match(lab,/id="unlockDebt"/);
+ assert.match(lab,/id="lockDebt"/);
+ assert.match(lab,/debtGateAction\("debt_lab_unlock"\)/);
+ assert.match(lab,/debtGateAction\("debt_lab_lock"\)/);
+ assert.match(lab,/p_workspace_id:id,p_password:password/);
+});
+test('staging clears extra debt password before remote call',()=>{
+ const start=lab.indexOf('async function debtGateAction(name)');
+ const end=lab.indexOf('$("checkDebtAccess").onclick',start);
+ assert.ok(start>=0&&end>start);
+ const action=lab.slice(start,end);
+ assert.ok(action.indexOf('$("debtPassword").value=""')<action.indexOf('await request('));
+ assert.match(action,/session!==s\|\|authEpoch!==epoch/);
+});
