@@ -1,5 +1,5 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v6-nav-safe-cache';
+const CACHE = 'panel-de-deudas-shell-v7-no-redirect-cache';
 const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-shell.js', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
@@ -34,7 +34,13 @@ self.addEventListener('fetch', event => {
     const cache = await caches.open(CACHE);
     try {
       const response = await fetch(req, {cache:'no-store'});
-      if (response.ok && response.type === 'basic') await cache.put(req, response.clone());
+      // Evitar guardar páginas de inicio de sesión o errores devueltos por redirects.
+      // Solo se almacena una respuesta 200 del recurso solicitado, sin redirecciones.
+      if (response.status === 200 && response.type === 'basic' && !response.redirected &&
+          new URL(response.url).origin === url.origin &&
+          new URL(response.url).pathname === url.pathname) {
+        await cache.put(req, response.clone());
+      }
       return response;
     } catch (err) {
       const cached = await cache.match(req, {ignoreSearch:isNav});
