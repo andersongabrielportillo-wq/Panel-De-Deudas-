@@ -883,6 +883,34 @@ async function openIndependentModule(id){
    }
    results.append(list);
   };
+  if(kind==="inventory"){
+   const form=document.createElement("form");
+   const item=document.createElement("input");item.placeholder="ID del artículo (UUID)";item.required=true;item.setAttribute("aria-label","Artículo");
+   const location=document.createElement("select");location.setAttribute("aria-label","Ubicación de entrada");
+   for(const [value,label] of [["1","Oficina (1)"],["2","Bodega (2)"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
+   const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
+   const notes=document.createElement("textarea");notes.required=true;notes.placeholder="Observaciones de recepción";notes.setAttribute("aria-label","Observaciones");
+   const submit=document.createElement("button");submit.type="submit";submit.textContent="Solicitar entrada (pendiente de aprobación)";submit.className="g2";
+   form.append(item,location,quantity,notes,submit);
+   form.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!window.CLNexusActions){status.textContent="Motor de operaciones no disponible";return}
+    const params={p_item_id:item.value.trim(),p_location_id:Number(location.value),p_cantidad:Number(quantity.value),p_observaciones:notes.value.trim()};
+    if(!params.p_observaciones){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Enviar solicitud de entrada para aprobación? Esto NO incrementa existencias automáticamente."))return;
+    submit.disabled=true;status.textContent="Enviando solicitud…";
+    try{
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("requestEntry",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Solicitud enviada al servidor, pendiente de revisión. ID: "+String(result);
+     form.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Solicitud no confirmada: "+e.message}
+    finally{submit.disabled=false}
+   };
+   clnHubDetail.append(form);
+  }
   if(kind==="contracts"){
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
