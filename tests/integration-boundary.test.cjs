@@ -61,3 +61,18 @@ test('laboratory logout clears results and password inputs even if network fails
  }
  assert.match(handler,/no se pudo confirmar el cierre remoto/);
 });
+
+test('staging debt permission probe uses only server-side lab validation',()=>{
+ assert.match(lab,/id="checkDebtAccess"/);
+ assert.match(lab,/id="debtWorkspace"/);
+ assert.match(lab,/\/rest\/v1\/rpc\/debt_lab_access_valid/);
+ assert.match(lab,/p_workspace_id:id/);
+});
+test('staging debt permission probe cannot unlock or mutate debt records',()=>{
+ const start=lab.indexOf('$("checkDebtAccess").onclick=async()=>');
+ const end=lab.indexOf('$("runConcurrency").onclick=async()=>',start);
+ assert.ok(start>=0&&end>start);
+ const probe=lab.slice(start,end);
+ assert.doesNotMatch(probe,/debt_lab_unlock|debt_lab_lock|\/rest\/v1\/debts|\.insert\(|\.update\(|\.delete\(/);
+ assert.match(probe,/session!==s\|\|authEpoch!==epoch/);
+});
