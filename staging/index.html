@@ -29,8 +29,18 @@ async function debtGateAction(name){
   const token=await accessToken(s);if(session!==s||authEpoch!==epoch)return;
   const data=await request(s.origin+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(name==="debt_lab_unlock"?{p_workspace_id:id,p_password:password}:{p_workspace_id:id}),cache:"no-store"});
   if(session!==s||authEpoch!==epoch)return;
-  if(name==="debt_lab_unlock"){s.debtWorkspaceId=id;report("debtAccessResult",data?"Desbloqueo aceptado por servidor; caduca "+new Date(data).toLocaleTimeString():"Contraseña incorrecta; acceso bloqueado");}
-  else {if(s.debtWorkspaceId===id)s.debtWorkspaceId=null;report("debtAccessResult","Bloqueo confirmado en servidor");}
+  // Always ask the server again after unlocking or locking; never trust a UI-only state.
+  const verified=await request(s.origin+"/rest/v1/rpc/debt_lab_access_valid",{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({p_workspace_id:id}),cache:"no-store"});
+  if(session!==s||authEpoch!==epoch)return;
+  if(name==="debt_lab_unlock"){
+   if(verified!==true)throw Error("El servidor no confirmó el desbloqueo");
+   s.debtWorkspaceId=id;
+   report("debtAccessResult","AUTORIZADO POR SERVIDOR: desbloqueo vigente hasta "+new Date(data).toLocaleTimeString());
+  }else{
+   if(verified!==false)throw Error("El servidor sigue autorizando Deudas después del bloqueo");
+   if(s.debtWorkspaceId===id)s.debtWorkspaceId=null;
+   report("debtAccessResult","BLOQUEADO POR SERVIDOR: permiso revocado y verificado");
+  }
  }catch(e){if(session===s&&authEpoch===epoch)report("debtAccessResult","NO VERIFICADO: "+e.message)}
  finally{btn.disabled=false}
 }
