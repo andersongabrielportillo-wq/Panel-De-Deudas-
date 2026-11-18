@@ -780,6 +780,8 @@ debtBackupButton.onclick=async()=>{
  debtBackupButton.disabled=true;
  try{
   const backup=window.DebtLegacyBackup.capture(localStorage);
+  if(Object.keys(backup.entries).length===0)throw Error("Este navegador no tiene datos locales para respaldar; falta verificar el respaldo de la nube");
+  if(backup.entries.cp_pend==="1")alert("ATENCIÓN: hay cambios de Deudas pendientes de sincronizar. Conserva este respaldo y no migres ni borres la caché hasta comprobar que esos cambios llegaron a la nube.");
   const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
   // Verify the encrypted artifact before offering it for download; never alter the source cache.
   const verified=await window.DebtEncryptedBackup.decryptBackup(encrypted,pass);
