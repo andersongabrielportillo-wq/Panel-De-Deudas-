@@ -6,7 +6,7 @@ const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 test('debt gate remains disabled pending coordinated production migration',()=>{assert.match(html,/const DEBT_GATE_ENABLED=false;/)});
 test('main PWA wires exact production debt RPC set',()=>{assert.match(html,/createDebtGate\(\{client:SB,workspaceId:SB_WID,rpcNames:\{unlock:'unlock_debts',verify:'has_debts_unlock',lock:'lock_debts'\}\}\)/)});
-test('gate verifies server before opening debt data',()=>{assert.match(html,/async function connectDebtData\(reveal=true\)\{\s*if\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!await debtGate\.verify\(\)\)\)/)});
+test('gate verifies server before opening debt data',()=>{assert.match(html,/async function connectDebtData\(reveal=true\)\{/);assert.match(html,/if\(DEBT_GATE_ENABLED&&\(!debtGate\|\|!await debtGate\.verify\(\)\)\)throw Error\("Acceso a Deudas no confirmado por el servidor"\)/)});
 test('gate prevents pending cloud writes without authorization',()=>{assert.match(html,/async function cloudSet\(payload\)\{\s*if\(DEBT_GATE_ENABLED&&\(!debtController\|\|!await debtController\.verify\(\)\)\)/)});
 test('main PWA retains inventory and debt module hub',()=>{assert.match(html,/clnModuleHub/);assert.match(html,/debtUnlockScreen/)});
 
@@ -106,4 +106,30 @@ test('backup export detects local changes while encryption is running',()=>{
  assert.match(body,/const current=window\.DebtLegacyBackup\.capture\(localStorage\)/);
  assert.match(body,/JSON\.stringify\(current\.entries\)!==JSON\.stringify\(backup\.entries\)/);
  assert.ok(body.indexOf('const current=window.DebtLegacyBackup.capture(localStorage)')<body.indexOf('new Blob([JSON.stringify(encrypted)]'));
+});
+
+test('remote SIGNED_OUT invalidates all module state and private views',()=>{
+ const start=html.indexOf('SB.auth.onAuthStateChange((event,session)=>');
+ const end=html.indexOf('startAuth();',start);
+ assert.ok(start>=0&&end>start);
+ const body=html.slice(start,end);
+ for(const marker of [
+   'authSessionGeneration++','nexusViewEpoch++','nexusReader.reset()',
+   'debtController.cancel()','debtGate.reset()',
+   'SB_UID=null;SB_WID=null;SY.doc=null',
+   'SB.removeChannel(old)','clnHubDetail").replaceChildren()',
+   'debtUnlockPassword").value=""','showModuleHub(false)','hidePrivate()'
+ ])assert.ok(body.includes(marker),'Expected SIGNED_OUT cleanup: '+marker);
+ assert.doesNotMatch(body,/localStorage\.clear\(|\["cp_v2"/);
+});
+test('stale membership and cloud reads are rejected after logout',()=>{
+ const member=html.slice(html.indexOf('async function connectCloud()'),html.indexOf('// Manual encrypted backup'));
+ const reader=html.slice(html.indexOf('async function connectDebtData(reveal=true)'),html.indexOf('async function connectCloud()'));
+ assert.match(member,/const startingUser=SB_UID,startingGeneration=authSessionGeneration/);
+ assert.match(member,/SB_UID!==startingUser\|\|startingGeneration!==authSessionGeneration/);
+ const fetched=reader.indexOf('const first=await cloudSnapshot()');
+ const stale=reader.indexOf('authSessionGeneration!==startingGeneration',fetched);
+ const applied=reader.indexOf('onRemote(first)',fetched);
+ assert.ok(fetched>=0&&stale>fetched&&applied>stale,'Must reject stale read before applying data');
+ assert.match(reader,/DEBT_GATE_ENABLED&&SB_UID===startingUser&&authSessionGeneration===startingGeneration/);
 });
