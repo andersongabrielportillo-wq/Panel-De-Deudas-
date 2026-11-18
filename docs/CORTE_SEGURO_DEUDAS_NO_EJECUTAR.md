@@ -9,7 +9,7 @@
 - [ ] Guardar procedimiento probado de restauración y designar ventana de mantenimiento.
 
 ## P1 — Seguridad (bloquea el corte)
-- [ ] Revisar la migración SQL en entorno aislado con el esquema real; validar RLS, RPC y permisos de roles.
+- [ ] **BLOQUEADO:** el proyecto staging actual no contiene `public.workspaces`, `public.workspace_members` ni `public.debts`; crear/validar un entorno aislado con esquema equivalente (sin copiar datos personales) antes de probar la migración SQL, RLS, RPC y roles.
 - [ ] Provisionar hash bcrypt de contraseña por canal seguro **sin poner contraseña ni hash en GitHub**.
 - [ ] Confirmar que el JWT real contiene `session_id` UUID; verificar comportamiento cuando falta o expira.
 - [ ] Probar con admin, secretaria y usuario no autorizado; comprobar bloqueo tras intentos fallidos, expiración, cierre de sesión y revocación.
