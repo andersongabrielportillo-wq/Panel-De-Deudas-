@@ -22,7 +22,7 @@ CREATE FUNCTION public.has_debts_unlock() RETURNS boolean LANGUAGE sql STABLE SE
  SELECT current_setting('test_gate.unlocked',true)='on'
 $$;
 CREATE FUNCTION public.unlock_debts(p_password text) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
-CREATE FUNCTION public.lock_debts() RETURNS void LANGUAGE sql AS $$ SELECT NULL::void $$;
+CREATE FUNCTION public.lock_debts() RETURNS void LANGUAGE plpgsql AS $ BEGIN RETURN; END $;
 
 INSERT INTO public.workspaces(id,nombre) VALUES ('00000000-0000-0000-0000-000000000001','synthetic');
 INSERT INTO public.workspace_members(workspace_id,user_id) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002');
