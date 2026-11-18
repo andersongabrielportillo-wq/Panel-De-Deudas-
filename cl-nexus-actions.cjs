@@ -38,7 +38,7 @@ function createNexusActions({client,authorized}={}){
    if(!(key in params)||params[key]===undefined||(params[key]===null&&!nullableContract)||(typeof params[key]==='string'&&!params[key].trim()&&!blankCustomer))throw Error('Falta '+key);
   }
   for(const [key,value] of Object.entries(params)){
-   if(key.endsWith('_id')&&value!==null&&!uuid.test(String(value)))throw Error('ID inválido');
+   if(key.endsWith('_id')&&key!=='p_location_id'&&value!==null&&!uuid.test(String(value)))throw Error('ID inválido');
    if((key==='p_cantidad'||key==='p_location_id')&&(!Number.isInteger(value)||value<=0))throw Error('Cantidad o ubicación inválida');
    if(key==='p_client_op_id'&&!uuid.test(String(value)))throw Error('Identificador de operación inválido');
   }
