@@ -945,6 +945,29 @@ async function openIndependentModule(id){
     finally{reviewButton.disabled=false}
    };
    clnHubDetail.append(reviewForm);
+   const voidForm=document.createElement("form");
+   const saleId=document.createElement("input");saleId.required=true;saleId.placeholder="ID de venta a anular (UUID)";saleId.setAttribute("aria-label","ID de venta");
+   const reason=document.createElement("textarea");reason.required=true;reason.placeholder="Motivo obligatorio de anulación";reason.setAttribute("aria-label","Motivo de anulación");
+   const voidButton=document.createElement("button");voidButton.type="submit";voidButton.className="g2";voidButton.textContent="Anular venta";
+   voidForm.append(saleId,reason,voidButton);
+   voidForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const motive=reason.value.trim();
+    if(!motive){status.textContent="Es obligatorio indicar el motivo.";return}
+    if(!confirm("¿Anular la venta? El servidor validará y restaurará existencias según las reglas de inventario."))return;
+    voidButton.disabled=true;status.textContent="Solicitando anulación…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("voidSale",{p_venta_id:saleId.value.trim(),p_motivo:motive});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Anulación confirmada por el servidor: "+String(result);
+     voidForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Anulación no confirmada: "+e.message}
+    finally{voidButton.disabled=false}
+   };
+   clnHubDetail.append(voidForm);
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
