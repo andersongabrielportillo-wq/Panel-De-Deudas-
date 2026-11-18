@@ -41,3 +41,9 @@ test('RLS policy audit reads metadata only and checks membership policy shapes',
  assert.match(policyAudit,/has_with_check/);
  assert.doesNotMatch(policyAudit,/\b(?:INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP|CREATE)\s+(?:TABLE|FROM|INTO|SCHEMA|POLICY|FUNCTION|ON|public\.)/i);
 });
+
+test('malformed or missing JWT session IDs cannot cause an unguarded UUID cast',()=>{
+ assert.doesNotMatch(sql,/NULLIF\(auth\.jwt\(\)->>'session_id',''\)\)::uuid/);
+ assert.equal((sql.match(/CASE WHEN COALESCE\(\(auth\.jwt\(\)->>'session_id'\) ~\*/g)||[]).length,3);
+ assert.match(sql,/ELSE NULL END/);
+});
