@@ -922,6 +922,29 @@ async function openIndependentModule(id){
     finally{submit.disabled=false}
    };
    clnHubDetail.append(form);
+   const reviewForm=document.createElement("form");
+   const requestId=document.createElement("input");requestId.required=true;requestId.placeholder="ID de solicitud de entrada (UUID)";requestId.setAttribute("aria-label","ID de solicitud");
+   const approve=document.createElement("select");approve.setAttribute("aria-label","Decisión");
+   for(const [value,label] of [["true","Aprobar entrada"],["false","Rechazar entrada"]]){const option=document.createElement("option");option.value=value;option.textContent=label;approve.append(option)}
+   const reviewButton=document.createElement("button");reviewButton.type="submit";reviewButton.className="g2";reviewButton.textContent="Revisar solicitud";
+   reviewForm.append(requestId,approve,reviewButton);
+   reviewForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const accepted=approve.value==="true";
+    if(!confirm(accepted?"¿Aprobar esta entrada? El servidor decidirá si aumenta existencias.":"¿Rechazar esta solicitud de entrada?"))return;
+    reviewButton.disabled=true;status.textContent="Revisando solicitud…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("reviewEntry",{p_solicitud_id:requestId.value.trim(),p_aprobar:accepted});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Decisión confirmada por el servidor: "+String(result);
+     reviewForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Revisión no confirmada: "+e.message}
+    finally{reviewButton.disabled=false}
+   };
+   clnHubDetail.append(reviewForm);
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
