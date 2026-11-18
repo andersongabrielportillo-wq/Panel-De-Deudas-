@@ -1003,14 +1003,16 @@ async function openIndependentModule(id){
    const saleNotes=document.createElement("textarea");saleNotes.placeholder="Observaciones";saleNotes.setAttribute("aria-label","Observaciones de venta");
    const saleButton=document.createElement("button");saleButton.type="submit";saleButton.className="g2";saleButton.textContent="Confirmar venta";
    saleForm.append(saleHeading,seller,mode,lines,addLine,overallDiscount,saleNotes,saleButton);
-   let pendingSaleOp=null;
+   let pendingSaleOp=null,pendingSalePayload=null;
    saleForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
     const articles=saleItems.map(line=>({item_id:line.itemSelect.value,location_id:Number(line.locationSelect.value),cantidad:Number(line.qty.value),precio_unitario:Number(line.price.value),descuento:Number(line.discount.value)}));
     if(articles.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||!Number.isFinite(line.precio_unitario)||line.precio_unitario<0||!Number.isFinite(line.descuento)||line.descuento<0)){status.textContent="Revisa cantidades, precios y descuentos.";return}
     if(!confirm("¿Confirmar venta? El servidor descontará las existencias."))return;
-    if(!pendingSaleOp)pendingSaleOp=crypto.randomUUID();
+    const payload=JSON.stringify({seller:seller.value,mode:mode.value,articles,discount:Number(overallDiscount.value),notes:saleNotes.value.trim()});
+    if(pendingSaleOp&&pendingSalePayload!==payload){status.textContent="Hay una venta anterior sin confirmar. Verifica su resultado antes de cambiar artículos o cantidades.";return}
+    if(!pendingSaleOp){pendingSaleOp=crypto.randomUUID();pendingSalePayload=payload}
     saleButton.disabled=true;status.textContent="Registrando venta. No cierres esta pantalla…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
@@ -1018,7 +1020,7 @@ async function openIndependentModule(id){
      const result=await actions.execute("sale",{p_vendedor_id:seller.value,p_modalidad:mode.value,p_articulos:articles,p_descuento:Number(overallDiscount.value),p_observaciones:saleNotes.value.trim(),p_client_op_id:pendingSaleOp});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      status.textContent="Venta confirmada. ID: "+String(result);
-     pendingSaleOp=null;saleForm.reset();lines.replaceChildren();saleItems.length=0;makeLine();
+     pendingSaleOp=null;pendingSalePayload=null;saleForm.reset();lines.replaceChildren();saleItems.length=0;makeLine();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Venta no confirmada. Antes de reintentar comprueba si ya se registró. Operación: "+pendingSaleOp+". "+e.message}
     finally{saleButton.disabled=false}
    };
