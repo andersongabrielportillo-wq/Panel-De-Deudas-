@@ -2,9 +2,9 @@
 (function(root){
 'use strict';
 const definitions=Object.freeze({
- inventory:Object.freeze({rpc:'inv_catalogo_articulos_contratos',args:Object.freeze({}),columns:Object.freeze(['nombre','categoria'])}),
- contracts:Object.freeze({rpc:'inv_buscar_clientes',args:Object.freeze({p_busqueda:''}),columns:Object.freeze(['nombre','dui_mostrado','telefono'])}),
- sellers:Object.freeze({rpc:'inv_catalogo_vendedores',args:Object.freeze({}),columns:Object.freeze(['nombre'])})
+ inventory:Object.freeze({rpc:'inv_catalogo_articulos_contratos',args:Object.freeze({}),columns:Object.freeze(['id','nombre','categoria'])}),
+ contracts:Object.freeze({rpc:'inv_buscar_clientes',args:Object.freeze({p_busqueda:''}),columns:Object.freeze(['id','nombre','dui_mostrado','telefono'])}),
+ sellers:Object.freeze({rpc:'inv_catalogo_vendedores',args:Object.freeze({}),columns:Object.freeze(['id','nombre'])})
 });
 function createNexusReader({client,authorized}={}){
  if(!client||typeof client.rpc!=='function')throw Error('Cliente Supabase requerido');
