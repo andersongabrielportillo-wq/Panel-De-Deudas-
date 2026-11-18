@@ -945,6 +945,44 @@ async function openIndependentModule(id){
     finally{reviewButton.disabled=false}
    };
    clnHubDetail.append(reviewForm);
+   const transferForm=document.createElement("form");
+   const transferHeading=document.createElement("h4");transferHeading.textContent="Trasladar entre bodegas";
+   const transferItem=document.createElement("select");transferItem.required=true;transferItem.setAttribute("aria-label","Artículo para traslado");
+   const transferPlaceholder=document.createElement("option");transferPlaceholder.value="";transferPlaceholder.textContent="Seleccionar artículo";transferItem.append(transferPlaceholder);
+   const transferArticles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;transferItem.append(option)}
+   const origin=document.createElement("select");origin.setAttribute("aria-label","Origen");
+   const destination=document.createElement("select");destination.setAttribute("aria-label","Destino");
+   for(const select of [origin,destination])for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option)}
+   destination.value="2";
+   const transferQty=document.createElement("input");transferQty.type="number";transferQty.min="1";transferQty.step="1";transferQty.required=true;transferQty.placeholder="Cantidad";transferQty.setAttribute("aria-label","Cantidad a trasladar");
+   const transferNotes=document.createElement("textarea");transferNotes.required=true;transferNotes.placeholder="Motivo del traslado";transferNotes.setAttribute("aria-label","Observaciones del traslado");
+   const transferButton=document.createElement("button");transferButton.type="submit";transferButton.className="g2";transferButton.textContent="Registrar traslado";
+   transferForm.append(transferHeading,transferItem,origin,destination,transferQty,transferNotes,transferButton);
+   let transferOp=null,transferPayload=null;
+   transferForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(origin.value===destination.value){status.textContent="Origen y destino deben ser distintos.";return}
+    const params={p_item_id:transferItem.value,p_tipo:"traslado",p_origen:Number(origin.value),p_destino:Number(destination.value),p_cantidad:Number(transferQty.value),p_vendedor:null,p_observaciones:transferNotes.value.trim()};
+    if(!params.p_observaciones){status.textContent="El motivo es obligatorio.";return}
+    const payload=JSON.stringify(params);
+    if(transferOp&&transferPayload!==payload){status.textContent="Hay un traslado sin confirmar. Verifica su resultado antes de cambiar los datos.";return}
+    if(!confirm("¿Trasladar mercadería? El servidor verificará las existencias."))return;
+    if(!transferOp){transferOp=crypto.randomUUID();transferPayload=payload}
+    transferButton.disabled=true;status.textContent="Registrando traslado…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("move",{...params,p_client_op_id:transferOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Traslado confirmado por el servidor: "+String(result);
+     transferOp=null;transferPayload=null;transferForm.reset();destination.value="2";
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Traslado no confirmado. Verifica la operación "+transferOp+" antes de reintentar: "+e.message}
+    finally{transferButton.disabled=false}
+   };
+   clnHubDetail.append(transferForm);
    const voidForm=document.createElement("form");
    const saleId=document.createElement("input");saleId.required=true;saleId.placeholder="ID de venta a anular (UUID)";saleId.setAttribute("aria-label","ID de venta");
    const reason=document.createElement("textarea");reason.required=true;reason.placeholder="Motivo obligatorio de anulación";reason.setAttribute("aria-label","Motivo de anulación");
