@@ -667,7 +667,7 @@ S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=!DEBT_GATE_ENABLED;debtRecoveryButton.hidden=!DEBT_GATE_ENABLED;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -772,7 +772,7 @@ debtBackupButton.textContent="Exportar respaldo cifrado de Deudas";
 debtBackupButton.hidden=true;
 document.getElementById("privateApp").querySelector("header").append(debtBackupButton);
 debtBackupButton.onclick=async()=>{
- if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify()){toast("Autoriza Deudas antes de exportar",1);return}
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))){toast("Inicia sesión y autoriza Deudas antes de exportar",1);return}
  if(!window.DebtLegacyBackup||!window.DebtEncryptedBackup){toast("Respaldo no disponible",1);return}
  const pass=prompt("Frase de respaldo (mínimo 12 caracteres). No la guardamos. Si la pierdes, no podrás recuperar el archivo.");
  if(pass===null)return;
@@ -781,7 +781,7 @@ debtBackupButton.onclick=async()=>{
  try{
   const backup=window.DebtLegacyBackup.capture(localStorage);
   const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
-  if(!await debtController.verify())throw Error("La autorización expiró antes de exportar");
+  if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("La sesión expiró antes de exportar");
   const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");a.href=url;a.download="deudas-respaldo-cifrado-"+new Date().toISOString().slice(0,10)+".json";
@@ -801,14 +801,14 @@ debtRecoveryButton.textContent="Verificar respaldo cifrado (sin restaurar)";
 debtRecoveryButton.hidden=true;
 document.getElementById("privateApp").querySelector("header").append(debtRecoveryButton,debtRecoveryInput);
 debtRecoveryButton.onclick=async()=>{
- if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify()){toast("Autoriza Deudas antes de revisar respaldos",1);return}
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))){toast("Inicia sesión antes de revisar respaldos",1);return}
  debtRecoveryInput.value="";debtRecoveryInput.click();
 };
 debtRecoveryInput.onchange=async()=>{
  const file=debtRecoveryInput.files&&debtRecoveryInput.files[0];
  if(!file)return;
  if(file.size>20*1024*1024){toast("Archivo demasiado grande para verificar",1);return}
- if(!DEBT_GATE_ENABLED||!debtController||!await debtController.verify())return;
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))return;
  const pass=prompt("Frase del respaldo cifrado (solo para verificar; no se restaurarán datos)");
  if(pass===null)return;
  debtRecoveryButton.disabled=true;
