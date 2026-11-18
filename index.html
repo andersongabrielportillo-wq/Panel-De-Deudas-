@@ -1070,6 +1070,40 @@ async function openIndependentModule(id){
     finally{depositButton.disabled=false}
    };
    clnHubDetail.append(depositForm);
+   const customerForm=document.createElement("form");
+   const customerTitle=document.createElement("h4");customerTitle.textContent="Registrar cliente";
+   const fields=[
+    ["p_nombre","Nombre completo",true],["p_dui","DUI",true],
+    ["p_direccion","Dirección",false],["p_ubicacion","Ubicación",false],
+    ["p_telefono","Teléfono",false],["p_vivienda","Tipo de vivienda",false],
+    ["p_lugar_trabajo","Lugar de trabajo",false],["p_telefono_trabajo","Teléfono de trabajo",false]
+   ];
+   const inputs={};
+   for(const [key,label,required] of fields){
+    const input=document.createElement("input");input.placeholder=label;input.setAttribute("aria-label",label);input.required=required;input.maxLength=250;
+    inputs[key]=input;customerForm.append(input);
+   }
+   const customerButton=document.createElement("button");customerButton.type="submit";customerButton.className="g2";customerButton.textContent="Registrar cliente";
+   customerForm.prepend(customerTitle);customerForm.append(customerButton);
+   customerForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_referencias:[]};
+    for(const [key] of fields)params[key]=inputs[key].value.trim();
+    if(!params.p_nombre||!params.p_dui){status.textContent="Nombre y DUI son obligatorios.";return}
+    if(!confirm("¿Registrar este cliente?"))return;
+    customerButton.disabled=true;status.textContent="Registrando cliente…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createClient",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Cliente confirmado por el servidor. ID: "+String(result);
+     customerForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
+    finally{customerButton.disabled=false}
+   };
+   clnHubDetail.append(customerForm);
    const search=document.createElement("input");
    search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
