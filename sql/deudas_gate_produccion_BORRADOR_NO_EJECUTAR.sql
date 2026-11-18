@@ -31,12 +31,12 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
 AS $$
  SELECT auth.uid() IS NOT NULL
  AND public.is_workspace_member(p_workspace_id)
- AND COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false)
+ AND COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false)
  AND EXISTS (
   SELECT 1 FROM debt_gate_secure.unlocks u
   JOIN debt_gate_secure.secrets s ON s.workspace_id=u.workspace_id AND s.revision=u.revision
   WHERE u.workspace_id=p_workspace_id AND u.user_id=auth.uid()
-    AND u.session_id=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END)
+    AND u.session_id=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END)
     AND u.expires_at>now()
  );
 $$;
@@ -46,7 +46,7 @@ AS $$
 BEGIN
  DELETE FROM debt_gate_secure.unlocks
  WHERE workspace_id=p_workspace_id AND user_id=auth.uid()
- AND session_id=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END);
+ AND session_id=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END);
 END;
 $$;
 CREATE OR REPLACE FUNCTION public.debt_unlock(p_workspace_id uuid,p_password text)
@@ -54,7 +54,7 @@ RETURNS timestamptz LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE
  v_uid uuid:=auth.uid();
- v_session uuid:=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END);
+ v_session uuid:=(CASE WHEN COALESCE((auth.jwt()->>'session_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',false) THEN (auth.jwt()->>'session_id')::uuid ELSE NULL END);
  v_hash text;v_rev bigint;v_fail integer;v_block timestamptz;v_exp timestamptz;
 BEGIN
  IF v_uid IS NULL OR v_session IS NULL OR NOT public.is_workspace_member(p_workspace_id)
