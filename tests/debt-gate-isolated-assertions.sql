@@ -19,3 +19,35 @@ BEGIN
  IF (SELECT public.debt_access_valid('00000000-0000-0000-0000-000000000001'::uuid)) IS DISTINCT FROM false
  THEN RAISE EXCEPTION 'Anonymous access must fail closed'; END IF;
 END $$;
+
+-- Behavioral checks with synthetic JWTs, no real user records.
+DO $$
+DECLARE
+ w uuid:='00000000-0000-0000-0000-000000000001';
+ u uuid:='00000000-0000-0000-0000-000000000002';
+ exp timestamptz;
+BEGIN
+ INSERT INTO public.workspaces(id,nombre) VALUES(w,'CI only');
+ INSERT INTO public.workspace_members(workspace_id,user_id) VALUES(w,u);
+ PERFORM set_config('request.jwt.claim.sub',u::text,true);
+ PERFORM set_config('request.jwt.claims','{"session_id":"not-a-uuid"}',true);
+ IF public.debt_access_valid(w) IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Malformed session must fail closed'; END IF;
+ PERFORM public.debt_lock(w); -- malformed session must not raise.
+ BEGIN
+   exp:=public.debt_unlock(w,'synthetic-password');
+   RAISE EXCEPTION 'Malformed session unexpectedly unlocked';
+ EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM='Malformed session unexpectedly unlocked' THEN RAISE; END IF;
+ END;
+ PERFORM set_config('request.jwt.claims','{"session_id":"00000000-0000-0000-0000-000000000003"}',true);
+ IF public.debt_access_valid(w) IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'No provisioned secret must deny access'; END IF;
+ exp:=public.debt_unlock(w,'synthetic-password');
+ IF exp IS NOT NULL THEN RAISE EXCEPTION 'Missing secret must not unlock'; END IF;
+ IF public.debt_access_valid(w) IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Failed password must not grant access'; END IF;
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ IF public.debt_access_valid(w) IS DISTINCT FROM false
+ THEN RAISE EXCEPTION 'Nonmember must be denied'; END IF;
+END $$;
