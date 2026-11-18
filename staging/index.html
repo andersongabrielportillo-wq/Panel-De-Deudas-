@@ -21,6 +21,22 @@ $("clientDetail").onclick=async()=>{if(!session||view!=="contratos")return;const
 $("runConcurrency").onclick=async()=>{const s=session,epoch=authEpoch,btn=$("runConcurrency"),item=$("concurrencyItem").value.trim();if(!s)return;if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item)){report("concurrencyResult","UUID inválido");return}if(!confirm("¿Ejecutar DOS ventas simultáneas de 1 unidad en tablas FICTICIAS cl2_sandbox?"))return;btn.disabled=true;report("concurrencyResult","Ejecutando operaciones concurrentes en sandbox…");try{const token=await accessToken(s);if(session!==s||authEpoch!==epoch)return;const run=async()=>{const response=await fetch(s.origin+"/rest/v1/rpc/cl2_sandbox_test_sale",{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({p_item_id:item,p_quantity:1,p_client_op_id:crypto.randomUUID()}),cache:"no-store"});const data=await response.json();return {status:response.status,result:data?.status||data?.message||"sin estado"}};const results=await Promise.allSettled([run(),run()]);if(session!==s||authEpoch!==epoch)return;report("concurrencyResult",JSON.stringify(results,null,2)+"\\nVerifica el saldo inicial/final en el servidor antes de declarar aprobado.");}catch(e){if(session===s&&authEpoch===epoch)report("concurrencyResult","No verificado: "+e.message)}finally{btn.disabled=false}};
 $("checkPermissions").onclick=async()=>{const s=session,epoch=authEpoch,role=$("expectedRole").value,btn=$("checkPermissions");if(!s)return;btn.disabled=true;report("permissionsResult","Comprobando autorización sin modificar datos…");try{const token=await accessToken(s);if(session!==s||authEpoch!==epoch)return;const response=await fetch(s.origin+"/rest/v1/rpc/inv_revisar_entrada",{method:"POST",headers:{"apikey":s.key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({p_solicitud_id:"00000000-0000-4000-8000-000000000000",p_aprobar:true}),cache:"no-store"});const result=await response.json();if(session!==s||authEpoch!==epoch)return;const msg=String(result?.message||"");const authorized=response.status>=400&&/solicitud no encontrada/i.test(msg);const denied=response.status>=400&&/permiso|autoriza|sesión|autorizado/i.test(msg);const passed=role==="outsider"?denied:authorized;report("permissionsResult",(passed?"APROBADO":"REVISAR")+" · "+role+" · "+(authorized?"Rol autorizado; solicitud ficticia inexistente":denied?"Acceso denegado por servidor":"Respuesta inesperada, HTTP "+response.status)+". No se registró una entrada.");}catch(e){if(session===s&&authEpoch===epoch)report("permissionsResult","NO VERIFICADO: "+e.message)}finally{btn.disabled=false}};
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>show(b.dataset.view));
-$("refresh").onclick=load;$("logout").onclick=()=>{authEpoch++;stop();seq++;session=null;view="inventario";$("output").textContent="";$("clientResults").textContent="";$("detailResults").textContent="";$("clientQuery").value="";$("clientId").value="";$("app").hidden=true;$("login").hidden=false;report("authStatus","Sesión local cerrada")};
+$("refresh").onclick=load;$("logout").onclick=async()=>{
+ // Invalidate the local session immediately, before any network request.
+ authEpoch++;stop();seq++;const oldSession=session;session=null;view="inventario";
+ $("output").textContent="";$("clientResults").textContent="";$("detailResults").textContent="";
+ $("permissionsResult").textContent="";$("concurrencyResult").textContent="";
+ $("clientQuery").value="";$("clientId").value="";$("email").value="";
+ $("password").value="";$("key").value="";$("app").hidden=true;$("login").hidden=false;
+ report("authStatus","Cerrando sesión de laboratorio…");
+ if(!oldSession){report("authStatus","Sesión local cerrada");return}
+ try{
+  // Explicitly revoke the lab access token on Supabase Auth; never send it to another origin.
+  await request(oldSession.origin+"/auth/v1/logout",{method:"POST",headers:{"apikey":oldSession.key,"Authorization":"Bearer "+oldSession.token},cache:"no-store"});
+  report("authStatus","Sesión de laboratorio cerrada en el servidor");
+ }catch(_){
+  report("authStatus","Sesión local cerrada; no se pudo confirmar el cierre remoto. No reutilices el token anterior.");
+ }
+};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&timer)load()});
 </script></body></html>
