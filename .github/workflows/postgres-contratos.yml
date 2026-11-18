@@ -151,7 +151,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql
       - name: Verify all inventory objects, RLS, API privileges and no copied data
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_assertions.sql
-      - name: Reject outsiders and incomplete role mapping without mutating inventory members
+      - name: Reject outsiders and missing-secretary role mapping without mutating inventory members
         shell: bash
         run: |
           set -euo pipefail
@@ -159,13 +159,23 @@ jobs:
             echo 'Outsider mapping must fail'; exit 1
           fi
           psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_incomplete.log 2>&1; then
-            echo 'Unmapped member must fail'; exit 1
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_incomplete.log 2>&1; then
+            echo 'No-secretary mapping must fail'; exit 1
           fi
           psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-      - name: Assign exactly three synthetic Admin and Secretaria accounts
+      - name: Assign only owner and secretary; leave third Deudas account outside inventory
         shell: bash
         run: |
           set -euo pipefail
-          psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000004","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql
-          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=3 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=2 AND (SELECT count(*) FROM public.inv_members WHERE rol='secretaria')=1" | grep -qx t
+          psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=2 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=1 AND (SELECT count(*) FROM public.inv_members WHERE rol='secretaria')=1 AND NOT EXISTS (SELECT 1 FROM public.inv_members WHERE user_id='00000000-0000-0000-0000-000000000004')" | grep -qx t
+      - name: Confirm unauthorized third user cannot invoke CL Nexus API
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true); SELECT * FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_denied_third.log 2>&1; then
+            echo 'Deudas-only user must not read CL Nexus'; exit 1
+          fi
+          if ! grep -qi 'No autorizado' /tmp/cln_denied_third.log; then
+            echo 'Third-user request failed for a reason other than authorization'; cat /tmp/cln_denied_third.log; exit 1
+          fi
