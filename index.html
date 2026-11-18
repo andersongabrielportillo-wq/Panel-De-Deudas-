@@ -738,7 +738,8 @@ async function connectDebtData(reveal=true){
  }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
  if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
  }catch(error){
-  if(DEBT_GATE_ENABLED){
+  // A stale request from a previous login must never reopen the unlock screen after sign-out.
+  if(DEBT_GATE_ENABLED&&SB_UID===startingUser&&authSessionGeneration===startingGeneration){
    try{await disconnectDebtChannel()}catch(_){SY.doc=null;clearTimeout(SY.timer)}
    hidePrivate();
    debtScreenVisible(true,"No se pudo verificar Deudas. Vuelve a desbloquear.");
