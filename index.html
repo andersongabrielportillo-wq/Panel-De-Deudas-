@@ -841,7 +841,11 @@ async function openIndependentModule(id){
    status.textContent="Liberación de garantía: requiere autorización del servidor.";
    if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
    const form=document.createElement("form");
-   const item=document.createElement("input");item.required=true;item.placeholder="ID del artículo (UUID)";item.setAttribute("aria-label","ID del artículo");
+   const item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo para garantía");
+   const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
+   const articles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;item.append(option)}
    const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
    for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
    const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
@@ -870,6 +874,7 @@ async function openIndependentModule(id){
   const kind=id==="clnHubInventory"?"inventory":"contracts";
   const results=document.createElement("div");
   let requestSequence=0;
+  let inventorySelector=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
@@ -882,10 +887,17 @@ async function openIndependentModule(id){
     list.append(li);
    }
    results.append(list);
+   if(kind==="inventory"&&inventorySelector){
+    inventorySelector.replaceChildren();
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;inventorySelector.append(option)}
+   }
   };
   if(kind==="inventory"){
    const form=document.createElement("form");
-   const item=document.createElement("input");item.placeholder="ID del artículo (UUID)";item.required=true;item.setAttribute("aria-label","Artículo");
+   const item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo");
+   const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
+   inventorySelector=item;
    const location=document.createElement("select");location.setAttribute("aria-label","Ubicación de entrada");
    for(const [value,label] of [["1","Oficina (1)"],["2","Bodega (2)"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
    const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
