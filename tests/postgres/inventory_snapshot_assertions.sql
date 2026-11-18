@@ -38,4 +38,15 @@ BEGIN
  IF n<>0 THEN RAISE EXCEPTION 'Schema-only snapshot unexpectedly seeded %.%',rec.sc,rec.nm; END IF;
  END LOOP;
 END $check$;
+DO $preservation$
+BEGIN
+ IF (SELECT count(*) FROM public.workspaces)<>1 THEN RAISE EXCEPTION 'Inventario altered workspaces'; END IF;
+ IF (SELECT count(*) FROM public.workspace_members)<>3 THEN RAISE EXCEPTION 'Inventario altered workspace members'; END IF;
+ IF (SELECT count(*) FROM public.debts WHERE id='__shared_state__'
+  AND data='{"v":2,"rev":7,"debts":[{"id":"fake-local-fixture"}],"tx":[]}'::jsonb)<>1
+ THEN RAISE EXCEPTION 'Inventory schema migration changed synthetic shared Deudas state'; END IF;
+ IF (SELECT count(*) FROM public.transactions)<>0 THEN RAISE EXCEPTION 'Inventario inserted transaction rows'; END IF;
+ IF (SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename IN ('debts','transactions'))<>8
+ THEN RAISE EXCEPTION 'Inventory schema changed Deudas or transactions policies'; END IF;
+END $preservation$;
 SELECT 'PASS: CL Nexus schema installed with no data, 24 RLS tables, 39 RPCs, 3 safe views, 47 indexes' AS result;
