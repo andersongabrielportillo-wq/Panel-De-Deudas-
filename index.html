@@ -741,7 +741,7 @@ async function connectCloud(){
  if(!DEBT_GATE_ENABLED){await connectDebtData();return}
  // Fail closed if any required client/server gate component is absent.
  if(!window.DebtGateClient||!window.DebtModuleController||!window.DebtCachePreflight)throw Error("Módulo de seguridad no disponible");
- const guard=window.DebtGateClient.createDebtGate({client:SB,workspaceId:SB_WID});
+ const guard=window.DebtGateClient.createDebtGate({client:SB,workspaceId:SB_WID,rpcNames:{unlock:'debt_unlock',verify:'debt_access_valid',lock:'debt_lock'}});
  debtGate=guard;
  debtController=window.DebtModuleController.createDebtModuleController({
   gate:guard,
