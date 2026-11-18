@@ -98,6 +98,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="Módulos disponibles" class="debt-unlock-screen"><div class="authCard"><h2>Panel de módulos</h2><p>Sesión iniciada. Deudas necesita una contraseña adicional; Inventario, Garantías y Contratos mantienen sus permisos independientes.</p><div id="clnModuleChoices"><button class="g2" type="button" id="clnHubDebts">Deudas · desbloquear</button><button class="g2" type="button" id="clnHubInventory">Inventario</button><button class="g2" type="button" id="clnHubWarranties">Garantías</button><button class="g2" type="button" id="clnHubContracts">Contratos</button></div><p id="clnHubStatus" role="status" aria-live="polite"></p><div id="clnHubDetail" aria-live="polite"></div><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}</style>
+<script src="./cl-nexus-reader.cjs"></script>
 <script src="./debt-gate-client.cjs"></script>
 <script src="./debt-module-controller.cjs"></script>
 <script src="./debt-cache-preflight.cjs"></script>
@@ -822,16 +823,35 @@ const clnHubViews=Object.freeze({
  clnHubContracts:{title:"Contratos",sections:["Clientes","Vendedores","Artículos","Historial"]}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
-function openIndependentModule(id){
+let nexusReader=null,nexusViewEpoch=0;
+async function openIndependentModule(id){
  const config=clnHubViews[id];
- if(!config||!SB_UID||!DEBT_GATE_ENABLED)return;
+ if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
+ const token=++nexusViewEpoch;
  clnHubDetail.replaceChildren();
  const title=document.createElement("h3");title.textContent=config.title;
- const notice=document.createElement("p");notice.textContent="Vista de preparación. Consultas y operaciones desactivadas hasta verificar los permisos del servidor de este módulo.";
- const list=document.createElement("ul");
- for(const section of config.sections){const item=document.createElement("li");item.textContent=section;list.append(item)}
- clnHubDetail.append(title,notice,list);
- document.getElementById("clnHubStatus").textContent=config.title+" · sin acceso a los datos de Deudas";
+ const status=document.createElement("p");status.textContent="Consultando datos autorizados…";
+ clnHubDetail.append(title,status);
+ document.getElementById("clnHubStatus").textContent=config.title;
+ try{
+  if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
+  if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+  const kind=id==="clnHubInventory"?"inventory":id==="clnHubContracts"?"contracts":null;
+  if(!kind){status.textContent="Garantías: operaciones desactivadas hasta validar permisos y flujo del servidor.";return}
+  const rows=await nexusReader.list(kind);
+  if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
+  status.textContent=rows.length+" registros disponibles (solo lectura).";
+  const list=document.createElement("ul");
+  for(const item of rows.slice(0,100)){
+   const li=document.createElement("li");
+   li.textContent=kind==="inventory"?item.nombre+" · "+item.categoria:item.nombre+" · "+item.dui_mostrado;
+   list.append(li);
+  }
+  clnHubDetail.append(list);
+ }catch(e){
+  if(token!==nexusViewEpoch)return;
+  status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
+ }
 }
 for(const id of Object.keys(clnHubViews)){
  document.getElementById(id).onclick=()=>openIndependentModule(id);
@@ -870,6 +890,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
     try{await debtController.logout()}catch(_){debtRevokeFailed=true}
     debtController=null;
   }
+  nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
   debtGate=null;showModuleHub(false);debtScreenVisible(false);
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
