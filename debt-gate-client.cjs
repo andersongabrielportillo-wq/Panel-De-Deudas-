@@ -2,9 +2,10 @@
 (function(root){'use strict';
 function createDebtGate({client,workspaceId,rpcNames}={}){
  const names=rpcNames||{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'};
- if(!names||!['unlock','verify','lock'].every(k=>names[k]===({unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'})[k]))throw Error('RPC de laboratorio inválida');
+ const allowed=[{unlock:'debt_lab_unlock',verify:'debt_lab_access_valid',lock:'debt_lab_lock'}, {unlock:'debt_unlock',verify:'debt_access_valid',lock:'debt_lock'}];
+ if(!names||!allowed.some(set=>['unlock','verify','lock'].every(k=>names[k]===set[k])))throw Error('Conjunto RPC no autorizado');
  if(!client||typeof client.rpc!=='function')throw Error('Cliente Supabase inválido');
- if(typeof workspaceId!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(workspaceId))throw Error('Workspace inválido');
+ if(typeof workspaceId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))throw Error('Workspace inválido');
  let unlocked=false,epoch=0,expiresAt=0,lockPending=false,unlockPending=false;
  function reset(){epoch++;unlocked=false;expiresAt=0}
  async function unlock(password){
@@ -25,10 +26,12 @@ function createDebtGate({client,workspaceId,rpcNames}={}){
  async function verify(){
   if(!unlocked||Date.now()>=expiresAt){reset();return false}
   const current=epoch;
-  const {data,error}=await client.rpc(names.verify,{p_workspace_id:workspaceId});
-  if(current!==epoch)return false;
-  if(error||data!==true){reset();return false}
-  return true;
+  try {
+   const {data,error}=await client.rpc(names.verify,{p_workspace_id:workspaceId});
+   if(current!==epoch)return false;
+   if(error||data!==true){reset();return false}
+   return true;
+  } catch (_) {if(current===epoch)reset();return false}
  }
  async function lock(){
   reset();lockPending=true;
