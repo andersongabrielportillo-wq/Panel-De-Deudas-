@@ -8,10 +8,6 @@ on:
       - 'debt-cache-preflight.cjs'
       - 'debt-legacy-backup.cjs'
       - 'debt-encrypted-backup.cjs'
-      - 'debt-module-controller.cjs'
-      - 'debt-cache-preflight.cjs'
-      - 'debt-legacy-backup.cjs'
-      - 'debt-encrypted-backup.cjs'
       - 'tests/**'
       - '.github/workflows/debt-security-tests.yml'
   push:
@@ -20,6 +16,10 @@ on:
     paths:
       - 'index.html'
       - 'debt-gate-client.cjs'
+      - 'debt-module-controller.cjs'
+      - 'debt-cache-preflight.cjs'
+      - 'debt-legacy-backup.cjs'
+      - 'debt-encrypted-backup.cjs'
       - 'tests/**'
       - '.github/workflows/debt-security-tests.yml'
 permissions:
