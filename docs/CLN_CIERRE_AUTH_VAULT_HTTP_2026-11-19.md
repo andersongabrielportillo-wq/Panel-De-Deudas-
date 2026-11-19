@@ -1,5 +1,24 @@
 # CL Nexus — cierre Auth/Vault y HTTP real (19 noviembre 2026)
 
+## Corte controlado de producción: backend y Git main actualizados (19 noviembre 2026)
+
+**Acción autorizada por el propietario:** omitir por ahora la restauración integral Auth/Vault en un clon y continuar el despliegue sobre el Supabase ORIGINAL del Panel de Deudas, preservando usuarios y secretos. **Riesgo aceptado:** la recuperación integral ante desastre sigue SIN verificar. Backup local disponible pero con huella distinta, y no se debe declarar restaurable sin ensayo.
+
+**Etapa 1, migración Supabase producción APROBADA:** `cln_produccion_etapa1_inventario_aislado_sin_roles_ni_datos`, basado en `sql/cln_produccion_etapa1_inventario_aislado_PREPARADO_NO_EJECUTAR.sql`, exigió Auth 3, espacio 1, miembros 3, deuda 1, md5 `cae1aed74556ce96dde7f673e33d4668`, Vault descifrable, ausencia de inv_ y ausencia de políticas restrictivas previas. Creó **21 tablas + 37 RPCs** de Inventario sin tocar Deudas.
+
+**Etapa 2, migración Supabase producción APROBADA:** `cln_produccion_etapa2_tres_admin_y_correccion_nombres`. Asignó `admin` a los **3 miembros originales de Deudas**, introdujo 4 ubicaciones (Oficina, Bodega, Garantía, Proveedor/Taller) y los RPCs protegidos de corrección auditada y catálogo administrador (39 RPCs total). Verificado: ningún `inv_*` ejecutable por `anon`, 0 usuarios externos asignados.
+
+**Etapa 3, catálogo real APROBADO:** se leyó de la conversación el archivo privado `CLN_Catalogo_2026_3_SIN_STOCK_NO_EJECUTAR.sql`, origen MERCADERIA (3), SHA manifiesto `d6cfa1e2dad5ef9d0c9ba5f5b6186b984084ffd7e02447878048ec0268fa6cdd`. Tras validar exactamente 190 tuplas, 190 códigos, cinco nombres pendientes, cero SQL de stock o Deudas y huella comercial original, se ejecutó SOLO la transacción de catálogo en producción. Verificado: **190 artículos, 5 nombres pendientes, 0 existencias físicas, 0 clientes/vendedores**, sin introducir el saldo histórico como stock. **Datos empresariales NO se subieron a GitHub.**
+
+**Etapa 4, RLS Deudas APROBADA:** Supabase migration `cln_produccion_etapa3_deudas_rls_restrictiva_bloqueo` aplicó dos políticas `AS RESTRICTIVE FOR ALL TO authenticated` a `public.debts` y `public.transactions`, con `USING` y `WITH CHECK` de `public.has_debts_unlock()`, conservando las ocho políticas originales de membresía. Verificado con rol autenticado de miembro sin reclamo de sesión/desbloqueo: **0 deudas visibles, 0 transacciones visibles, 190 artículos Inventario accesibles**. No se probó contraseña real por HTTP desde PC/teléfono aún.
+
+**Etapa 5, publicación de fuentes APROBADA:** se creó la rama `cln-lanzamiento-controlado-20261119` DESDE `main` original, montando `index.html` con `DEBT_GATE_ENABLED=true`, ocho scripts compatibles, nuevo SW con caché versión `panel-de-deudas-shell-v9-cln-cutover-44a474aad42a` y `manifest.webmanifest` con nombre CL Nexus. Se comprobó en GitHub la existencia de los **12 recursos CORE** y la ausencia de scripts de LAB. Se preservó `main` original en la rama `panel-deudas-respaldo-precln-20261119`, SHA `e63c6e23a9b896e1f3ef7c436102d73b16a0309c`. La rama `main` avanzó con éxito a SHA `a33cf9cbd555e550cb5c85516eb06d4f1a5764a0`.
+
+**Comprobación final inmediatamente posterior al corte:** 3 usuarios originales, 3 admin, 190 artículos, 0 filas stock, 2 RLS restrictivas y md5 Deudas intacto. Ningún dato de deuda perdió integridad según comparación. **PENDIENTE ÚNICO PARA CONFIRMAR PUBLICACIÓN OPERATIVA:** comprobar el despliegue de GitHub Pages en la URL real, entrar con las tres sesiones auténticas, presionar el botón `Verificar seguridad HTTP` sin password de Deudas (debe mostrar APROBADO, 0 deudas, 190 artículos), y desbloquear Deudas con la contraseña adicional para ver la deuda original; luego probar sincronización entre PC y teléfono. El motor no puede afirmar que el sitio servido por Pages está actualizado porque el verificador web no pudo abrir la URL en esta ejecución.
+
+**Rollback de emergencia predecidido, no ejecutado:** `sql/cln_emergencia_revertir_solo_rls_deudas_NO_EJECUTAR.sql` revierte SOLO las dos políticas de contraseña si fuera imprescindible reponer la PWA antigua y no borra ningún dato; el Git main anterior está en la rama de respaldo citada. No se ejecutó rollback ni se modificó LAB pausado o proyecto TEMPORAL aislado.
+
+
 **Estado: NO PUBLICAR TODAVÍA.** Se trabaja únicamente en la rama de integración. Ningún comando de este documento ejecuta una migración automáticamente.
 
 ## Pausa de laboratorio ejecutada con autorización (19 noviembre 2026)
