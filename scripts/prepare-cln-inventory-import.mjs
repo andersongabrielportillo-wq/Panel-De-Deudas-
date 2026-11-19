@@ -44,7 +44,7 @@ function build(input,expectedSha=sha){
  'DO $guard$ BEGIN',
  "IF (SELECT count(*) FROM cln_import)<>190 THEN RAISE EXCEPTION 'MERCADERIA incompleta'; END IF;",
  "IF EXISTS(SELECT 1 FROM public.inv_items) OR EXISTS(SELECT 1 FROM public.inv_stock) THEN RAISE EXCEPTION 'Stock no vacío; no se puede repetir carga'; END IF;",
- "IF NOT EXISTS(SELECT 1 FROM public.inv_members WHERE rol='admin') OR NOT EXISTS(SELECT 1 FROM public.inv_members WHERE rol='secretaria') THEN RAISE EXCEPTION 'Roles no autorizados'; END IF;",
+ "IF (SELECT count(*) FROM public.inv_members)<>3 OR (SELECT count(*) FROM public.inv_members WHERE rol='admin')<>3 THEN RAISE EXCEPTION 'Se requieren exactamente tres administradores actuales'; END IF;",
  "IF (SELECT count(*) FROM public.inv_locations WHERE id IN (1,2))<>2 THEN RAISE EXCEPTION 'Ubicaciones incompletas'; END IF;",
  'END $guard$;',
  "INSERT INTO public.inv_items(nombre_original,legacy_key) SELECT nombre,legacy_key FROM cln_import WHERE decision='IMPORTAR';",
