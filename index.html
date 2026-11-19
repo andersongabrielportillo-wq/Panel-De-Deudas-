@@ -1760,46 +1760,83 @@ async function openIndependentModule(id){
    const field=(label,type="text",required=false)=>{
     const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
    };
+
    const number=field("Número de contrato", "text",true);
-   const customer=document.createElement("select");customer.required=true;customer.setAttribute("aria-label","Cliente del contrato");draftForm.append(customer);
-   const vendor=document.createElement("select");vendor.required=true;vendor.setAttribute("aria-label","Vendedor del contrato");draftForm.append(vendor);
+   const identityTitle=document.createElement("h5");identityTitle.textContent="Cliente del contrato";draftForm.append(identityTitle);
+   const clientName=field("Nombre completo del cliente","text",true);
+   clientName.maxLength=200;clientName.autocomplete="name";
+   const clientDui=field("DUI del cliente (########-#)","text",true);
+   clientDui.maxLength=10;clientDui.inputMode="numeric";
+   clientDui.pattern="[0-9]{9}|[0-9]{8}-[0-9]";
+   const customerLookup=document.createElement("input");
+   customerLookup.type="search";customerLookup.autocomplete="off";
+   customerLookup.maxLength=100;customerLookup.placeholder="Buscar cliente existente por nombre o DUI…";
+   customerLookup.setAttribute("aria-label","Buscar cliente registrado");
+   draftForm.append(customerLookup);
+   const customer=document.createElement("select");
+   customer.required=false;customer.setAttribute("aria-label","Cliente existente encontrado");draftForm.append(customer);
+   const clientFeedback=document.createElement("small");clientFeedback.className="cln-field-helper";
+   clientFeedback.textContent="Escribí nombre Y DUI. Si el DUI ya está registrado, se reutiliza ese cliente. Si es nuevo, se registra al guardar el borrador.";
+   draftForm.append(clientFeedback);
+   const sellerTitle=document.createElement("h5");sellerTitle.textContent="Vendedor responsable";draftForm.append(sellerTitle);
+   const vendor=field("Nombre del vendedor","text",true);
+   vendor.maxLength=200;vendor.autocomplete="off";
+   const sellerDatalist=document.createElement("datalist");
+   sellerDatalist.id="cln-contract-sellers-"+token;
+   vendor.setAttribute("list",sellerDatalist.id);draftForm.append(sellerDatalist);
+   const vendorChoice=document.createElement("select");
+   vendorChoice.hidden=true;vendorChoice.setAttribute("aria-label","Elegir vendedor con el mismo nombre");
+   draftForm.append(vendorChoice);
+   const sellerFeedback=document.createElement("small");sellerFeedback.className="cln-field-helper";
+   sellerFeedback.textContent="Escribí un nombre o elegí uno de las sugerencias. El contrato aparecerá en su historial; los vendedores nuevos se registran al guardar.";
+   draftForm.append(sellerFeedback);
    const fillSelect=(select,items,label)=>{
     select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
     for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
    };
-   // No llamar inv_buscar_clientes con texto vacío: el servidor exige al menos tres caracteres.
-   fillSelect(customer,[],"Buscá primero al cliente por nombre o DUI");
-   const customerLookup=document.createElement("input");
-   customerLookup.type="search";customerLookup.autocomplete="off";
-   customerLookup.maxLength=100;customerLookup.placeholder="Escribí al menos 3 letras del cliente o su DUI…";
-   customerLookup.setAttribute("aria-label","Buscar cliente para nuevo contrato");
-   draftForm.insertBefore(customerLookup,customer);
-   const customerFeedback=document.createElement("small");
-   customerFeedback.className="cln-field-helper";
-   customerFeedback.textContent="Buscá y seleccioná al cliente. No necesitás recorrer una lista de todos los clientes.";
-   draftForm.insertBefore(customerFeedback,customer);
-   let customerLookupTimer=null,customerLookupEpoch=0;
+   fillSelect(customer,[],"No hay cliente seleccionado; se comprobará el DUI al guardar");
+   let clientQueryTimer=null,clientQueryEpoch=0;
    customerLookup.addEventListener("input",()=>{
-    const sequence=++customerLookupEpoch,term=customerLookup.value.trim();
-    if(customerLookupTimer)clearTimeout(customerLookupTimer);
-    fillSelect(customer,[],term.length<3?"Escribí 3 caracteres o más":"Buscando clientes…");
+    const sequence=++clientQueryEpoch,term=customerLookup.value.trim();
+    if(clientQueryTimer)clearTimeout(clientQueryTimer);
+    fillSelect(customer,[],term.length<3?"Escribí al menos 3 caracteres":"Buscando…");
     if(term.length<3)return;
-    customerLookupTimer=setTimeout(async()=>{
+    clientQueryTimer=setTimeout(async()=>{
      try{
-      const matches=await nexusReader.list("contracts",term);
-      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==customerLookupEpoch)return;
-      fillSelect(customer,matches,matches.length?"Seleccioná al cliente":"No hay clientes con ese nombre");
+      const found=await nexusReader.list("contracts",term);
+      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==clientQueryEpoch)return;
+      fillSelect(customer,found,found.length?"Elegí un cliente existente":"No se encontraron clientes");
+      found.forEach((item,index)=>{customer.options[index+1].textContent=item.nombre+(item.dui_mostrado?" · DUI "+item.dui_mostrado:"");});
+      clientFeedback.textContent=found.length?"Elegí al cliente y completá su DUI para verificar que sea el correcto.":"No se encontraron coincidencias. Podés crear uno nuevo con nombre y DUI.";
      }catch(e){
-      if(token===nexusViewEpoch&&sequence===customerLookupEpoch){
-       fillSelect(customer,[],"No se pudo buscar");
-       customerFeedback.textContent="Error de búsqueda: "+String(e.message||e);
+      if(token===nexusViewEpoch&&sequence===clientQueryEpoch){
+       fillSelect(customer,[],"Búsqueda no disponible");
+       clientFeedback.textContent="No se pudo buscar: "+String(e.message||e);
       }
      }
-    },260);
+    },300);
    });
-   const vendors=await nexusReader.list("sellers");
+   customer.addEventListener("change",()=>{
+    const selected=customer.selectedOptions[0];
+    if(!selected?.value)return;
+    const cleanName=selected.textContent.split(" · DUI ")[0];
+    clientName.value=cleanName;
+    const searchedDigits=customerLookup.value.replace(/\D/g,"");
+    clientDui.value=searchedDigits.length===9?searchedDigits:"";
+   });
+   for(const control of [clientName,clientDui])
+    control.addEventListener("input",()=>{if(customer.value)customer.value="";});
+   let contractSellers=await nexusReader.list("contractSellers");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   fillSelect(vendor,vendors,"Seleccionar vendedor");
+   function paintContractSellerSuggestions(){
+    sellerDatalist.replaceChildren();
+    for(const seller of contractSellers){
+     const option=document.createElement("option");option.value=seller.nombre;
+     sellerDatalist.append(option);
+    }
+   }
+   paintContractSellerSuggestions();
+   vendor.addEventListener("input",()=>{vendorChoice.hidden=true;vendorChoice.value="";});
    const date=field("Fecha de contrato","date",true);date.value=new Date().toISOString().slice(0,10);
    const choose=(label,options)=>{
     const el=document.createElement("select");el.setAttribute("aria-label",label);
