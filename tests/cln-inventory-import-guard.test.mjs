@@ -27,7 +27,7 @@ test('190 reviewed synthetic entries generate SQL without touching the database'
  assert.match(out.sql,/BEGIN;/);
  assert.match(out.sql,/COMMIT;/);
  assert.match(out.sql,/Stock no vacío; no se puede repetir carga/);
- assert.match(out.sql,/Roles no autorizados/);
+ assert.match(out.sql,/Se requieren exactamente tres administradores actuales/);
  assert.match(out.sql,/Garantía\/Proveedor no pueden tener stock inicial/);
  assert.doesNotMatch(out.sql,/INSERT INTO (?:auth\.users|public\.debts)/i);
 });
