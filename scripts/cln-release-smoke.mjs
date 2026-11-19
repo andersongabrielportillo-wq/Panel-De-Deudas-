@@ -63,4 +63,15 @@ assert.match(html,/id="cln-mobile-upgrade"/);
 assert.match(html,/if\(id==="clnHubSellers"\)await refreshSellerList\(\)/);
 assert.match(html,/id==="clnHubSales"\?"Ventas"/);
 assert.doesNotMatch(html,/option\.textContent=article\.nombre\+\(article\.codigo/);
+// UI regression: Contracts must not request a forbidden empty-client search.
+assert.doesNotMatch(html,/await nexusReader\.list\("contracts"\);/);
+assert.match(html,/nexusReader\.list\("contracts",term\)/);
+assert.match(html,/SB\.rpc\("inv_detalle_contrato",\{p_contrato_id:requested\}\)/);
+assert.match(html,/detalle_id:line\.detalle_id/);
+assert.match(html,/location_id:Number\(line\.location\.value\)/);
+assert.match(html,/SB\.rpc\("inv_resumen_vendedor"/);
+assert.match(html,/SB\.rpc\("inv_historial_vendedor"/);
+assert.match(html,/if\(clnHubDetail\.contains\(wrap\)\)clnEnhanceArticleSearch\(wrap\)/);
+assert.doesNotMatch(html,/Ubicaciones JSON/);
+assert.match(html,/cln-catalog-search/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
