@@ -2,7 +2,7 @@
 -- Run with psql in an approved, backed-up maintenance window, AFTER the inventory schema exists.
 -- Prepared role assignment ONLY for THREE explicitly selected preexisting Panel de Deudas accounts. No extra registration.
 -- Never copy inv_members from LAB; authenticated identities are project-specific.
--- Only explicitly listed users get inventory access; other Deudas members remain unprivileged here.
+-- All three original Deudas workspace members explicitly approved for Inventory: ADMIN only.
 \set ON_ERROR_STOP on
 BEGIN;
 DO $preflight$
@@ -14,7 +14,7 @@ BEGIN
  IF EXISTS (SELECT 1 FROM public.inv_members)
  THEN RAISE EXCEPTION 'Inventory members already provisioned: inspect before modifying'; END IF;
 END $preflight$;
-CREATE TEMP TABLE cln_roles_cutover(user_id uuid PRIMARY KEY,rol text NOT NULL CHECK (rol IN ('admin','secretaria'))) ON COMMIT DROP;
+CREATE TEMP TABLE cln_roles_cutover(user_id uuid PRIMARY KEY,rol text NOT NULL CHECK (rol = 'admin')) ON COMMIT DROP;
 INSERT INTO cln_roles_cutover(user_id,rol)
 SELECT (member->>'user_id')::uuid,(member->>'rol')::text
 FROM jsonb_array_elements(:'roles_json'::jsonb) AS member;
@@ -23,18 +23,22 @@ DECLARE v_workspace uuid;
 BEGIN
  SELECT id INTO STRICT v_workspace FROM public.workspaces;
  IF (SELECT count(*) FROM cln_roles_cutover) <> 3
- THEN RAISE EXCEPTION 'Expected exactly 3 explicitly authorized members (Administrator, Secretary and approved third user)'; END IF;
- IF NOT EXISTS(SELECT 1 FROM cln_roles_cutover WHERE rol='admin')
- OR NOT EXISTS(SELECT 1 FROM cln_roles_cutover WHERE rol='secretaria')
- THEN RAISE EXCEPTION 'Both Administrador and Secretaria must be explicitly mapped'; END IF;
+ THEN RAISE EXCEPTION 'Expected exactly 3 authorized admins'; END IF;
+ IF (SELECT count(*) FROM public.workspace_members WHERE workspace_id=v_workspace) <> 3
+ THEN RAISE EXCEPTION 'Expected exactly 3 existing Deudas members'; END IF;
+ IF EXISTS (SELECT 1 FROM cln_roles_cutover WHERE rol <> 'admin')
+ THEN RAISE EXCEPTION 'All three CL Nexus roles must be admin'; END IF;
  IF EXISTS (SELECT user_id FROM cln_roles_cutover
    EXCEPT SELECT user_id FROM public.workspace_members WHERE workspace_id=v_workspace)
  THEN RAISE EXCEPTION 'Role assignment includes an outsider'; END IF;
+ IF EXISTS (SELECT user_id FROM public.workspace_members WHERE workspace_id=v_workspace
+   EXCEPT SELECT user_id FROM cln_roles_cutover)
+ THEN RAISE EXCEPTION 'A current Deudas member is missing from the three-admin assignment'; END IF;
  IF EXISTS (SELECT user_id FROM cln_roles_cutover
    EXCEPT SELECT id FROM auth.users)
  THEN RAISE EXCEPTION 'Role assignment includes an unknown Auth user'; END IF;
  -- The owner explicitly requested all three existing Panel de Deudas accounts.
- -- Never infer the third role; it must be explicitly supplied and checked as admin or secretaria.
+ -- All three are admin as explicitly approved by the owner. No extra Auth users created.
 END $audit$;
 INSERT INTO public.inv_members(user_id,rol)
 SELECT user_id,rol FROM cln_roles_cutover;
