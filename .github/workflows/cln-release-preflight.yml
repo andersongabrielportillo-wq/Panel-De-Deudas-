@@ -1,0 +1,28 @@
+name: CL Nexus - validacion pre-publicacion
+on:
+  push:
+    branches: [cln-lanzamiento-controlado-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pwa-release-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static safety, correct scripts and release cache
+        run: |
+          node --check scripts/cln-release-smoke.mjs
+          node scripts/cln-release-smoke.mjs
+          node --check cl-nexus-reader.cjs
+          node --check cl-nexus-actions.cjs
+          node --check cln-http-auth-probe.cjs
+          node --check debt-gate-client.cjs
+          node --check debt-module-controller.cjs
+          node --check debt-cache-preflight.cjs
+          node --check debt-legacy-backup.cjs
+          node --check debt-encrypted-backup.cjs
