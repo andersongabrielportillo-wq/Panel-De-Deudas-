@@ -13,7 +13,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v9-cln-cutover-[0-9a-f]{12}/);
+assert.match(sw,/panel-de-deudas-shell-v10-login-unico-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -22,4 +22,13 @@ assert.match(manifest.name,/CL Nexus/);
 assert.match(html,/rpcNames:\{unlock:'unlock_debts',verify:'has_debts_unlock',lock:'lock_debts'\}/);
 assert.match(html,/CLNHttpAuthProbe\.probe\(\{client:SB\}\)/);
 assert.match(html,/actions\.execute\("renameItem"/);
+
+assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
+assert.doesNotMatch(html,/<h2>Panel de módulos<\/h2>/);
+assert.match(html,/function showModuleHub\(yes\)[^\n]*void openIndependentModule\("clnHubInventory"\)/);
+assert.match(html,/document\.getElementById\("authLogin"\)\.onclick=async/);
+assert.match(html,/SB\.auth\.signInWithPassword\(\{email,password\}\)/);
+assert.match(html,/document\.getElementById\("debtUnlockButton"\)\.onclick=async/);
+assert.match(html,/await debtController\.open\(password\)/);
+
 console.log('PASS: unified gated CL Nexus PWA - all core assets, login controls and manifest present. No deployment performed.');
