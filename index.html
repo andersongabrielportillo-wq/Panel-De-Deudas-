@@ -1625,8 +1625,8 @@ async function openIndependentModule(id){
      heading.textContent="Contrato "+String(data.numero||"")+" · "+data.articulos.length+" artículo(s)";
      allocation.append(heading);
      for(const entry of data.articulos){
-      const itemId=String(entry.item_id||""),quantity=Number(entry.cantidad);
-      if(!itemId||!Number.isInteger(quantity)||quantity<=0)throw Error("El detalle del contrato no es válido.");
+      const detailId=String(entry.detalle_id||""),quantity=Number(entry.cantidad);
+      if(!detailId||!Number.isInteger(quantity)||quantity<=0)throw Error("El detalle del contrato no es válido.");
       const row=document.createElement("div");row.className="cln-allocation-row";
       const title=document.createElement("strong");title.textContent=String(entry.nombre||"Artículo");
       const info=document.createElement("small");info.textContent="Cantidad: "+quantity;
@@ -1636,7 +1636,7 @@ async function openIndependentModule(id){
        const option=document.createElement("option");option.value=value;option.textContent=label;destination.append(option);
       }
       row.append(title,info,destination);allocation.append(row);
-      loadedDraftLines.push({item_id:itemId,cantidad:quantity,location:destination});
+      loadedDraftLines.push({detalle_id:detailId,location:destination});
      }
      loadedDraftId=requested;
      status.textContent="Artículos cargados. Elegí la ubicación de entrega y confirmá el contrato.";
@@ -1652,8 +1652,8 @@ async function openIndependentModule(id){
     if(!loadedDraftId||loadedDraftId!==contract||!loadedDraftLines.length){
      status.textContent="Primero cargá los artículos del contrato borrador.";return;
     }
-    const allocations=loadedDraftLines.map(line=>({item_id:line.item_id,location_id:Number(line.location.value),cantidad:line.cantidad}));
-    if(allocations.some(line=>![1,2].includes(line.location_id)||!Number.isInteger(line.cantidad)||line.cantidad<=0)){
+    const allocations=loadedDraftLines.map(line=>({detalle_id:line.detalle_id,location_id:Number(line.location.value)}));
+    if(allocations.some(line=>!line.detalle_id||![1,2].includes(line.location_id))){
      status.textContent="Cada artículo necesita una ubicación válida.";return;
     }
     const payload=JSON.stringify({contract,allocations});
