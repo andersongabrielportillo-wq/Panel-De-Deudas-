@@ -25,3 +25,11 @@ jobs:
           node --check scripts/build-cln-candidate.mjs
       - name: Run debt backup tests
         run: node --test tests/cln-cutover-candidate.test.mjs tests/cl-nexus-rpc-parity.test.mjs tests/debt-production-rpc-contract.test.mjs tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
+      - name: Upload gated preview artifact (not deployed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cln-pwa-CANDIDATA-NO-PUBLICAR
+          path: dist-cln-candidate/
+          if-no-files-found: error
+          retention-days: 7
+
