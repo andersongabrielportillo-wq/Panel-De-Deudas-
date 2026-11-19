@@ -62,7 +62,7 @@ assert.match(html,/article\.nombre/);
 assert.match(html,/cln-item-catalog/);
 assert.match(html,/cln-seller-grid/);
 assert.match(html,/id="cln-mobile-upgrade"/);
-assert.match(html,/if\(id==="clnHubSellers"\)await refreshSellerList\(\)/);
+assert.match(html,/if\(id==="clnHubSellers"&&refreshSellerList\)await refreshSellerList\(\)/);
 assert.match(html,/id==="clnHubSales"\?"Ventas"/);
 assert.doesNotMatch(html,/option\.textContent=article\.nombre\+\(article\.codigo/);
 // UI regression: Contracts must not request a forbidden empty-client search.
