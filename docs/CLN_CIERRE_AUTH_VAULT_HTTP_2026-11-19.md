@@ -48,6 +48,12 @@
 - **El script NO importa**, NO copia hashes de contraseñas a GitHub/ChatGPT y NO valida la estructura completa ni PK/FK/policies; requiere revisar el resultado y preparar un procedimiento de importación transaccional que instale antes las **tablas/funciones/políticas personalizadas** del proyecto original y deshabilite triggers solo en el destino cuando corresponda.
 - El SHA-256 de la copia local difiere de un respaldo previo; no asumir equivalencia. Después de recuperar hay que cotejar contenidos en clon con la consulta solo lectura de origen e iniciar las tres sesiones HTTP reales. Mantener PWA en NO-GO hasta verificar Vault descifrable, controles RLS y copia funcional.
 
+## Compatibilidad adicional del clon temporal (SQL read-only)
+
+- Se compararon los **esquemas Auth/Vault existentes** entre origen y temporal: `auth.users` tiene las mismas **3 constraints, 15 índices y ningún trigger personalizado**; `auth.identities` tiene **3 constraints, 4 índices y ningún trigger personalizado**; `vault.secrets` tiene **1 constraint, 2 índices y ningún trigger personalizado**. Las definiciones de constraints e índices comparadas coincidieron, además de las 76 columnas ya contrastadas.
+- La comparación NO revisa el contenido del `.dump` local ni implica que un `pg_restore` directo sea seguro. Tampoco valida extensiones de Vault, hash de contraseña ni login con sesión HTTP. La importación selectiva sólo avanzará cuando el propietario haya generado el informe del archivo local de siete bloques y se haya examinado la estructura personalizada de `public`/`app_private`.
+- El backup `.dump` NO debe compartirse ni cargarse al repositorio. El informe preparado `CLN_INFORME_PARA_COMPARTIR_SIN_SECRETOS.txt` no incluye filas, contraseñas o claves.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
