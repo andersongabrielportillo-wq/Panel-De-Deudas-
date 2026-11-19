@@ -111,4 +111,7 @@ assert.equal(await attemptA,true);
 assert.equal(await attemptB,true);
 assert.equal(await authSandbox.testEnsure(liveSession),true);
 assert.equal(connectionCalls,1,'Returning to Inventory initialized another sign-in');
+assert.ok(html.includes('id="debtBackToNexus"'),'Missing Deudas to Inventario navigation');
+assert.ok(html.includes('const locked=await debtController.lock();'),'Must revoke Deudas before returning to Inventario');
+assert.ok(html.includes('if(locked)showModuleHub(true);'),'Return to Nexus must keep global login');
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
