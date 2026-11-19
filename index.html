@@ -1877,7 +1877,8 @@ async function openIndependentModule(id){
    const detailsTitle=document.createElement("h5");detailsTitle.textContent="Artículos del contrato";draftForm.append(detailsTitle);
    const details=document.createElement("div");draftForm.append(details);
    const contractLines=[];
-   const inventory=await nexusReader.list("inventory");
+   // Catálogo accesible para admin y secretaria sin exponer existencias administrativas.
+   const inventory=await nexusReader.list("contractInventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
    const addDetail=document.createElement("button");addDetail.type="button";addDetail.className="g2";addDetail.textContent="Agregar artículo";
    const newDetail=()=>{
