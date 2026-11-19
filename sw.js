@@ -1,6 +1,6 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
 const CACHE = 'panel-de-deudas-shell-v8-nexus-adapters';
-const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-reader.cjs', './cl-nexus-actions.cjs', './cl-nexus-shell.js', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
+const CORE = ['./', './index.html', './manifest.webmanifest', './cl-nexus-adapter.cjs', './cl-nexus-reader.cjs', './cl-nexus-actions.cjs', './cln-http-auth-probe.cjs', './cl-nexus-shell.js', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
 self.addEventListener('install', event => {
