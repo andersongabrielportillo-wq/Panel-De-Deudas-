@@ -4,6 +4,8 @@ on:
     branches: [integracion-inventario-fase15]
     paths:
       - 'tests/postgres/**'
+      - 'scripts/prepare-cln-inventory-import.mjs'
+      - 'tests/fixtures/generate-synthetic-cln-stock.mjs'
       - 'sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql'
       - 'migrations/20261115_fase15*.sql'
       - '.github/workflows/postgres-contratos.yml'
@@ -179,3 +181,31 @@ jobs:
           if ! grep -qi 'No autorizado' /tmp/cln_denied_third.log; then
             echo 'Third-user request failed for a reason other than authorization'; cat /tmp/cln_denied_third.log; exit 1
           fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate fake approved inventory SQL (never real MERCADERIA records)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/fixtures/generate-synthetic-cln-stock.mjs /tmp/ci-fake-stock.clnimport.sql
+          test -s /tmp/ci-fake-stock.clnimport.sql
+      - name: Seed only default inventory locations in disposable PostgreSQL
+        run: psql -X -v ON_ERROR_STOP=1 -c "INSERT INTO public.inv_locations(id,nombre) VALUES (1,'Oficina'),(2,'Bodega'),(3,'Garantía'),(4,'Proveedor/Taller')"
+      - name: Execute fake stock import and check count, warehouse isolation and Deudas integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f /tmp/ci-fake-stock.clnimport.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_items)=190 AND (SELECT count(*) FROM public.inv_stock)=190 AND (SELECT coalesce(sum(cantidad),0) FROM public.inv_stock)=380 AND (SELECT count(*) FROM public.inv_stock WHERE location_id=1)=95 AND (SELECT count(*) FROM public.inv_stock WHERE location_id=2)=95 AND (SELECT count(*) FROM public.inv_stock WHERE location_id IN (3,4))=0 AND (SELECT count(*) FROM public.debts)=1" | grep -qx t
+          psql -X -Atq -c "SELECT encode(extensions.digest(convert_to(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),''),'UTF8'),'sha256'),'hex') FROM public.debts" > /tmp/cln_after_fake_inventory_sha
+          cmp /tmp/cln_before_debts_sha /tmp/cln_after_fake_inventory_sha
+      - name: Replaying initial stock import must be refused atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -f /tmp/ci-fake-stock.clnimport.sql > /tmp/cln_replay.log 2>&1; then
+            echo 'Initial inventory import unexpectedly accepted a replay'; exit 1
+          fi
+          grep -q 'Stock no vacío; no se puede repetir carga' /tmp/cln_replay.log
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_items)=190 AND (SELECT count(*) FROM public.inv_stock)=190 AND (SELECT coalesce(sum(cantidad),0) FROM public.inv_stock)=380" | grep -qx t
