@@ -54,6 +54,13 @@
 - La comparación NO revisa el contenido del `.dump` local ni implica que un `pg_restore` directo sea seguro. Tampoco valida extensiones de Vault, hash de contraseña ni login con sesión HTTP. La importación selectiva sólo avanzará cuando el propietario haya generado el informe del archivo local de siete bloques y se haya examinado la estructura personalizada de `public`/`app_private`.
 - El backup `.dump` NO debe compartirse ni cargarse al repositorio. El informe preparado `CLN_INFORME_PARA_COMPARTIR_SIN_SECRETOS.txt` no incluye filas, contraseñas o claves.
 
+## Siete bloques del respaldo verificados, conteos reales pendientes (19/11/2026)
+
+- El propietario ejecutó en su PC el preparador selectivo sin Docker. Los siete resultados `auth.users`, `auth.identities`, `vault.secrets`, `public.workspaces`, `public.workspace_members`, `public.debts` y `public.transactions` dieron **OK** (una entrada TOC de `TABLE DATA` por cada tabla). Se creó la lista LOCAL `CLN_SELECCION_7_BLOQUES_DATOS_NO_EJECUTAR.toc`, sin exportar filas privadas. El respaldo ocupa **441291 bytes** y **su SHA-256 difiere** de la copia anteriormente registrada: no se puede aún asumir equivalencia de contenidos.
+- El origen activo registra por `SELECT` de solo lectura los conteos esperados: `auth.users=3`, `auth.identities=3`, `vault.secrets=1`, `public.workspaces=1`, `public.workspace_members=3`, `public.debts=1`, `public.transactions=0`. El clon sigue separado, sin restauración aplicada.
+- Siguiente prueba SIN Docker: script local `CLN_Validar_Contenido_7_Tablas_SIN_DOCKER_SOLO_LECTURA.ps1`. Usa el TOC generado y `pg_restore --data-only --use-list` **sin conectar a una base**; consume los `COPY ... FROM stdin` en memoria para contar filas y descartar todos sus valores. No escribe SQL ni lee tokens. Compara los conteos del respaldo contra los del origen; si difieren se bloquea el ensayo. Los resultados coincidentes **no bastarán** por sí solos para probar hashes de contraseñas, huella de Deudas, restauración de Vault ni inicios de sesión HTTP.
+- Para restauración se requiere después: esquema comercial seguro del proyecto original en el clon, `psql` con conexión únicamente al proyecto temporal, copia selectiva de tablas sin sesiones ni tokens antiguos y ensayo real del descifrado, RLS y sesiones HTTP. **No ejecutar automáticamente el TOC ni el archivo SQL completo de pg_restore contra un Supabase administrado**.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
