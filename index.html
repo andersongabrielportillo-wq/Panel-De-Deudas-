@@ -1648,6 +1648,7 @@ async function openIndependentModule(id){
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
     const params={p_referencias:[]};
     for(const [key] of fields)params[key]=inputs[key].value.trim();
+    if(!params.p_vivienda)params.p_vivienda=null;
     if(!params.p_nombre||!params.p_dui){status.textContent="Nombre y DUI son obligatorios.";return}
     if(!confirm("¿Registrar este cliente?"))return;
     customerButton.disabled=true;status.textContent="Registrando cliente…";
@@ -2000,7 +2001,7 @@ async function openIndependentModule(id){
      summary.textContent="Contrato "+params.p_numero+" · Cliente: "+fullName+" · DUI terminado en "+duiDigits.slice(-4)+" · Vendedor: "+sellerEntered;
      const oldPreview=confirmForm.querySelector(".cln-contract-identity");if(oldPreview)oldPreview.remove();
      confirmForm.insertBefore(summary,draftId);
-     draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+     draftForm.reset();date.value=new Date().toISOString().slice(0,10);details.replaceChildren();contractLines.length=0;newDetail();
      customerLookup.value="";fillSelect(customer,[],"Buscá un cliente o escribí nombre y DUI");
      vendorChoice.hidden=true;vendorChoice.replaceChildren();
      await loadDraftDetails();
@@ -2027,7 +2028,7 @@ async function openIndependentModule(id){
    async function refreshSellerList(){
     sellerButton.disabled=true;
     try{
-     const sellers=await nexusReader.list("sellers");
+     const sellers=await nexusReader.list("contractSellers");
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      sellerList.replaceChildren();
      const summary=document.createElement("p");summary.className="cln-small-kpi";
@@ -2440,6 +2441,11 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-metric small{color:var(--mut)}
 #clnHubDetail .cln-metric strong{font-size:16px}
 #clnHubDetail .cln-history-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+
+/* Identidad de contratos: nombre + DUI, y vendedor relacionado con historial. */
+#clnHubDetail .cln-subpanel form>h5{flex:1 0 100%;font-size:15px;font-weight:750;letter-spacing:-.01em;color:var(--tx);margin:15px 0 0}
+#clnHubDetail .cln-contract-identity{font-size:13px;color:var(--tx);line-height:1.6;background:color-mix(in srgb,var(--ac) 9%,var(--card));padding:12px 14px;border:1px solid color-mix(in srgb,var(--ac) 22%,var(--bd));border-radius:13px}
+#clnHubDetail .cln-field-helper{line-height:1.5;margin-top:-3px;color:var(--mut)}
 </style>
 
 </body></html>
