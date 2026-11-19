@@ -137,6 +137,25 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 #clnModuleHub .cln-utilities{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 #clnModuleHub .cln-utilities button{margin:0}
 @supports (backdrop-filter:blur(12px)){#clnModuleHub .cln-workspace-content{background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(22px) saturate(135%);-webkit-backdrop-filter:blur(22px) saturate(135%)}}
+
+/* Pestañas interiores: conservan los formularios reales y evitan desplazarse entre operaciones. */
+#clnHubDetail .cln-subtabs{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:5px 1px 16px;margin:10px 0 16px;scroll-snap-type:x proximity}
+#clnHubDetail .cln-subtab{flex:0 0 auto;min-height:40px;padding:9px 14px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--card) 91%,var(--ac));color:var(--mut);font:inherit;font-size:13px;font-weight:650;cursor:pointer;scroll-snap-align:start}
+#clnHubDetail .cln-subtab:hover,#clnHubDetail .cln-subtab:focus-visible{border-color:var(--ac);color:var(--tx)}
+#clnHubDetail .cln-subtab[aria-selected="true"]{color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,var(--card));border-color:color-mix(in srgb,var(--ac) 38%,var(--bd))}
+#clnHubDetail .cln-subpanel[hidden]{display:none!important}
+#clnHubDetail .cln-subpanel{min-height:190px}
+#clnHubDetail .cln-subpanel-title{font-size:17px;color:var(--tx);margin:4px 0 17px}
+#clnHubDetail .cln-subpanel>form{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:17px;margin:0 0 14px;background:color-mix(in srgb,var(--ac) 3%,var(--card));border:1px solid var(--bd);border-radius:17px}
+#clnHubDetail .cln-subpanel>form>h4,#clnHubDetail .cln-subpanel>form>h5,#clnHubDetail .cln-subpanel>form>p{flex:1 0 100%;margin:0}
+#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{min-width:0;flex:1 1 210px;max-width:100%;box-sizing:border-box}
+#clnHubDetail .cln-subpanel>form>div{display:flex;flex:1 0 100%;flex-wrap:wrap;gap:9px}
+#clnHubDetail .cln-subpanel>form>div>div{display:flex;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--bd);border-radius:11px}
+#clnHubDetail .cln-subpanel>form>div>div>input,#clnHubDetail .cln-subpanel>form>div>div>select{min-width:0;flex:1 1 130px}
+#clnHubDetail .cln-subpanel>form>button{margin:0;max-width:100%}
+#clnHubDetail .cln-subpanel ul{max-height:min(55dvh,540px);overflow:auto;padding:7px 8px 7px 25px}
+#clnHubDetail .cln-subpanel li{padding:7px 5px;overflow-wrap:anywhere;border-bottom:1px solid var(--bd);font-size:13px}
+@media(max-width:599px){#clnHubDetail .cln-subtabs{margin-inline:-8px;padding-inline:8px}#clnHubDetail .cln-subpanel>form{padding:12px;gap:10px}#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{flex-basis:100%}#clnHubDetail .cln-subpanel>form>button{flex:1 1 100%}}
 @media(max-width:700px){#clnModuleHub{padding:9px}#clnModuleHub .cln-workspace-content{border-radius:20px}#clnModuleHub .cln-header{align-items:flex-start;padding:20px 16px}#clnModuleHub .cln-session-chip{display:none}#clnModuleHub .cln-logo{width:46px;height:46px;border-radius:14px}#clnModuleChoices{padding:12px;gap:6px}#clnModuleChoices button.cln-tab{flex:1 1 calc(50% - 8px);padding:11px 8px;text-align:center}#clnModuleChoices button.cln-tab-protected{margin-left:0}#clnModuleHub .cln-content{padding:16px}#clnModuleHub .cln-footer{flex-direction:column;align-items:stretch;padding:16px}#clnModuleHub .cln-utilities{justify-content:stretch}#clnModuleHub .cln-utilities button{flex:1 1 120px}}
 
 </style>
@@ -908,6 +927,52 @@ const clnHubViews=Object.freeze({
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
+
+// Navegación secundaria visual: mover nodos no altera RPC, listeners, formularios ni permisos.
+function arrangeNexusSections(groups,epoch){
+ if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
+ const tabs=document.createElement("nav");
+ tabs.className="cln-subtabs";tabs.setAttribute("role","tablist");
+ tabs.setAttribute("aria-label","Operaciones del módulo");
+ const buttons=[],panels=[];
+ for(const [index,group] of groups.entries()){
+  const [label,nodes]=group;
+  const button=document.createElement("button");
+  button.type="button";button.className="cln-subtab";button.textContent=label;
+  button.id="cln-subtab-"+epoch+"-"+index;
+  button.setAttribute("role","tab");button.setAttribute("aria-controls","cln-subpanel-"+epoch+"-"+index);
+  const panel=document.createElement("section");
+  panel.className="cln-subpanel";panel.id="cln-subpanel-"+epoch+"-"+index;
+  panel.setAttribute("role","tabpanel");panel.setAttribute("aria-labelledby",button.id);
+  const heading=document.createElement("h4");heading.className="cln-subpanel-title";heading.textContent=label;
+  panel.append(heading,...nodes);
+  tabs.append(button);buttons.push(button);panels.push(panel);
+ }
+ const activate=index=>{
+  if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
+  for(let i=0;i<buttons.length;i++){
+   const active=i===index;
+   buttons[i].setAttribute("aria-selected",String(active));
+   buttons[i].tabIndex=active?0:-1;
+   panels[i].hidden=!active;panels[i].inert=!active;
+  }
+ };
+ buttons.forEach((button,index)=>{
+  button.onclick=()=>activate(index);
+  button.onkeydown=event=>{
+   let next=index;
+   if(event.key==="ArrowRight")next=(index+1)%buttons.length;
+   else if(event.key==="ArrowLeft")next=(index+buttons.length-1)%buttons.length;
+   else if(event.key==="Home")next=0;
+   else if(event.key==="End")next=buttons.length-1;
+   else return;
+   event.preventDefault();activate(next);buttons[next].focus();
+  };
+ });
+ clnHubDetail.insertBefore(tabs,clnHubDetail.children[2]||null);
+ clnHubDetail.append(...panels);
+ activate(0);
+}
 async function openIndependentModule(id){
  const config=clnHubViews[id];
  if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
@@ -1067,6 +1132,7 @@ async function openIndependentModule(id){
     finally{resolveButton.disabled=false}
    };
    clnHubDetail.append(resolveForm);
+   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
@@ -1074,6 +1140,7 @@ async function openIndependentModule(id){
   let requestSequence=0;
   let inventorySelector=null;
   let renameSelector=null;
+  let sectionLayout=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
@@ -1299,6 +1366,7 @@ async function openIndependentModule(id){
     finally{saleButton.disabled=false}
    };
    clnHubDetail.append(saleForm);
+   sectionLayout=[["Existencias",[results]],["Entradas",[form,reviewForm]],["Traslados",[transferForm]],["Ventas",[saleForm,voidForm]],["Artículos",[renameForm]]];
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
@@ -1516,8 +1584,10 @@ async function openIndependentModule(id){
     finally{sellerButton.disabled=false}
    };
    clnHubDetail.append(search,searchButton,sellerButton);
+   sectionLayout=[["Clientes",[customerForm,search,searchButton,results]],["Vendedores",[sellerForm,sellerButton]],["Contratos",[draftForm,confirmForm]],["Primas",[depositForm]]];
   }
   clnHubDetail.append(results);
+  arrangeNexusSections(sectionLayout,token);
   if(kind==="inventory"){
    renderRows(await nexusReader.list("inventory"),++requestSequence);
   }else{
