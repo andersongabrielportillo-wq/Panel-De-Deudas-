@@ -31,4 +31,10 @@ assert.match(html,/SB\.auth\.signInWithPassword\(\{email,password\}\)/);
 assert.match(html,/document\.getElementById\("debtUnlockButton"\)\.onclick=async/);
 assert.match(html,/await debtController\.open\(password\)/);
 
-console.log('PASS: unified gated CL Nexus PWA - all core assets, login controls and manifest present. No deployment performed.');
+assert.match(html,/COMERCIAL LÓPEZ · PANEL DE GESTIÓN/);
+assert.match(html,/cln-session-chip/);
+assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
+assert.match(html,/id="clnModuleChoices"[^>]*aria-label="Secciones de CL Nexus"/);
+assert.match(html,/name===id\)\)/);
+assert.match(html,/await debtController\.open\(password\)/);
+console.log('PASS: original visual tokens, CL Nexus workspace tabs, one login, protected Deudas. No deployment performed.');
