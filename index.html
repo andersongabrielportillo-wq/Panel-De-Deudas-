@@ -867,7 +867,7 @@ async function openIndependentModule(id){
    const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
    const articles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;item.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");item.append(option)}
    const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
    for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
    const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
@@ -895,7 +895,7 @@ async function openIndependentModule(id){
    const returnTitle=document.createElement("h4");returnTitle.textContent="Solicitar devolución para revisión";
    const returnItem=document.createElement("select");returnItem.required=true;returnItem.setAttribute("aria-label","Artículo devuelto");
    const returnBlank=document.createElement("option");returnBlank.value="";returnBlank.textContent="Seleccionar artículo";returnItem.append(returnBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;returnItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");returnItem.append(option)}
    const returnQty=document.createElement("input");returnQty.type="number";returnQty.min="1";returnQty.step="1";returnQty.required=true;returnQty.placeholder="Cantidad devuelta";returnQty.setAttribute("aria-label","Cantidad devuelta");
    const returnReason=document.createElement("textarea");returnReason.required=true;returnReason.placeholder="Motivo de devolución";returnReason.setAttribute("aria-label","Motivo de devolución");
    const returnButton=document.createElement("button");returnButton.type="submit";returnButton.className="g2";returnButton.textContent="Enviar devolución a revisión";
@@ -939,7 +939,7 @@ async function openIndependentModule(id){
    const repairTitle=document.createElement("h4");repairTitle.textContent="Crear orden de reparación";
    const repairItem=document.createElement("select");repairItem.required=true;repairItem.setAttribute("aria-label","Artículo para reparación");
    const repairBlank=document.createElement("option");repairBlank.value="";repairBlank.textContent="Seleccionar artículo";repairItem.append(repairBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;repairItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");repairItem.append(option)}
    const repairQty=document.createElement("input");repairQty.type="number";repairQty.min="1";repairQty.step="1";repairQty.required=true;repairQty.placeholder="Cantidad";repairQty.setAttribute("aria-label","Cantidad a reparar");
    const repairType=document.createElement("select");repairType.setAttribute("aria-label","Tipo de destino");
    for(const value of ["proveedor","taller"]){const option=document.createElement("option");option.value=value;option.textContent=value==="taller"?"Taller":"Proveedor";repairType.append(option)}
@@ -1010,22 +1010,28 @@ async function openIndependentModule(id){
   const results=document.createElement("div");
   let requestSequence=0;
   let inventorySelector=null;
+  let renameSelector=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
    results.replaceChildren();
-   status.textContent=rows.length+" registros disponibles (solo lectura).";
+   status.textContent=kind==="inventory"?rows.length+" artículos. Una existencia sin registrar no es cero confirmado; registrala mediante entrada aprobada.":rows.length+" clientes encontrados.";
    const list=document.createElement("ul");
-   for(const item of rows.slice(0,100)){
+   for(const item of rows.slice(0,1000)){
     const li=document.createElement("li");
-    li.textContent=kind==="inventory"?item.nombre+" · "+item.categoria:item.nombre+" · "+item.dui_mostrado;
+    li.textContent=kind==="inventory"?(item.codigo||"Sin código")+" · "+item.nombre+" · Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+" · Bodega: "+(item.bodega===""?"Sin registrar":item.bodega):item.nombre+" · "+item.dui_mostrado;
     list.append(li);
    }
    results.append(list);
    if(kind==="inventory"&&inventorySelector){
     inventorySelector.replaceChildren();
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
-    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;inventorySelector.append(option)}
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");inventorySelector.append(option)}
+   }
+   if(kind==="inventory"&&renameSelector){
+    renameSelector.replaceChildren();
+    const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");option.dataset.expectedName=article.nombre;renameSelector.append(option)}
    }
   };
   if(kind==="inventory"){
@@ -1057,6 +1063,38 @@ async function openIndependentModule(id){
     finally{submit.disabled=false}
    };
    clnHubDetail.append(form);
+   const renameForm=document.createElement("form");
+   const renameHeading=document.createElement("h4");renameHeading.textContent="Corregir nombre del artículo";
+   const renameSelect=document.createElement("select");renameSelect.required=true;renameSelect.setAttribute("aria-label","Artículo cuyo nombre se corregirá");
+   renameSelector=renameSelect;
+   const renameInput=document.createElement("input");renameInput.required=true;renameInput.minLength=2;renameInput.maxLength=200;renameInput.placeholder="Nombre correcto del artículo";renameInput.setAttribute("aria-label","Nombre nuevo");
+   const renameButton=document.createElement("button");renameButton.type="submit";renameButton.className="g2";renameButton.textContent="Guardar nombre corregido";
+   const renameHelp=document.createElement("p");renameHelp.textContent="El cambio queda registrado en auditoría. No modifica cantidades, movimientos ni la clave original del Excel.";
+   renameForm.append(renameHeading,renameSelect,renameInput,renameHelp,renameButton);
+   renameForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const id=renameSelect.value;
+    const selected=renameSelect.selectedOptions[0];
+    const previous=selected&&selected.dataset.expectedName;
+    const newName=renameInput.value.trim();
+    if(!id||!previous||newName.length<2||newName.length>200){status.textContent="Seleccioná el artículo y escribí el nombre correcto.";return}
+    if(!confirm("¿Corregir este nombre en CL Nexus? El servidor guardará el cambio en su auditoría."))return;
+    renameButton.disabled=true;status.textContent="Guardando nombre…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     await actions.execute("renameItem",{p_item_id:id,p_nombre:newName,p_nombre_esperado:previous});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     const current=++requestSequence;
+     renderRows(await nexusReader.list("inventory"),current);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Nombre corregido y confirmado por el servidor.";
+     renameInput.value="";
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Cambio de nombre no confirmado: "+e.message}
+    finally{renameButton.disabled=false}
+   };
+   clnHubDetail.append(renameForm);
    const reviewForm=document.createElement("form");
    const requestId=document.createElement("input");requestId.required=true;requestId.placeholder="ID de solicitud de entrada (UUID)";requestId.setAttribute("aria-label","ID de solicitud");
    const approve=document.createElement("select");approve.setAttribute("aria-label","Decisión");
@@ -1086,7 +1124,7 @@ async function openIndependentModule(id){
    const transferPlaceholder=document.createElement("option");transferPlaceholder.value="";transferPlaceholder.textContent="Seleccionar artículo";transferItem.append(transferPlaceholder);
    const transferArticles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;transferItem.append(option)}
+   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");transferItem.append(option)}
    const origin=document.createElement("select");origin.setAttribute("aria-label","Origen");
    const destination=document.createElement("select");destination.setAttribute("aria-label","Destino");
    for(const select of [origin,destination])for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option)}
