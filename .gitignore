@@ -7,3 +7,6 @@
 *.sql.gz
 CLN_Respaldo/
 CLN_Backup_Seguro/
+
+# Approved inventory import SQL contains private business data.
+*.clnimport.sql
