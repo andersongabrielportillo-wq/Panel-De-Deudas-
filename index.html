@@ -1681,6 +1681,8 @@ async function openIndependentModule(id){
    let loadedDraftId=null,loadedDraftLines=[];
    const clearLoaded=()=>{
     loadedDraftId=null;loadedDraftLines=[];allocation.replaceChildren();
+    const oldIdentity=confirmForm.querySelector(".cln-contract-identity");
+    if(oldIdentity)oldIdentity.remove();
     const prompt=document.createElement("p");prompt.className="cln-empty";
     prompt.textContent="Cargá los artículos del contrato para elegir dónde se entregarán.";
     allocation.append(prompt);
@@ -1701,6 +1703,21 @@ async function openIndependentModule(id){
      if(!data||data.estado!=="borrador"||!Array.isArray(data.articulos)||!data.articulos.length){
       throw Error("El contrato no está en estado borrador o no tiene artículos.");
      }
+     // Mostrar los datos persistidos del contrato real; no depender de los campos
+     // del formulario que podrían haberse limpiado o escrito en otro dispositivo.
+     const [profileResponse,manualSellers]=await Promise.all([
+      SB.rpc("inv_ficha_cliente",{p_cliente_id:data.cliente_id}),
+      nexusReader.list("contractSellers")
+     ]);
+     if(token!==nexusViewEpoch||moduleHub.hidden||draftId.value.trim()!==requested)return;
+     if(profileResponse.error||!profileResponse.data)throw Error("No se pudo consultar el nombre y DUI del cliente.");
+     const profile=profileResponse.data;
+     const foundSeller=manualSellers.find(item=>item.id===data.vendedor_id);
+     if(!foundSeller)throw Error("No se pudo verificar el vendedor registrado en este contrato.");
+     const identity=confirmForm.querySelector(".cln-contract-identity")||document.createElement("p");
+     identity.className="cln-contract-identity";
+     identity.textContent="Cliente: "+String(profile.nombre||"")+" · DUI: "+String(profile.dui||"Sin registrar")+" · Vendedor: "+foundSeller.nombre;
+     confirmForm.insertBefore(identity,draftId);
      allocation.replaceChildren();loadedDraftLines=[];
      const heading=document.createElement("p");heading.className="cln-small-kpi";
      heading.textContent="Contrato "+String(data.numero||"")+" · "+data.articulos.length+" artículo(s)";
