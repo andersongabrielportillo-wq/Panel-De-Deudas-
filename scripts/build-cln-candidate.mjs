@@ -26,7 +26,7 @@ for(const required of [
 const labScriptNames=['cl-nexus-adapter.cjs','cl-nexus-shell.js'];
 let candidate=original.replace(declaration,'const DEBT_GATE_ENABLED=true;');
 for(const file of labScriptNames){
- const tag='<script src="./'+file+'"></script>';
+ const tag='<script src="./'+file+'" defer></script>';
  if(!candidate.includes(tag))throw Error('Expected sandbox-only script: '+file);
  candidate=candidate.replace(tag,'');
 }
