@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v14-contratos-identidades-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v15-vendedores-scope-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -62,7 +62,7 @@ assert.match(html,/article\.nombre/);
 assert.match(html,/cln-item-catalog/);
 assert.match(html,/cln-seller-grid/);
 assert.match(html,/id="cln-mobile-upgrade"/);
-assert.match(html,/if\(id==="clnHubSellers"\)await refreshSellerList\(\)/);
+assert.match(html,/if\(id==="clnHubSellers"&&refreshSellerList\)await refreshSellerList\(\)/);
 assert.match(html,/id==="clnHubSales"\?"Ventas"/);
 assert.doesNotMatch(html,/option\.textContent=article\.nombre\+\(article\.codigo/);
 // UI regression: Contracts must not request a forbidden empty-client search.
@@ -178,4 +178,26 @@ const contractItems=await testReader.list('contractInventory');
 assert.equal(rpcCalls.at(-1).name,'inv_catalogo_articulos_contratos');
 assert.equal(Array.isArray(contractItems),true);
 assert.equal(testClients[0].dui_mostrado,'*****1234');
+
+// Vendors regression: refreshSellerList must be declared in the same scope
+// as the first-load call, not solely inside if(kind==="contracts").
+const moduleStart=html.indexOf('async function openIndependentModule(id){');
+const moduleEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',moduleStart);
+assert.ok(moduleStart>=0 && moduleEnd>moduleStart,'CL Nexus module function missing');
+const moduleCode=html.slice(moduleStart,moduleEnd);
+const layoutDecl=moduleCode.indexOf('let sectionLayout=null;');
+const sellersDecl=moduleCode.indexOf('let refreshSellerList=null;');
+const contractBranch=moduleCode.indexOf('if(kind==="contracts"){');
+const sellersDefinition=moduleCode.indexOf('refreshSellerList=async function(){');
+const grouping=moduleCode.lastIndexOf('arrangeNexusSections(sectionLayout,token,');
+const initialLoad=moduleCode.indexOf('if(id==="clnHubSellers"&&refreshSellerList)await refreshSellerList();');
+assert.ok(layoutDecl>=0 && sellersDecl>layoutDecl && sellersDecl<contractBranch,'refreshSellerList declared inside conditional instead of module scope');
+assert.ok(sellersDefinition>contractBranch,'Vendors loader not assigned in Contracts branch');
+assert.ok(grouping>sellersDefinition && initialLoad>grouping,'Vendors load must run after section grouping');
+assert.ok(!moduleCode.includes('if(id==="clnHubSellers")await refreshSellerList();'),'Unprotected out-of-scope Vendors loader call');
+const sellerBranch=moduleCode.slice(contractBranch,grouping);
+assert.match(sellerBranch,/sellerButton\.onclick=refreshSellerList/);
+assert.match(sellerBranch,/const sellers=await nexusReader\.list\("contractSellers"\)/);
+assert.match(moduleCode,/sectionLayout=\[\["Contratos",/);
+assert.match(moduleCode,/\["Vendedores",\[sellerForm,sellerButton,sellerList\]\]/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
