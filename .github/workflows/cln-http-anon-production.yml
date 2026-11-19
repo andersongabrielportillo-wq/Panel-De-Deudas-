@@ -1,0 +1,23 @@
+name: CL Nexus HTTP real anon - SOLO LECTURA
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - scripts/cln-http-anon-production-readonly.mjs
+      - .github/workflows/cln-http-anon-production.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  anon-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify syntax
+        run: node --check scripts/cln-http-anon-production-readonly.mjs
+      - name: Anonymous HTTP tests - no private credentials, no production writes
+        run: node scripts/cln-http-anon-production-readonly.mjs
