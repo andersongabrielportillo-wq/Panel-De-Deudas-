@@ -177,7 +177,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <script src="./debt-legacy-backup.cjs"></script>
 <script src="./debt-encrypted-backup.cjs"></script>
 <div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
-<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
+<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="debtBackToNexus" type="button" hidden>CL Nexus · Inventario</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
@@ -737,8 +737,8 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
-function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function hidePrivate(){document.getElementById("debtBackToNexus").hidden=true;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
+function showPrivate(){document.getElementById("debtBackToNexus").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -1987,6 +1987,16 @@ document.getElementById("debtUnlockButton").onclick=async()=>{
 document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
 document.getElementById("debtUnlockBack").onclick=()=>{document.getElementById("debtUnlockPassword").value="";showModuleHub(true)};
 document.getElementById("debtUnlockLogout").onclick=()=>document.getElementById("logoutBtn").click();
+// Volver al inventario reutiliza la sesión principal y solo revoca Deudas.
+document.getElementById("debtBackToNexus").onclick=async()=>{
+ if(!debtController||!SB_UID||!SB_WID)return;
+ const button=document.getElementById("debtBackToNexus");button.disabled=true;
+ try{
+  const locked=await debtController.lock();
+  if(locked)showModuleHub(true);
+ }catch(e){debtScreenVisible(true,"No se pudo confirmar el bloqueo de Deudas: "+String(e.message||e))}
+ finally{button.disabled=false}
+};
 document.getElementById("debtLockButton").onclick=async()=>{
  if(!DEBT_GATE_ENABLED||!debtController)return;
  const button=document.getElementById("debtLockButton");button.disabled=true;
