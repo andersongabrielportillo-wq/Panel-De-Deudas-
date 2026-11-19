@@ -77,6 +77,14 @@
 - Proyecto temporal revisado tras ese diagnóstico: **0 usuarios Auth, 0 filas Vault**; original **ACTIVE_HEALTHY**; LAB **INACTIVE**. No iniciar importación hasta conseguir conteos y revisar dependencias del esquema.
 - Importante: `pg_restore -f NUL` confirma solamente que el proceso terminó sin error, no coteja contenido; todavía no equivale a recuperación integral de Auth/Vault ni a pruebas HTTP.
 
+## Estructura comercial recuperada en TEMPORAL, todavía SIN datos (19/11/2026)
+
+- **Cambio REAL ejecutado exclusivamente en** `CL Nexus Recuperacion Auth Vault TEMPORAL` (`mwtvmmbmudlswblwcnyj`): migración `cln_recuperacion_estructura_panel_temporal_sin_datos` aplicó el archivo versionado `sql/cln_recuperacion_estructura_panel_SOLO_CLON_2026_11_19.sql`. Crea las cuatro tablas de producción `public.workspaces`, `workspace_members`, `debts`, `transactions` y las dos tablas privadas `app_private.debt_unlocks`, `debt_attempts`. FKs, PK, índices, tipos y defaults reconstruidos con consultas metadata-only del original. **NO incluye usuarios, secretos, deuda ni movimientos**.
+- **Post-migración verificada por consulta real:** 6/6 tablas existen con `relrowsecurity=true`, y `anon`/`authenticated` tienen `SELECT=false` en todas. 0 usuarios `auth.users`, 0 secretos `vault.secrets`, 0 workspaces, 0 miembros, 0 deudas, 0 transacciones, 0 unlocks, 0 intentos.
+- **Producción revisada mediante SELECT únicamente:** 3 cuentas, 1 deuda, hash MD5 comercial `cae1aed74556ce96dde7f673e33d4668` sin cambio. No se desplegó ninguna PWA.
+- El validador local de conteos falló al capturar el SQL por tuberías de PowerShell, pero el comando nativo directo `pg_restore --data-only --schema=auth --table=users --file=NUL archivo.dump` terminó con `exit 0`. El archivo todavía no se restauró; dejar de repetir capturas del SQL. Siguiente paso: probar solo el `--use-list` exacto con `--file=NUL` para confirmar que los siete bloques se pueden descomprimir en proceso nativo, sin salida sensible ni conexión. Después preparar `pg_restore --single-transaction` **solo hacia el temporal** con el TOC revisado.
+- **Restan** datos selectivos, restauración efectiva de Vault, RLS comercial, funciones unlock, tests HTTP reales autenticados y corte coordinado. Nada autoriza publicación hasta esas pruebas.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
