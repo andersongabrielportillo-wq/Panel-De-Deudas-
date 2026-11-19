@@ -1,0 +1,61 @@
+name: Publicar CL Nexus en GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - '*.cjs'
+      - 'icons/**'
+      - '.github/workflows/cln-publicar-pages.yml'
+      - 'scripts/cln-release-smoke.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "cln-pages-deployment"
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar que Deudas conserve su contraseña y que la app sea de inicio único
+        run: |
+          node --check scripts/cln-release-smoke.mjs
+          node scripts/cln-release-smoke.mjs
+          grep -Fq 'const DEBT_GATE_ENABLED=true;' index.html
+          grep -Fq 'void openIndependentModule("clnHubInventory")' index.html
+      - name: Preparar SOLO los archivos públicos de la PWA
+        run: |
+          set -eu
+          mkdir -p _pages_cln/icons
+          cp index.html sw.js manifest.webmanifest _pages_cln/
+          for f in cl-nexus-reader.cjs cl-nexus-actions.cjs cln-http-auth-probe.cjs debt-gate-client.cjs debt-module-controller.cjs debt-cache-preflight.cjs debt-legacy-backup.cjs debt-encrypted-backup.cjs; do cp "$f" _pages_cln/; done
+          cp icons/icon-192.png icons/icon-512.png _pages_cln/icons/
+          touch _pages_cln/.nojekyll
+          git rev-parse HEAD > _pages_cln/cln-version.txt
+          test -f _pages_cln/index.html
+          test -f _pages_cln/sw.js
+          test -f _pages_cln/icons/icon-512.png
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages_cln
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    steps:
+      - name: Publicar la PWA en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
