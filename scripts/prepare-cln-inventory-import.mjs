@@ -18,14 +18,14 @@ function csvParse(input){
  return records.slice(1).map(r=>Object.fromEntries(cols.map((c,i)=>[c,r[i]])));
 }
 const sqlQ=s=>"'"+s.replace(/'/g,"''")+"'";
-function build(input){
+function build(input,expectedSha=sha){
  const rows=csvParse(input);if(rows.length!==190)throw Error('BLOQUEO: se requieren 190 bloques');
  const keys=new Set();for(const r of rows){if(!/^MERCADERIA-C\d+$/.test(r.codigo_bloque)||keys.has(r.codigo_bloque))throw Error('Código repetido: '+r.codigo_bloque);keys.add(r.codigo_bloque);}
  const locked=rows.slice().sort((a,b)=>a.codigo_bloque<b.codigo_bloque?-1:1).map(r=>r.codigo_bloque+'\t'+r.nombre_fuente.trim()+'\t'+r.duplicado_fuente+'\n').join('');
- if(createHash('sha256').update(locked).digest('hex')!==sha)throw Error('BLOQUEO: catálogo fuente diferente de MERCADERIA 2026(3)');
+ if(createHash('sha256').update(locked).digest('hex')!==expectedSha)throw Error('BLOQUEO: catálogo fuente diferente de MERCADERIA 2026(3)');
  let approved=0;
  const tuples=rows.map(r=>{
-  if(!['IMPORTAR','EXCLUIR'].includes(r.decision)||r.revisor.trim().length<3||!/^\d{4}-\d\d-\d\d$/.test(r.fecha_aprobacion))throw Error('BLOQUEO: aprobación incompleta: '+r.codigo_bloque);
+  if(!['IMPORTAR','EXCLUIR'].includes(r.decision)||r.revisor.trim().length<3||!/^\d{4}-\d\d-\d\d$/.test(r.fecha_aprobacion)||Number.isNaN(Date.parse(r.fecha_aprobacion))||new Date(r.fecha_aprobacion).toISOString().slice(0,10)!==r.fecha_aprobacion)throw Error('BLOQUEO: aprobación incompleta: '+r.codigo_bloque);
   if([r.nombre_aprobado,r.revisor].some(s=>/[\x00-\x1f]/.test(s)))throw Error('Caracteres inválidos');
   let name='NULL',location='NULL',qty='NULL';
   if(r.decision==='IMPORTAR'){
