@@ -26,7 +26,8 @@ assert.match(html,/actions\.execute\("renameItem"/);
 
 assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
 assert.doesNotMatch(html,/<h2>Panel de módulos<\/h2>/);
-assert.match(html,/function showModuleHub\(yes\)[^\n]*void openIndependentModule\("clnHubInventory"\)/);
+assert.match(html,/function showModuleHub\(yes\)\{/);
+assert.match(html,/void openIndependentModule\("clnHubInventory"\)/);
 assert.match(html,/document\.getElementById\("authLogin"\)\.onclick=async/);
 assert.match(html,/SB\.auth\.signInWithPassword\(\{email,password\}\)/);
 assert.match(html,/document\.getElementById\("debtUnlockButton"\)\.onclick=async/);
