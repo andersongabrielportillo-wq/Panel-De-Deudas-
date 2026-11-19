@@ -285,7 +285,7 @@ jobs:
         run: |
           set -euo pipefail
           item_id=$(psql -X -Atq -c "SELECT id FROM public.inv_items WHERE legacy_key='MERCADERIA-C2'")
-          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT public.inv_registrar_movimiento('$item_id'::uuid,'salida',1,NULL,1,NULL,'prueba de rechazo','00000000-0000-0000-0000-000000000010'::uuid); ROLLBACK;" > /tmp/cln_no_stock_sale.log 2>&1; then
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT public.inv_registrar_movimiento('$item_id'::uuid,'salida',1::smallint,NULL::smallint,1,NULL::text,'prueba de rechazo'::text,'00000000-0000-0000-0000-000000000010'::uuid); ROLLBACK;" > /tmp/cln_no_stock_sale.log 2>&1; then
             echo 'Output without physical stock was wrongly accepted'; exit 1
           fi
           grep -qi 'Existencias insuficientes' /tmp/cln_no_stock_sale.log
