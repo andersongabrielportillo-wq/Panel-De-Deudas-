@@ -6,7 +6,7 @@ const file=name=>readFileSync(new URL(name,root),'utf8');
 const schema=file('sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql');
 const addon=file('sql/cln_corregir_nombre_articulo_PREPARADO_NO_EJECUTAR.sql');
 const originalFunctions=new Set([...schema.matchAll(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)].map(x=>x[1]));
-const functions=new Set([...schema,...addon].join('\n').match(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)?.map(x=>x.match(/public\.(inv_[a-z0-9_]+)\(/)[1])||[]);
+const functions=new Set([...originalFunctions,...[...addon.matchAll(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)].map(x=>x[1])]);
 test('all inventory RPCs referenced by CL Nexus clients exist in the staged schema',()=>{
   assert.equal(originalFunctions.size,37,'Expected 37 original lab inventory RPCs');
   assert.ok(functions.has('inv_catalogo_articulos_admin') && functions.has('inv_corregir_nombre_articulo'));
