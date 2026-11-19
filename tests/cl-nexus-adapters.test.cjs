@@ -12,7 +12,7 @@ test('reader refuses unauthenticated calls',async()=>{
 });
 test('reader preserves item identifiers',async()=>{
  const reader=createNexusReader({client:{rpc:async()=>({data:[{id,nombre:'Artículo',categoria:'Hogar'}]})},authorized:()=>true});
- assert.deepEqual(await reader.list('inventory'),[{id,nombre:'Artículo',categoria:'Hogar'}]);
+ assert.deepEqual(await reader.list('inventory'),[{id,nombre:'Artículo',categoria:'Hogar',codigo:'',oficina:'',bodega:''}]);
 });
 test('reader rejects stale responses after reset',async()=>{
  let finish;
