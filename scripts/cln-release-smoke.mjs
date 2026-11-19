@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 const read=p=>fs.readFileSync(p,'utf8');
 const html=read('index.html'),sw=read('sw.js'),manifest=JSON.parse(read('manifest.webmanifest'));
 assert.match(html,/const DEBT_GATE_ENABLED=true;/);
@@ -37,4 +38,16 @@ assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
 assert.match(html,/id="clnModuleChoices"[^>]*aria-label="Secciones de CL Nexus"/);
 assert.match(html,/name===id\)\)/);
 assert.match(html,/await debtController\.open\(password\)/);
-console.log('PASS: original visual tokens, CL Nexus workspace tabs, one login, protected Deudas. No deployment performed.');
+// Comprueba el JavaScript embebido además de los archivos externos.
+const embeddedScripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(match=>match[1]).filter(code=>code.trim());
+assert.ok(embeddedScripts.length>=3,'Expected app and PWA inline scripts');
+for(const [index,code] of embeddedScripts.entries())assert.doesNotThrow(()=>new vm.Script(code,{filename:'index-inline-'+index+'.js'}),'JavaScript inline invalid');
+for(const label of ['Existencias','Entradas','Traslados','Ventas','Artículos','Liberación','Devoluciones','Reparaciones','Clientes','Vendedores','Contratos','Primas']){
+ assert.ok(html.includes('["'+label+'",['),'Missing sub-tab '+label);
+}
+assert.match(html,/function arrangeNexusSections\\(groups,epoch\\)/);
+assert.match(html,/panel\\.setAttribute\\("role","tabpanel"\\)/);
+assert.match(html,/button\\.setAttribute\\("role","tab"\\)/);
+assert.match(html,/panels\\[i\\]\\.hidden=!active;panels\\[i\\]\\.inert=!active/);
+assert.match(html,/arrangeNexusSections\\(sectionLayout,token\\)/);
+console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
