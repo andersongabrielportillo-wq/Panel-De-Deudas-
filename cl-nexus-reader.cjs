@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 const definitions=Object.freeze({
- inventory:Object.freeze({rpc:'inv_catalogo_articulos_contratos',args:Object.freeze({}),columns:Object.freeze(['id','nombre','categoria'])}),
+ inventory:Object.freeze({rpc:'inv_catalogo_articulos_admin',args:Object.freeze({}),columns:Object.freeze(['id','nombre','categoria','codigo','oficina','bodega'])}),
  contracts:Object.freeze({rpc:'inv_buscar_clientes',args:Object.freeze({p_busqueda:''}),columns:Object.freeze(['id','nombre','dui_mostrado','telefono'])}),
  sellers:Object.freeze({rpc:'inv_catalogo_vendedores',args:Object.freeze({}),columns:Object.freeze(['id','nombre'])})
 });
