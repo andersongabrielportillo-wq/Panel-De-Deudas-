@@ -1906,6 +1906,7 @@ async function openIndependentModule(id){
     const duiEntered=clientDui.value.trim();
     const duiDigits=duiEntered.replace(/\D/g,"");
     const sellerEntered=vendor.value.trim().replace(/\s+/g," ");
+    const selectedCustomerId=customer.value;
     const comparable=name=>clnNormalizeLookup(name).replace(/\s+/g," ");
     if(fullName.length<2||fullName.length>200){
      status.textContent="Escribí el nombre completo del cliente.";clientName.focus();return;
@@ -1958,10 +1959,10 @@ async function openIndependentModule(id){
      if(matchingClient&&comparable(matchingClient.nombre)!==comparable(fullName)){
       throw Error("El DUI pertenece a un cliente registrado con otro nombre. Buscalo en Clientes y comprobá ambos datos antes de crear el contrato.");
      }
-     if(customer.value&&matchingClient&&customer.value!==matchingClient.id){
+     if(selectedCustomerId&&matchingClient&&selectedCustomerId!==matchingClient.id){
       throw Error("El cliente elegido no coincide con el DUI escrito. Verificá los dos datos.");
      }
-     if(customer.value&&!matchingClient){
+     if(selectedCustomerId&&!matchingClient){
       throw Error("El cliente elegido no coincide con el DUI ingresado. Buscalo por su documento o registrá el correcto.");
      }
      if(!matchingClient){
