@@ -23,7 +23,7 @@ test('CL Nexus inventory and sellers remain available without a text query',asyn
  const reader=createNexusReader({client:{rpc:async(name,args)=>{calls.push({name,args});return {data:[],error:null}}},authorized:()=>true});
  await reader.list('inventory');
  await reader.list('sellers');
- assert.deepEqual(calls.map(x=>x.name),['inv_catalogo_articulos_contratos','inv_catalogo_vendedores']);
+ assert.deepEqual(calls.map(x=>x.name),['inv_catalogo_articulos_admin','inv_catalogo_vendedores']);
 });
 test('Contracts first render waits for search; inventory initial listing stays enabled',()=>{
  const start=html.indexOf('async function openIndependentModule(id)');
@@ -35,4 +35,15 @@ test('Contracts first render waits for search; inventory initial listing stays e
  assert.ok(moduleCode.includes('if(kind==="inventory"){\n   renderRows(await nexusReader.list("inventory"),++requestSequence);'));
  assert.ok(moduleCode.includes('Busca clientes por nombre o DUI (mínimo 3 caracteres).'));
  assert.ok(!moduleCode.includes('renderRows(await nexusReader.list(kind),++requestSequence)'));
+});
+
+test('Inventory retains source code and distinguishes unregistered stock from registered zero',async()=>{
+ const reader=createNexusReader({client:{rpc:async()=>({data:[
+  {id:'synthetic',nombre:'NOMBRE PENDIENTE · MERCADERIA-C217',categoria:null,codigo:'MERCADERIA-C217',oficina:null,bodega:0}
+ ],error:null})},authorized:()=>true});
+ const rows=await reader.list('inventory');
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].codigo,'MERCADERIA-C217');
+ assert.equal(rows[0].oficina,'','A missing stock row is not zero');
+ assert.equal(rows[0].bodega,'0','A registered zero remains a real zero');
 });
