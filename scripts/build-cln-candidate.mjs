@@ -9,6 +9,22 @@ const source=path=>readFileSync(join(root,path),'utf8');
 const original=source('index.html');
 const sql=source('sql/deudas_gate_existing_production_rpc_PREPARADO_NO_EJECUTAR.sql');
 const sw=source('sw.js');
+const catalogSource=source('scripts/prepare-cln-catalog-2026-3.mjs');
+const renameSQL=source('sql/cln_corregir_nombre_articulo_PREPARADO_NO_EJECUTAR.sql');
+const readerCode=source('cl-nexus-reader.cjs');
+const actionCode=source('cl-nexus-actions.cjs');
+for(const [name,sourceCode,required] of [
+ ['Catalog-only source',catalogSource,'buildCatalog(csv,expectedFingerprint'],
+ ['Catalog-only zero stock',catalogSource,'INSERT INTO public.inv_items(legacy_key,nombre_original,categoria,estado)'],
+ ['Audited name API',renameSQL,'inv_corregir_nombre_articulo('],
+ ['Admin catalog API',renameSQL,'inv_catalogo_articulos_admin()'],
+ ['Reader admin catalog',readerCode,"rpc:'inv_catalogo_articulos_admin'"],
+ ['Name action adapter',actionCode,"rpc:'inv_corregir_nombre_articulo'"],
+ ['Name correction UI',original,'actions.execute("renameItem"']
+]){
+ if(!sourceCode.includes(required))throw Error('Missing coordinated cutover dependency: '+name);
+}
+
 const declaration='const DEBT_GATE_ENABLED=false;';
 if(original.split(declaration).length!==2)throw Error('Expected exactly one disabled Deudas gate');
 for(const required of [
