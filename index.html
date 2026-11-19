@@ -1237,6 +1237,7 @@ async function openIndependentModule(id){
   }
   const kind=(id==="clnHubInventory"||id==="clnHubSales")?"inventory":"contracts";
   const results=document.createElement("div");
+  let inventoryFindTerm="";
   let requestSequence=0;
   let inventorySelector=null;
   let renameSelector=null;
@@ -1245,23 +1246,53 @@ async function openIndependentModule(id){
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
    results.replaceChildren();
-   status.textContent=kind==="inventory"?rows.length+" artículos. Una existencia sin registrar no es cero confirmado; registrala mediante entrada aprobada.":rows.length+" clientes encontrados.";
-   const list=document.createElement("ul");
-   for(const item of rows.slice(0,1000)){
-    const li=document.createElement("li");
-    li.textContent=kind==="inventory"?item.nombre:item.nombre+" · "+item.dui_mostrado;
-    list.append(li);
+   if(kind==="inventory"){
+    status.textContent=rows.length+" artículos disponibles. Las existencias se confirman al aprobar entradas; sin registrar no significa cero.";
+    const search=document.createElement("input");search.type="search";
+    search.className="cln-catalog-search";search.maxLength=120;search.autocomplete="off";
+    search.placeholder="Buscar un artículo en tu inventario…";
+    search.setAttribute("aria-label","Buscar artículos del inventario");
+    search.value=inventoryFindTerm;
+    const count=document.createElement("p");count.className="cln-small-kpi";
+    const cards=document.createElement("div");cards.className="cln-item-catalog";
+    const paint=()=>{
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     cards.replaceChildren();
+     const query=clnNormalizeLookup(inventoryFindTerm);
+     const matches=rows.filter(item=>clnNormalizeLookup(item.nombre).includes(query));
+     const slice=matches.slice(0,query?70:30);
+     count.textContent=matches.length+" coincidencia"+(matches.length===1?"":"s")+(matches.length>slice.length?" · Mostrando "+slice.length+"; escribí para filtrar":"");
+     for(const item of slice){
+      const card=document.createElement("article");card.className="cln-item-card";
+      const name=document.createElement("strong");name.textContent=item.nombre;
+      const numbers=document.createElement("small");
+      numbers.textContent="Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+"    Bodega: "+(item.bodega===""?"Sin registrar":item.bodega);
+      card.append(name,numbers);cards.append(card);
+     }
+     if(!slice.length){const empty=document.createElement("p");empty.className="cln-empty";empty.textContent="No encontramos artículos con ese nombre.";cards.append(empty)}
+    };
+    search.addEventListener("input",()=>{inventoryFindTerm=search.value;paint();});
+    results.append(search,count,cards);paint();
+   }else{
+    status.textContent=rows.length+" clientes encontrados.";
+    const list=document.createElement("ul");
+    for(const item of rows.slice(0,1000)){
+     const li=document.createElement("li");
+     li.textContent=item.nombre+" · "+item.dui_mostrado;list.append(li);
+    }
+    results.append(list);
    }
-   results.append(list);
    if(kind==="inventory"&&inventorySelector){
     inventorySelector.replaceChildren();
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
     for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;inventorySelector.append(option)}
+    inventorySelector.clnPickerRefresh?.();
    }
    if(kind==="inventory"&&renameSelector){
     renameSelector.replaceChildren();
     const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
     for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;option.dataset.expectedName=article.nombre;renameSelector.append(option)}
+    renameSelector.clnPickerRefresh?.();
    }
   };
   if(kind==="inventory"){
