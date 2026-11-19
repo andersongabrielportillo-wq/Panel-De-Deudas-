@@ -61,6 +61,14 @@
 - Siguiente prueba SIN Docker: script local `CLN_Validar_Contenido_7_Tablas_SIN_DOCKER_SOLO_LECTURA.ps1`. Usa el TOC generado y `pg_restore --data-only --use-list` **sin conectar a una base**; consume los `COPY ... FROM stdin` en memoria para contar filas y descartar todos sus valores. No escribe SQL ni lee tokens. Compara los conteos del respaldo contra los del origen; si difieren se bloquea el ensayo. Los resultados coincidentes **no bastarán** por sí solos para probar hashes de contraseñas, huella de Deudas, restauración de Vault ni inicios de sesión HTTP.
 - Para restauración se requiere después: esquema comercial seguro del proyecto original en el clon, `psql` con conexión únicamente al proyecto temporal, copia selectiva de tablas sin sesiones ni tokens antiguos y ensayo real del descifrado, RLS y sesiones HTTP. **No ejecutar automáticamente el TOC ni el archivo SQL completo de pg_restore contra un Supabase administrado**.
 
+## Diagnóstico de archivo de respaldo — selección --use-list fallida (19/11/2026)
+
+- El propietario verificó el .dump en Windows: los **7 TABLE DATA** están en el índice. Sin embargo, los validadores V1 y V2 no pudieron leer ningún bloque COPY: pg_restore con --use-list devolvió **exit 1**, **0/7 cabeceras y 0/7 cierres**. NO se ejecutó restauración ni escritura.
+- Este error, por sí solo, **no permite determinar** si falla la lista TOC, un argumento de pg_restore, el archivo comprimido o su contenido. El SHA de esta copia no coincide con la referencia del respaldo anterior; por lo tanto no se ha validado la integridad de los registros.
+- Se entregó el validador local CLN_Validar_7_Tablas_V3_SIN_TOC_SOLO_LECTURA.ps1, que prueba una ruta diferente del TOC: usa pg_restore --data-only --schema=<schema> --table=<table> por separado, captura únicamente conteos o categorías de error y no muestra filas ni secretos. No utiliza -d/--dbname, conexión, Docker, tokens ni escribe SQL. Opción -n -t documentada por PostgreSQL 17: https://www.postgresql.org/docs/17/app-pgrestore.html
+- El resultado de V3 determinará si la falla era específica del --use-list o si el problema está en el archivo/lector. Si V3 también falla, no iterar ciegamente: revisar versión y error de PostgreSQL con diagnóstico seguro o generar respaldo nuevo desde el original.
+- NO GO hasta restaurar en el proyecto temporal, validar descifrado Vault, integridad de Deudas, tres cuentas Auth y pruebas HTTP/RLS.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
