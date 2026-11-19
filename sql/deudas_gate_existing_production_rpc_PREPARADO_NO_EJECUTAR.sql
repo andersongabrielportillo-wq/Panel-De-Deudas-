@@ -27,6 +27,24 @@ BEGIN
     NOT has_function_privilege('authenticated','public.unlock_debts(text)','EXECUTE') OR
     NOT has_function_privilege('authenticated','public.lock_debts()','EXECUTE')
  THEN RAISE EXCEPTION 'Authenticated users cannot execute required gate RPCs'; END IF;
+ -- Never lock out real users if the existing Auth/Vault/session infrastructure is absent.
+ IF to_regclass('auth.sessions') IS NULL OR
+    to_regclass('auth.users') IS NULL OR
+    to_regclass('app_private.debt_unlocks') IS NULL OR
+    to_regclass('app_private.debt_attempts') IS NULL OR
+    to_regclass('vault.secrets') IS NULL OR
+    to_regclass('vault.decrypted_secrets') IS NULL
+ THEN RAISE EXCEPTION 'Required Auth/Vault or private gate state missing: abort'; END IF;
+ IF (SELECT count(*) FROM vault.secrets WHERE name='deudas_access_password')<>1
+ THEN RAISE EXCEPTION 'Expected exactly one configured Deudas secret: abort'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM vault.decrypted_secrets
+               WHERE name='deudas_access_password'
+                 AND decrypted_secret IS NOT NULL
+                 AND length(decrypted_secret)>0)
+ THEN RAISE EXCEPTION 'Deudas secret is not decryptable: abort'; END IF;
+ IF (SELECT count(*) FROM auth.users)<2 OR
+    (SELECT count(*) FROM public.workspace_members m JOIN auth.users u ON u.id=m.user_id)<2
+ THEN RAISE EXCEPTION 'Fewer than two mapped Auth/workspace accounts: abort'; END IF;
  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='public.debts'::regclass AND relrowsecurity)
  OR NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='public.transactions'::regclass AND relrowsecurity)
  THEN RAISE EXCEPTION 'RLS not enabled: abort'; END IF;
