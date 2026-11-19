@@ -1584,30 +1584,93 @@ async function openIndependentModule(id){
    clnHubDetail.append(customerForm);
    const confirmForm=document.createElement("form");
    const confirmHeading=document.createElement("h4");confirmHeading.textContent="Confirmar contrato borrador";
-   const draftId=document.createElement("input");draftId.required=true;draftId.placeholder="ID del contrato borrador (UUID)";draftId.setAttribute("aria-label","ID de contrato");
-   const allocation=document.createElement("textarea");allocation.required=true;allocation.placeholder='Ubicaciones JSON, ejemplo: [{"item_id":"UUID","location_id":1,"cantidad":1}]';allocation.setAttribute("aria-label","Asignaciones de inventario JSON");
-   const confirmButton=document.createElement("button");confirmButton.type="submit";confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
-   confirmForm.append(confirmHeading,draftId,allocation,confirmButton);
+   const draftId=document.createElement("input");draftId.required=true;
+   draftId.placeholder="ID del contrato borrador (se completa solo al crearlo)";
+   draftId.setAttribute("aria-label","Identificador del contrato borrador");
+   const loadDraft=document.createElement("button");loadDraft.type="button";loadDraft.className="g2";
+   loadDraft.textContent="Cargar artículos del contrato";
+   const allocation=document.createElement("div");allocation.className="cln-allocations";
+   const initialHelp=document.createElement("p");initialHelp.className="cln-empty";
+   initialHelp.textContent="Creá un borrador o ingresá su ID para cargar sus artículos. Después elegí Oficina o Bodega para cada uno.";
+   allocation.append(initialHelp);
+   const confirmButton=document.createElement("button");confirmButton.type="submit";
+   confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
+   confirmForm.append(confirmHeading,draftId,loadDraft,allocation,confirmButton);
    let pendingContractOp=null,pendingContractPayload=null;
+   let loadedDraftId=null,loadedDraftLines=[];
+   const clearLoaded=()=>{
+    loadedDraftId=null;loadedDraftLines=[];allocation.replaceChildren();
+    const prompt=document.createElement("p");prompt.className="cln-empty";
+    prompt.textContent="Cargá los artículos del contrato para elegir dónde se entregarán.";
+    allocation.append(prompt);
+   };
+   draftId.addEventListener("input",()=>{
+    if(draftId.value.trim()!==loadedDraftId)clearLoaded();
+   });
+   async function loadDraftDetails(){
+    const requested=draftId.value.trim();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requested)){
+     status.textContent="Ingresá un ID válido del contrato borrador.";return;
+    }
+    loadDraft.disabled=true;status.textContent="Cargando artículos del borrador…";
+    try{
+     const {data,error}=await SB.rpc("inv_detalle_contrato",{p_contrato_id:requested});
+     if(token!==nexusViewEpoch||moduleHub.hidden||draftId.value.trim()!==requested)return;
+     if(error)throw Error(error.message||"Consulta denegada");
+     if(!data||data.estado!=="borrador"||!Array.isArray(data.articulos)||!data.articulos.length){
+      throw Error("El contrato no está en estado borrador o no tiene artículos.");
+     }
+     allocation.replaceChildren();loadedDraftLines=[];
+     const heading=document.createElement("p");heading.className="cln-small-kpi";
+     heading.textContent="Contrato "+String(data.numero||"")+" · "+data.articulos.length+" artículo(s)";
+     allocation.append(heading);
+     for(const entry of data.articulos){
+      const itemId=String(entry.item_id||""),quantity=Number(entry.cantidad);
+      if(!itemId||!Number.isInteger(quantity)||quantity<=0)throw Error("El detalle del contrato no es válido.");
+      const row=document.createElement("div");row.className="cln-allocation-row";
+      const title=document.createElement("strong");title.textContent=String(entry.nombre||"Artículo");
+      const info=document.createElement("small");info.textContent="Cantidad: "+quantity;
+      const destination=document.createElement("select");destination.required=true;
+      destination.setAttribute("aria-label","Ubicación de "+String(entry.nombre||"artículo"));
+      for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){
+       const option=document.createElement("option");option.value=value;option.textContent=label;destination.append(option);
+      }
+      row.append(title,info,destination);allocation.append(row);
+      loadedDraftLines.push({item_id:itemId,cantidad:quantity,location:destination});
+     }
+     loadedDraftId=requested;
+     status.textContent="Artículos cargados. Elegí la ubicación de entrega y confirmá el contrato.";
+    }catch(e){
+     clearLoaded();if(token===nexusViewEpoch)status.textContent="No se pudo cargar el borrador: "+String(e.message||e);
+    }finally{loadDraft.disabled=false}
+   }
+   loadDraft.onclick=loadDraftDetails;
    confirmForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
-    let allocations;
-    try{allocations=JSON.parse(allocation.value)}catch{status.textContent="JSON de ubicaciones inválido.";return}
-    if(!Array.isArray(allocations)||!allocations.length||allocations.some(line=>!line||typeof line!=="object"||!line.item_id||![1,2].includes(Number(line.location_id))||!Number.isInteger(Number(line.cantidad))||Number(line.cantidad)<=0)){status.textContent="Cada línea requiere artículo, ubicación 1/2 y cantidad positiva.";return}
-    const payload=JSON.stringify({contract:draftId.value.trim(),allocations});
-    if(pendingContractOp&&pendingContractPayload!==payload){status.textContent="Existe una confirmación anterior sin verificar. Comprueba su resultado antes de cambiar datos.";return}
+    const contract=draftId.value.trim();
+    if(!loadedDraftId||loadedDraftId!==contract||!loadedDraftLines.length){
+     status.textContent="Primero cargá los artículos del contrato borrador.";return;
+    }
+    const allocations=loadedDraftLines.map(line=>({item_id:line.item_id,location_id:Number(line.location.value),cantidad:line.cantidad}));
+    if(allocations.some(line=>![1,2].includes(line.location_id)||!Number.isInteger(line.cantidad)||line.cantidad<=0)){
+     status.textContent="Cada artículo necesita una ubicación válida.";return;
+    }
+    const payload=JSON.stringify({contract,allocations});
+    if(pendingContractOp&&pendingContractPayload!==payload){
+     status.textContent="Hay una confirmación anterior incierta. Verificá su resultado antes de cambiar datos.";return;
+    }
     if(!confirm("¿Confirmar contrato? El servidor validará y descontará las existencias."))return;
     if(!pendingContractOp){pendingContractOp=crypto.randomUUID();pendingContractPayload=payload}
     confirmButton.disabled=true;status.textContent="Confirmando contrato…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
-     const result=await actions.execute("confirmContract",{p_contrato_id:draftId.value.trim(),p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
+     const result=await actions.execute("confirmContract",{p_contrato_id:contract,p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      status.textContent="Contrato confirmado por el servidor: "+String(result);
-     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();
-    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación incierta: verifica el contrato antes de reintentar. Operación "+pendingContractOp+". "+e.message}
+     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();clearLoaded();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación no verificada. Revisá el contrato antes de reintentar. Operación "+pendingContractOp+". "+String(e.message||e)}
     finally{confirmButton.disabled=false}
    };
    clnHubDetail.append(confirmForm);
@@ -1710,8 +1773,10 @@ async function openIndependentModule(id){
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
      const result=await actions.execute("createContract",params);
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Borrador creado en el servidor. ID: "+String(result)+". Confírmalo por separado para descontar existencias.";
+     status.textContent="Borrador guardado. Revisá las ubicaciones antes de confirmar; todavía no se ha descontado inventario.";
+     draftId.value=String(result);
      draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+     await loadDraftDetails();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Borrador no confirmado; verifica antes de reintentar: "+e.message}
     finally{draftButton.disabled=false}
    };
@@ -2038,6 +2103,14 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 @media(max-width:850px){#clnModuleChoices{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}#clnHubDetail .cln-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#clnHubDetail .cln-subtab{width:100%;padding:10px 6px;border-radius:11px;font-size:12px}#clnHubDetail .cln-subpanel>form>div>div{grid-template-columns:1fr}}
 @media(max-width:500px){#clnModuleHub .cln-workspace-content{border-radius:16px}#clnModuleHub .cln-header{padding:18px 14px}#clnModuleHub .cln-header .cln-logo{width:44px;height:44px}#clnModuleHub .cln-header .cln-kicker{font-size:9px}#clnModuleHub .cln-subtitle{font-size:11px}#clnModuleChoices{padding:11px;gap:6px}#clnModuleChoices .cln-tab{padding:11px 2px!important;font-size:12px!important;min-height:43px!important}#clnModuleHub .cln-content{padding:17px 13px}#clnHubDetail .cln-subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}#clnHubDetail .cln-subpanel>form{padding:13px;gap:10px}#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{flex-basis:100%}#clnHubDetail .cln-article-picker{flex-basis:100%}#clnHubDetail .cln-subpanel>form>button{width:100%}#clnHubDetail .cln-seller-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){#clnHubDetail *,#clnModuleChoices *{transition:none!important}}
+
+#clnHubDetail .cln-allocations{flex:1 0 100%;display:flex;flex-direction:column;gap:9px;max-width:100%}
+#clnHubDetail .cln-allocation-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(120px,170px);align-items:center;gap:10px;padding:12px;border:1px solid var(--bd);border-radius:13px;background:var(--card)}
+#clnHubDetail .cln-allocation-row strong{font-size:13px;line-height:1.4}
+#clnHubDetail .cln-allocation-row small{font-size:12px;color:var(--mut)}
+#clnHubDetail .cln-allocation-row select{width:100%;max-width:100%;min-width:0}
+#clnHubDetail .cln-field-helper{flex:1 0 100%;color:var(--mut);font-size:11px}
+@media(max-width:650px){#clnHubDetail .cln-allocation-row{grid-template-columns:minmax(0,1fr) auto}#clnHubDetail .cln-allocation-row select{grid-column:1/-1}}
 </style>
 
 </body></html>
