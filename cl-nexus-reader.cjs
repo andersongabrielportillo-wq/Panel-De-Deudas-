@@ -16,7 +16,9 @@ function createNexusReader({client,authorized}={}){
   if(!config)throw Error('Módulo desconocido');
   if(!authorized())throw Error('Sesión no autorizada');
   const token=epoch;
-  const args=kind==='contracts'?{p_busqueda:String(query).slice(0,120)}:{};
+  const term=kind==='contracts'?String(query).trim():'';
+  if(kind==='contracts'&&(term.length<3||term.length>100))throw Error('Busca clientes con 3 a 100 caracteres');
+  const args=kind==='contracts'?{p_busqueda:term}:{};
   const {data,error}=await client.rpc(config.rpc,args);
   if(token!==epoch||!authorized())throw Error('Sesión cerrada durante consulta');
   if(error)throw Error(error.message||'Consulta no autorizada');
