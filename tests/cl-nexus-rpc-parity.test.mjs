@@ -4,9 +4,13 @@ import {readFileSync} from 'node:fs';
 const root=new URL('../',import.meta.url);
 const file=name=>readFileSync(new URL(name,root),'utf8');
 const schema=file('sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql');
-const functions=new Set([...schema.matchAll(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)].map(x=>x[1]));
+const addon=file('sql/cln_corregir_nombre_articulo_PREPARADO_NO_EJECUTAR.sql');
+const originalFunctions=new Set([...schema.matchAll(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)].map(x=>x[1]));
+const functions=new Set([...schema,...addon].join('\n').match(/CREATE OR REPLACE FUNCTION public\.(inv_[a-z0-9_]+)\(/g)?.map(x=>x.match(/public\.(inv_[a-z0-9_]+)\(/)[1])||[]);
 test('all inventory RPCs referenced by CL Nexus clients exist in the staged schema',()=>{
-  assert.equal(functions.size,37,'Expected 37 original lab inventory RPCs');
+  assert.equal(originalFunctions.size,37,'Expected 37 original lab inventory RPCs');
+  assert.ok(functions.has('inv_catalogo_articulos_admin') && functions.has('inv_corregir_nombre_articulo'));
+  assert.equal(functions.size,39,'37 lab inventory functions + 2 secured cutover additions');
   for(const path of ['cl-nexus-reader.cjs','cl-nexus-actions.cjs','cl-nexus-adapter.cjs']){
     const names=[...new Set(file(path).match(/inv_[a-z0-9_]+/g)||[])];
     for(const name of names)assert.ok(functions.has(name),path+' references missing RPC '+name);
