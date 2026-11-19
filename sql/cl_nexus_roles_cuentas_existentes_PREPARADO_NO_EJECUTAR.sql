@@ -7,23 +7,19 @@
 \set ON_ERROR_STOP on
 \if :{?admin_email}
 \else
-  \echo 'Missing admin_email: refusing role provisioning.'
-  \quit 3
+  DO $missing_required_argument$ BEGIN RAISE EXCEPTION 'Missing admin_email: refusing role provisioning.'; END $missing_required_argument$;
 \endif
 \if :{?secretaria_email}
 \else
-  \echo 'Missing secretaria_email: refusing role provisioning.'
-  \quit 3
+  DO $missing_required_argument$ BEGIN RAISE EXCEPTION 'Missing secretaria_email: refusing role provisioning.'; END $missing_required_argument$;
 \endif
 \if :{?third_email}
 \else
-  \echo 'Missing third_email: refusing role provisioning.'
-  \quit 3
+  DO $missing_required_argument$ BEGIN RAISE EXCEPTION 'Missing third_email: refusing role provisioning.'; END $missing_required_argument$;
 \endif
 \if :{?third_role}
 \else
-  \echo 'Missing third_role: refusing role provisioning.'
-  \quit 3
+  DO $missing_required_argument$ BEGIN RAISE EXCEPTION 'Missing third_role: refusing role provisioning.'; END $missing_required_argument$;
 \endif
 -- No logged credentials, no exposed emails: exact identity matching in original Auth project.
 -- Resolve only users who ALREADY belong to the production Deudas workspace.
