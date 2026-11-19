@@ -1,0 +1,46 @@
+name: Laboratorio conectado - pruebas de aislamiento
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'laboratorio/conectado-lectura.html'
+      - 'tests/laboratorio-conectado-lectura.test.mjs'
+      - 'tests/fase18-aislamiento.test.mjs'
+      - 'index.html'
+      - 'staging/index.html'
+      - 'tests/fase18-staging.test.mjs'
+      - 'tests/fase18-contratos-seguridad.test.mjs'
+      - 'migrations/20261115_fase15j_contratos_rpc.sql'
+      - 'migrations/20261115_fase15q_confirmar_contrato.sql'
+      - '.github/workflows/laboratorio-conectado.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pruebas del cliente aislado
+        run: node --test tests/laboratorio-conectado-lectura.test.mjs tests/fase18-aislamiento.test.mjs tests/fase18-staging.test.mjs tests/fase18-contratos-seguridad.test.mjs
+      - name: Empaquetar HTML de laboratorio
+        run: |
+          mkdir -p dist
+          cp laboratorio/conectado-lectura.html dist/index.html
+      - name: Empaquetar staging aislado
+        run: |
+          mkdir -p dist-staging
+          cp staging/index.html dist-staging/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-cl-nexus-ficticio
+          path: dist-staging/index.html
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: laboratorio-conectado-lectura
+          path: dist/index.html
+          retention-days: 7

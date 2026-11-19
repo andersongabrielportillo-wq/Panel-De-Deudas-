@@ -1,0 +1,22 @@
+name: CL Nexus staging warranties tests
+on:
+  push:
+    branches:
+      - integracion-inventario-fase15
+    paths:
+      - 'staging/index.html'
+      - 'tests/cl-nexus-staging-warranties.test.mjs'
+      - '.github/workflows/cl-nexus-staging-warranties.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  warranty-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify isolated warranty staging integration
+        run: node --test tests/cl-nexus-staging-warranties.test.mjs

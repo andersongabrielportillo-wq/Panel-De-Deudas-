@@ -1,0 +1,325 @@
+name: PostgreSQL efimero - migraciones de contratos
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'tests/postgres/**'
+      - 'sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql'
+      - 'sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql'
+      - 'scripts/prepare-cln-inventory-import.mjs'
+      - 'tests/fixtures/generate-synthetic-cln-stock.mjs'
+      - 'tests/fixtures/generate-synthetic-cln-catalog.mjs'
+      - 'scripts/prepare-cln-catalog-2026-3.mjs'
+      - 'sql/cln_corregir_nombre_articulo_PREPARADO_NO_EJECUTAR.sql'
+      - 'sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql'
+      - 'migrations/20261115_fase15*.sql'
+      - '.github/workflows/postgres-contratos.yml'
+  pull_request:
+    paths:
+      - 'tests/postgres/**'
+      - 'sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql'
+      - 'migrations/20261115_fase15*.sql'
+      - '.github/workflows/postgres-contratos.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-migraciones:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporal_ci
+          POSTGRES_DB: contratos_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d contratos_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: temporal_ci
+      PGDATABASE: contratos_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear dependencias ficticias en PostgreSQL
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/fixture_minima.sql
+      - name: Instalar migraciones y verificar tablas y funciones
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/aplicar_migraciones.sql
+      - name: Validar vendedores manuales y permisos con PostgreSQL real
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
+      - name: Validar clientes y contratos borrador sin descontar stock
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
+      - name: Validar ventas, idempotencia y rollback con motor ficticio de stock
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_stock_ficticio.sql
+      - name: Verificar permisos de roles PostgreSQL y accesos directos
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/permisos_roles_reales.sql
+
+  postgres-motor-autentico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporal_ci
+          POSTGRES_DB: contratos_real_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d contratos_real_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: temporal_ci
+      PGDATABASE: contratos_real_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear esquema aislado compatible con motor autentico
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/fixture_motor_autentico.sql
+      - name: Instalar funciones originales de inventario
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/motor_autentico_funciones.sql
+      - name: Aplicar migraciones reales de contratos
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/aplicar_migraciones.sql
+      - name: Preparar vendedores y clientes ficticios
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/vendedores_roles.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/contratos_borradores.sql
+      - name: Ejecutar venta E2E con motor autentico de inventario
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico.sql
+      - name: Verificar multibodega, secretaria y vendedor inactivo en motor original
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/ventas_motor_autentico_multibodega.sql
+      - name: Confirmaciones simultaneas reales en dos sesiones PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_preparar.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_confirmar.sql > /tmp/ci-confirmacion-1.log 2>&1 &
+          p1=$!
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_confirmar.sql > /tmp/ci-confirmacion-2.log 2>&1 &
+          p2=$!
+          wait "$p1"
+          wait "$p2"
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/concurrencia_verificar.sql
+
+  inventario-schema-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporal_ci
+          POSTGRES_DB: inventario_schema_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d inventario_schema_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: temporal_ci
+      PGDATABASE: inventario_schema_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable Supabase auth extension stubs
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN;"
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_fixture.sql
+      - name: Test real pg_dump and pg_restore of synthetic Deudas before inventory migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_sql="SELECT encode(extensions.digest(convert_to(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),''),'UTF8'),'sha256'),'hex') FROM public.debts"
+          psql -X -Atq -c "$baseline_sql" > /tmp/cln_before_debts_sha
+          pg_dump --format=custom --no-owner --no-privileges --file=/tmp/cln_pre_cutover.dump
+          createdb cln_restored_backup_ci
+          pg_restore --exit-on-error --no-owner --no-privileges --dbname=cln_restored_backup_ci /tmp/cln_pre_cutover.dump
+          PGDATABASE=cln_restored_backup_ci psql -X -Atq -c "$baseline_sql" > /tmp/cln_after_restore_sha
+          cmp /tmp/cln_before_debts_sha /tmp/cln_after_restore_sha
+          PGDATABASE=cln_restored_backup_ci psql -X -Atq -c "SELECT (SELECT count(*) FROM public.debts WHERE id='__shared_state__')=1 AND (SELECT count(*) FROM public.workspace_members)=3 AND (SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename IN ('debts','transactions'))=8" | grep -qx t
+      - name: Install complete lab inventory schema snapshot WITHOUT data
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql
+      - name: Verify all inventory objects, RLS, API privileges and no copied data
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_assertions.sql
+      - name: Reject outsider, missing member and Secretaria role (three admins required)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000099","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_user.log 2>&1; then
+            echo 'Unrelated account must never receive inventory admin'; exit 1
+          fi
+          grep -q 'Role assignment includes an outsider' /tmp/cln_wrong_user.log
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_missing_user.log 2>&1; then
+            echo 'All three accounts are required'; exit 1
+          fi
+          grep -q 'Expected exactly 3 authorized admins' /tmp/cln_missing_user.log
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000004","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_mixed_role.log 2>&1; then
+            echo 'Secretary privilege is not the approved all-admin configuration'; exit 1
+          fi
+          grep -Ei 'cln_roles_cutover_rol_check|check constraint' /tmp/cln_mixed_role.log
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
+      - name: Provision the exact three current Deudas members as admins, excluding unrelated Auth user
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -c "INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000099')"
+          psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=3 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=3 AND NOT EXISTS(SELECT 1 FROM public.inv_members WHERE user_id='00000000-0000-0000-0000-000000000099') AND NOT EXISTS(SELECT user_id FROM public.workspace_members EXCEPT SELECT user_id FROM public.inv_members)" | grep -qx t
+      - name: Verify three authenticated admin sessions and outsider denial in isolated DB
+        shell: bash
+        run: |
+          set -euo pipefail
+          for user in 00000000-0000-0000-0000-000000000002 00000000-0000-0000-0000-000000000003 00000000-0000-0000-0000-000000000004; do
+            psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','$user',true); SELECT count(*) FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_admin_verified.log
+          done
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000099',true); SELECT * FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_denied.log 2>&1; then
+            echo 'Non-member Auth account must be rejected'; exit 1
+          fi
+          grep -qi 'No autorizado' /tmp/cln_denied.log
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate fake approved inventory SQL (never real MERCADERIA records)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/fixtures/generate-synthetic-cln-stock.mjs /tmp/ci-fake-stock.clnimport.sql
+          test -s /tmp/ci-fake-stock.clnimport.sql
+      - name: Seed only default inventory locations in disposable PostgreSQL
+        run: psql -X -v ON_ERROR_STOP=1 -c "INSERT INTO public.inv_locations(id,nombre) VALUES (1,'Oficina'),(2,'Bodega'),(3,'Garantía'),(4,'Proveedor/Taller')"
+      - name: Execute fake stock import and check count, warehouse isolation and Deudas integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f /tmp/ci-fake-stock.clnimport.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_items)=190 AND (SELECT count(*) FROM public.inv_stock)=190 AND (SELECT coalesce(sum(cantidad),0) FROM public.inv_stock)=380 AND (SELECT count(*) FROM public.inv_stock WHERE location_id=1)=95 AND (SELECT count(*) FROM public.inv_stock WHERE location_id=2)=95 AND (SELECT count(*) FROM public.inv_stock WHERE location_id IN (3,4))=0 AND (SELECT count(*) FROM public.debts)=1" | grep -qx t
+          psql -X -Atq -c "SELECT encode(extensions.digest(convert_to(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),''),'UTF8'),'sha256'),'hex') FROM public.debts" > /tmp/cln_after_fake_inventory_sha
+          cmp /tmp/cln_before_debts_sha /tmp/cln_after_fake_inventory_sha
+      - name: Replaying initial stock import must be refused atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -f /tmp/ci-fake-stock.clnimport.sql > /tmp/cln_replay.log 2>&1; then
+            echo 'Initial inventory import unexpectedly accepted a replay'; exit 1
+          fi
+          grep -q 'Stock no vacío; no se puede repetir carga' /tmp/cln_replay.log
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_items)=190 AND (SELECT count(*) FROM public.inv_stock)=190 AND (SELECT coalesce(sum(cantidad),0) FROM public.inv_stock)=380" | grep -qx t
+
+  catalogo-sin-stock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporal_ci
+          POSTGRES_DB: cln_catalogo_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cln_catalogo_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: temporal_ci
+      PGDATABASE: cln_catalogo_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install disposable original Deudas with THREE original Auth accounts
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN;"
+          psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_fixture.sql
+      - name: Preserve Deudas baseline and install CL Nexus lab schema without business data
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -Atq -c "SELECT md5(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),'')) FROM public.debts" > /tmp/cln_baseline_debts_md5
+          psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql
+          psql -X -v ON_ERROR_STOP=1 -c "INSERT INTO public.inv_locations(id,nombre) VALUES (1,'Oficina'),(2,'Bodega'),(3,'Garantía'),(4,'Proveedor/Taller')"
+          psql -X -v ON_ERROR_STOP=1 -f sql/cln_corregir_nombre_articulo_PREPARADO_NO_EJECUTAR.sql
+      - name: Verify no anonymous access or direct inventory write; catalog RPC requires admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -Atq -c "SELECT NOT has_function_privilege('anon','public.inv_catalogo_articulos_admin()','EXECUTE') AND NOT has_function_privilege('anon','public.inv_corregir_nombre_articulo(uuid,text,text)','EXECUTE') AND NOT has_table_privilege('authenticated','public.inv_items','UPDATE')" | grep -qx t
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000099',true); SELECT * FROM public.inv_catalogo_articulos_admin(); ROLLBACK;" > /tmp/cln_catalog_outsider.log 2>&1; then
+            echo 'Unrelated authenticated caller was allowed to list inventory'; exit 1
+          fi
+          grep -q 'No autorizado' /tmp/cln_catalog_outsider.log
+      - name: Seed 190 synthetic catalog products, but NO stock records
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/fixtures/generate-synthetic-cln-catalog.mjs /tmp/cln-fake-catalog.clncatalog.sql
+          psql -X -v ON_ERROR_STOP=1 -f /tmp/cln-fake-catalog.clncatalog.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_items)=190 AND (SELECT count(*) FROM public.inv_stock)=0 AND (SELECT count(*) FROM public.inv_items WHERE nombre_original LIKE 'NOMBRE PENDIENTE%')=5 AND (SELECT count(*) FROM public.inv_items WHERE nombre_original='FICTICIO DUPLICADO')=5 AND (SELECT count(distinct legacy_key) FROM public.inv_items)=190" | grep -qx t
+          psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT count(*) FROM public.inv_catalogo_articulos_admin(); ROLLBACK;"
+      - name: Reject sales when no stock is physically registered
+        shell: bash
+        run: |
+          set -euo pipefail
+          item_id=$(psql -X -Atq -c "SELECT id FROM public.inv_items WHERE legacy_key='MERCADERIA-C2'")
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT public.inv_registrar_movimiento('$item_id'::uuid,'salida',1::smallint,NULL::smallint,1,NULL::text,'prueba de rechazo'::text,'00000000-0000-0000-0000-000000000010'::uuid); ROLLBACK;" > /tmp/cln_no_stock_sale.log 2>&1; then
+            echo 'Output without physical stock was wrongly accepted'; exit 1
+          fi
+          grep -qi 'Existencias insuficientes' /tmp/cln_no_stock_sale.log
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_stock" | grep -qx 0
+      - name: Verify admin can rename a missing name with audit and cannot overwrite stale name
+        shell: bash
+        run: |
+          set -euo pipefail
+          item_id=$(psql -X -Atq -c "SELECT id FROM public.inv_items WHERE legacy_key='MERCADERIA-C2'")
+          psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT public.inv_corregir_nombre_articulo('$item_id'::uuid,'NOMBRE CORREGIDO FICTICIO','NOMBRE PENDIENTE · MERCADERIA-C2'); COMMIT;"
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM inv_private.cln_item_name_audit)=1 AND (SELECT nombre_original FROM public.inv_items WHERE id='$item_id'::uuid)='NOMBRE CORREGIDO FICTICIO' AND (SELECT count(*) FROM public.inv_stock)=0" | grep -qx t
+          if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',true); SELECT public.inv_corregir_nombre_articulo('$item_id'::uuid,'CAMBIO OBSOLETO','NOMBRE PENDIENTE · MERCADERIA-C2'); COMMIT;" > /tmp/cln_stale_name.log 2>&1; then
+            echo 'Stale name overwrite was accepted'; exit 1
+          fi
+          grep -q 'El nombre cambió en otro dispositivo' /tmp/cln_stale_name.log
+          psql -X -Atq -c "SELECT count(*) FROM inv_private.cln_item_name_audit" | grep -qx 1
+      - name: Register verified physical stock later by pending entry and admin approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          item_id=$(psql -X -Atq -c "SELECT id FROM public.inv_items WHERE legacy_key='MERCADERIA-C2'")
+          psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',true); SELECT public.inv_solicitar_entrada('$item_id'::uuid,1::smallint,3,'existencia comprobada ficticia'); COMMIT;"
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_stock" | grep -qx 0
+          request_id=$(psql -X -Atq -c "SELECT id FROM public.inv_entry_requests WHERE item_id='$item_id'::uuid AND estado='pendiente' LIMIT 1")
+          psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true); SELECT public.inv_revisar_entrada('$request_id'::uuid,true); COMMIT;"
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_stock)=1 AND (SELECT cantidad FROM public.inv_stock WHERE item_id='$item_id'::uuid AND location_id=1)=3" | grep -qx t
+      - name: Reimport must fail and Deudas original content must remain unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -f /tmp/cln-fake-catalog.clncatalog.sql > /tmp/cln_duplicate_catalog.log 2>&1; then
+            echo 'Duplicate initial catalog import accepted'; exit 1
+          fi
+          grep -qi 'Catalogo o stock existentes' /tmp/cln_duplicate_catalog.log
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_items" | grep -qx 190
+          psql -X -Atq -c "SELECT md5(coalesce(string_agg(id||'='||data::text,'|' ORDER BY id),'')) FROM public.debts" > /tmp/cln_after_catalog_debts_md5
+          cmp /tmp/cln_baseline_debts_md5 /tmp/cln_after_catalog_debts_md5

@@ -1,0 +1,68 @@
+name: Pruebas de contratos (aisladas)
+on:
+  push:
+    branches:
+      - integracion-inventario-fase15
+    paths:
+      - 'prototipos/contratos-api.js'
+      - 'prototipos/contratos-ui-conectada.js'
+      - 'prototipos/contratos-montaje-staging.js'
+      - 'prototipos/contratos-navegador-pwa-staging.js'
+      - 'tests/contratos-api.test.mjs'
+      - 'tests/migraciones-estructura.test.mjs'
+      - 'tests/contratos-ui-estructura.test.mjs'
+      - 'tests/contratos-montaje-staging.test.mjs'
+      - 'tests/contratos-montaje-funcional.test.mjs'
+      - 'tests/pwa-montaje-autenticacion.test.mjs'
+      - 'tests/pwa-navegacion-staging.test.mjs'
+      - 'tests/laboratorio-aislamiento.test.mjs'
+      - 'laboratorio/index.html'
+      - 'tests/contratos-seguridad-estatica.test.mjs'
+      - 'migrations/20261115_fase15*.sql'
+      - '.github/workflows/pruebas-contratos.yml'
+  pull_request:
+    paths:
+      - 'prototipos/contratos-api.js'
+      - 'prototipos/contratos-ui-conectada.js'
+      - 'prototipos/contratos-montaje-staging.js'
+      - 'prototipos/contratos-navegador-pwa-staging.js'
+      - 'tests/contratos-api.test.mjs'
+      - 'tests/migraciones-estructura.test.mjs'
+      - 'tests/contratos-ui-estructura.test.mjs'
+      - 'tests/contratos-montaje-staging.test.mjs'
+      - 'tests/contratos-montaje-funcional.test.mjs'
+      - 'tests/pwa-montaje-autenticacion.test.mjs'
+      - 'tests/pwa-navegacion-staging.test.mjs'
+      - 'tests/laboratorio-aislamiento.test.mjs'
+      - 'laboratorio/index.html'
+      - 'tests/contratos-seguridad-estatica.test.mjs'
+      - 'migrations/20261115_fase15*.sql'
+      - '.github/workflows/pruebas-contratos.yml'
+permissions:
+  contents: read
+jobs:
+  contratos-unitarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxis de módulos JavaScript
+        run: |
+          node --experimental-default-type=module --check prototipos/contratos-api.js
+          node --experimental-default-type=module --check prototipos/contratos-ui-conectada.js
+          node --experimental-default-type=module --check prototipos/contratos-montaje-staging.js
+          node --experimental-default-type=module --check prototipos/contratos-navegador-pwa-staging.js
+          node --check tests/contratos-api.test.mjs
+          node --check tests/migraciones-estructura.test.mjs
+          node --check tests/contratos-ui-estructura.test.mjs
+          node --check tests/contratos-montaje-staging.test.mjs
+          node --check tests/contratos-montaje-funcional.test.mjs
+          node --check tests/pwa-montaje-autenticacion.test.mjs
+          node --check tests/pwa-navegacion-staging.test.mjs
+          node --check tests/laboratorio-aislamiento.test.mjs
+          node --check tests/contratos-seguridad-estatica.test.mjs
+      - name: Ejecutar pruebas unitarias sin credenciales
+        run: node --experimental-default-type=module --test tests/contratos-api.test.mjs tests/migraciones-estructura.test.mjs tests/contratos-ui-estructura.test.mjs tests/contratos-seguridad-estatica.test.mjs tests/contratos-montaje-staging.test.mjs tests/contratos-montaje-funcional.test.mjs tests/pwa-montaje-autenticacion.test.mjs tests/pwa-navegacion-staging.test.mjs tests/laboratorio-aislamiento.test.mjs

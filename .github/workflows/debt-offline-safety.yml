@@ -1,0 +1,36 @@
+name: Deudas offline safety
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'index.html'
+      - 'cl-nexus-shell.js'
+      - 'staging/index.html'
+      - 'tests/integration-boundary.test.cjs'
+      - 'sw.js'
+      - 'debt-module-controller.cjs'
+      - 'debt-gate-client.cjs'
+      - 'debt-cache-preflight.cjs'
+      - 'debt-legacy-backup.cjs'
+      - 'debt-encrypted-backup.cjs'
+      - 'debt-migration-readiness.cjs'
+      - 'tests/debt-module-controller.test.cjs'
+      - 'tests/debt-gate-client.test.cjs'
+      - 'tests/sw-cache-safety.test.cjs'
+      - 'tests/debt-offline-safety.test.cjs'
+      - 'tests/debt-encrypted-backup.test.cjs'
+      - 'tests/debt-migration-readiness.test.cjs'
+      - '.github/workflows/debt-offline-safety.yml'
+  workflow_dispatch:
+jobs:
+  offline-safety:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run synthetic offline safety tests
+        run: node --test tests/integration-boundary.test.cjs tests/debt-gate-client.test.cjs tests/debt-module-controller.test.cjs tests/sw-cache-safety.test.cjs tests/debt-offline-safety.test.cjs tests/debt-encrypted-backup.test.cjs tests/debt-migration-readiness.test.cjs

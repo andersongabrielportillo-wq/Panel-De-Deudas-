@@ -1,0 +1,84 @@
+name: CL Nexus debt gate SQL isolated
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
+      - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
+      - 'tests/debt-gate-isolated-assertions.sql'
+      - 'tests/debt-gate-authenticated-rls.sql'
+      - 'tests/debt-gate-authenticated-crud.sql'
+      - 'sql/deudas_gate_existing_production_rpc_PREPARADO_NO_EJECUTAR.sql'
+      - 'sql/deudas_gate_existing_production_rpc_ROLLBACK_NO_EJECUTAR.sql'
+      - 'tests/debt-existing-production-rpc-cutover-ci.sql'
+      - '.github/workflows/debt-gate-isolated.yml'
+  pull_request:
+    paths:
+      - 'sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql'
+      - 'tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql'
+      - 'tests/debt-gate-isolated-assertions.sql'
+      - 'tests/debt-gate-authenticated-rls.sql'
+      - 'tests/debt-gate-authenticated-crud.sql'
+      - '.github/workflows/debt-gate-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  debt-gate-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test_only
+          POSTGRES_DB: cln_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cln_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test_only
+      PGDATABASE: cln_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision disposable roles and synthetic schema
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN; CREATE ROLE anon NOLOGIN;"
+          psql -v ON_ERROR_STOP=1 -f tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql
+      - name: Apply draft to disposable PostgreSQL only
+        run: psql -v ON_ERROR_STOP=1 -f sql/deudas_gate_produccion_BORRADOR_NO_EJECUTAR.sql
+      - name: Verify restrictive RLS and protected RPCs
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-isolated-assertions.sql
+      - name: Verify actual authenticated role RLS enforcement
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-rls.sql
+      - name: Verify authenticated CRUD requires unlock and re-lock revokes writes
+        run: psql -v ON_ERROR_STOP=1 -f tests/debt-gate-authenticated-crud.sql
+      - name: Rehearse existing-production RPC gate and rollback in a separate disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE cln_gate_prod_contract_ci"
+          PGDATABASE=cln_gate_prod_contract_ci psql -X -v ON_ERROR_STOP=1 -f tests/debt-existing-production-rpc-cutover-ci.sql
+      - name: Prove missing or undecryptable Vault blocks cutover atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in missing undecryptable; do
+            psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE cln_gate_vault_${mode}_ci"
+            case "$mode" in
+              missing) flag=test_vault_missing ;;
+              undecryptable) flag=test_vault_undecryptable ;;
+            esac
+            if PGDATABASE="cln_gate_vault_${mode}_ci" psql -X -v ON_ERROR_STOP=1 -v "${flag}=1" -f tests/debt-existing-production-rpc-cutover-ci.sql > "/tmp/cln_vault_${mode}.log" 2>&1; then
+              echo "ERROR: gate migration must reject Vault ${mode}"; exit 1
+            fi
+            if [ "$mode" = "missing" ]; then
+              grep -q 'Expected exactly one configured Deudas secret' "/tmp/cln_vault_${mode}.log"
+            else
+              grep -q 'Deudas secret is not decryptable' "/tmp/cln_vault_${mode}.log"
+            fi
+            PGDATABASE="cln_gate_vault_${mode}_ci" psql -X -Atq -c "SELECT count(*) FROM pg_policies WHERE schemaname='public' AND policyname LIKE 'debt_unlock_required_%'" | grep -qx 0
+          done

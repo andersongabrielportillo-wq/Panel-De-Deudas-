@@ -1,0 +1,22 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';const html=readFileSync(new URL('../staging/index.html',import.meta.url),'utf8');test('staging no contiene URL de producción',()=>{assert.match(html,/dozcnytevqhoymzqlxah/);assert.doesNotMatch(html,/josdmjjbnrugiwlwgjky/)});test('solo consulta inventario ficticio',()=>{assert.match(html,/p_module:"inventario"/);assert.doesNotMatch(html,/p_module:"deudas"/);assert.doesNotMatch(html,/rpc\/cl2_sandbox_(delete|test_sale|review_request|warranty_release)/)});test('Deudas bloqueado y módulos sin escritura',()=>{assert.match(html,/Módulo bloqueado/);assert.match(html,/Módulo pendiente de API segura/);assert.match(html,/session=null/)});test('origen exacto y clave secreta rechazados',()=>{assert.match(html,/u.hostname!==PROJECT/);assert.match(html,/service_role\|sb_secret_/)});
+
+test('staging renueva JWT de pruebas y no persiste tokens',()=>{assert.match(html,/grant_type=refresh_token/);assert.match(html,/expiresAt/);assert.match(html,/session!==s/);assert.doesNotMatch(html,/localStorage|sessionStorage/)});
+test('las respuestas tardías no restauran datos tras logout',()=>{assert.match(html,/ticket===seq&&session===s/);assert.match(html,/seq\+\+;session=null/)});
+
+test('consultas de inventario se cancelan al cambiar modulo o cerrar sesión',()=>{assert.match(html,/new AbortController\(\)/);assert.match(html,/signal:controller\.signal/);assert.match(html,/activeRequest\.abort\(\)/);assert.match(html,/if\(e\.name==="AbortError"\)return/)});
+
+test('contratos solo lee catálogos protegidos, sin escribir contratos',()=>{assert.match(html,/inv_catalogo_vendedores/);assert.match(html,/inv_catalogo_articulos_contratos/);assert.match(html,/Contratos: catálogos protegidos en solo lectura/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/);assert.doesNotMatch(html,/rpc\/(?:inv_registrar_venta|inv_marcar_prima_recibida)/)});
+
+test('búsqueda de clientes protegida sin escrituras y con aislamiento de sesión',()=>{assert.match(html,/rpc\/inv_buscar_clientes/);assert.match(html,/p_busqueda:q/);assert.match(html,/q\.length<3/);assert.match(html,/clientRequest\.abort\(\)/);assert.match(html,/session!==s\|\|view!=="contratos"/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
+
+test('el umbral de búsqueda coincide con la validación SQL (3 caracteres)',()=>{assert.match(html,/q\.length<3/);assert.match(html,/Escribí al menos 3 caracteres/);assert.doesNotMatch(html,/q\.length<2/) });
+
+test('cambio de módulo cancela solicitud y desbloquea nueva lectura',()=>{assert.match(html,/requestedView=view/);assert.match(html,/view===requestedView/);assert.match(html,/activeRequest\.abort\(\);activeRequest=null;busy=false/);assert.match(html,/if\(activeRequest===controller\)\{busy=false;activeRequest=null\}/)});
+test('login no cancela su propia lectura inicial',()=>{assert.match(html,/stop\(\);show\("inventario"\);timer=setInterval\(load,5000\)/);assert.doesNotMatch(html,/show\("inventario"\);stop\(\)/)});
+
+test('login tardío no reabre sesión después de invalidación',()=>{assert.match(html,/loginEpoch=\+\+authEpoch/);assert.match(html,/if\(loginEpoch!==authEpoch\)return/);assert.match(html,/authEpoch\+\+;stop\(\);seq\+\+;session=null/)});
+test('búsqueda reemplazada no muestra respuesta anterior',()=>{assert.match(html,/view==="contratos"&&clientRequest===controller/);assert.match(html,/session===s&&clientRequest===controller/)});
+
+test('ficha e historial de clientes solo lectura por UUID validado',()=>{assert.match(html,/rpc\("inv_ficha_cliente"\)/);assert.match(html,/rpc\("inv_historial_cliente"\)/);assert.match(html,/p_cliente_id:id/);assert.match(html,/detailRequest===controller/);assert.match(html,/detailRequest\.abort\(\)/);assert.doesNotMatch(html,/rpc\/(?:inv_crear_cliente|inv_crear_contrato_borrador|inv_confirmar_contrato)/)});
+
+test('renovación JWT está aislada por sesión, sin promesa global compartida',()=>{assert.match(html,/if\(s\.refreshing\)return s\.refreshing/);assert.match(html,/s\.refreshing=\(async\(\)=>/);assert.match(html,/if\(session!==s\)throw Error\("Sesión cerrada"\)/);assert.match(html,/finally\{s\.refreshing=null\}/);assert.doesNotMatch(html,/let session=null[^;]*refreshing=null/)});

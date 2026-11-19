@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1e35">
+<title>Panel de Gestión · Laboratorio aislado</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#081626;color:#edf5ff;font:16px system-ui,Segoe UI,sans-serif}main{max-width:850px;margin:auto;padding:26px 18px}.notice{border:1px solid #f1bf65;color:#ffe2a5;background:#382c1c;border-radius:12px;padding:14px;line-height:1.5}header{display:flex;justify-content:space-between;align-items:center;gap:15px}h1{font-size:clamp(25px,5vw,38px);margin:28px 0 8px}p{color:#b5c6da;line-height:1.5}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:22px 0}.card{background:#142942;border:1px solid #345579;color:white;border-radius:18px;padding:20px;text-align:left;min-height:148px;cursor:pointer;font:inherit}.card:focus-visible{outline:3px solid #8ac7ff}.card strong{display:block;font-size:20px;margin:12px 0}.card small{color:#9fbddc}.panel{background:#10263c;border:1px solid #345579;border-radius:16px;padding:20px;margin:18px 0}button.action{background:#61b7f8;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;color:#08223a;cursor:pointer}.status{color:#a7f3d0}footer{font-size:13px;color:#99aec4;margin-top:26px}code{color:#b7e0ff}ul{line-height:1.8}
+</style></head><body><main>
+<header><strong>Panel de Gestión</strong><span>🧪 LABORATORIO</span></header>
+<h1>Entorno de pruebas aislado</h1>
+<div class="notice" role="note"><strong>NO ES LA APLICACIÓN REAL.</strong> Esta maqueta no inicia sesión, no almacena datos, no consulta Supabase y no sincroniza dispositivos. No ingresés información personal ni contraseñas.</div>
+<p>Seleccioná un módulo para verificar su navegación visual. Las operaciones de negocio permanecen deshabilitadas hasta disponer de un entorno independiente autorizado.</p>
+<div class="grid" aria-label="Módulos">
+<button class="card" data-modulo="inventario"><span>📦</span><strong>Inventario</strong><small>Vista demostrativa · sin escrituras</small></button>
+<button class="card" data-modulo="contratos"><span>🧾</span><strong>Contratos</strong><small>Vista demostrativa · sin ventas</small></button>
+<button class="card" data-modulo="deudas"><span>🔒</span><strong>Deudas</strong><small>Bloqueado · requiere protección real en servidor</small></button>
+</div>
+<section class="panel" id="vista" aria-live="polite"><h2>Elegí un módulo</h2><p>Solo se mostrarán mensajes informativos.</p></section>
+<section class="panel"><h2>Estado de las verificaciones</h2><ul><li class="status">Aislamiento de datos: sin conexiones ni credenciales</li><li>Autenticación real: pendiente</li><li>Sincronización entre dispositivos: pendiente</li><li>Service Worker de pruebas: no registrado</li><li>Publicación web: pendiente de autorización</li></ul></section>
+<footer>Laboratorio local de la rama integracion-inventario-fase15. No reemplaza la PWA instalada.</footer>
+</main><script>
+const vista=document.getElementById('vista');
+const mensajes={
+ inventario:['Inventario · maqueta','Aquí se integrará la vista de artículos, existencias y movimientos cuando exista un backend de pruebas separado.'],
+ contratos:['Contratos · maqueta','La confirmación de contratos está deshabilitada en este laboratorio sin base de pruebas.'],
+ deudas:['Deudas · acceso no disponible','La contraseña adicional y los permisos deben comprobarse en el servidor. Esta maqueta no permite desbloquear Deudas.']
+};
+document.querySelectorAll('[data-modulo]').forEach(b=>b.addEventListener('click',()=>{
+ const [titulo,descripcion]=mensajes[b.dataset.modulo];
+ vista.replaceChildren();
+ const h=document.createElement('h2');h.textContent=titulo;
+ const p=document.createElement('p');p.textContent=descripcion;
+ vista.append(h,p);
+}));
+</script></body></html>

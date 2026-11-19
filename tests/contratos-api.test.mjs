@@ -1,0 +1,327 @@
+// Pruebas aisladas: node --experimental-default-type=module --test tests/contratos-api.test.mjs
+// No necesitan Supabase ni credenciales; solo verifican argumentos y errores.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {crearServicioContratos} from '../prototipos/contratos-api.js';
+
+function clienteMock(error=null){
+ const calls=[];
+ return {calls,client:{rpc:async(name,args)=>{calls.push({name,args});return {data:error?null:{ok:true},error}}}};
+}
+const base={
+ numero:'TEST-001',clienteId:'cliente-uuid',vendedorId:'vendedor-uuid',
+ fecha:'2026-11-15',comision:'0.30',prima:'0.20',
+ articulos:[{itemId:'articulo-uuid',cantidad:2,precio:'0.30',comision:'0.10'}]
+};
+test('buscar clientes usa RPC y no tablas públicas',async()=>{
+ const m=clienteMock();await crearServicioContratos(m.client).buscarClientes(' Ana ');
+ assert.deepEqual(m.calls[0],{name:'inv_buscar_clientes',args:{p_busqueda:'Ana'}});
+});
+test('catálogos y ficha pasan por RPC',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.catalogoVendedores();await api.catalogoArticulos();await api.fichaCliente('abc');
+ assert.deepEqual(m.calls.map(c=>c.name),[
+  'inv_catalogo_vendedores_manual','inv_catalogo_articulos_contratos','inv_ficha_cliente']);
+});
+test('acepta importes válidos con decimales',async()=>{
+ const m=clienteMock();await crearServicioContratos(m.client).crearContratoBorrador(base);
+ assert.equal(m.calls[0].args.p_prima,0.2);
+ assert.equal(m.calls[0].args.p_detalles[0].precio_credito_unitario,0.3);
+});
+test('rechaza cantidades fraccionarias o negativas',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const cantidad of [0,-1,1.5,'abc']){
+  assert.throws(()=>api.crearContratoBorrador({
+   ...base,articulos:[{...base.articulos[0],cantidad}]
+  }),/Cantidad/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza importes negativos y con más de dos decimales',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const prima of ['-1','1.234']){
+  assert.throws(()=>api.crearContratoBorrador({...base,prima}),/Importe/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('propaga errores del servidor',async()=>{
+ const m=clienteMock({message:'No autorizado'});
+ await assert.rejects(()=>crearServicioContratos(m.client).buscarClientes('Ana'),/No autorizado/);
+});
+
+test('confirmar contrato envía ubicaciones por línea y operación única',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.confirmarContrato('contrato-uuid',[
+  {detalleId:'detalle-a',ubicacionId:1},{detalleId:'detalle-b',ubicacionId:2}
+ ],'operacion-uuid');
+ assert.deepEqual(m.calls[0],{
+  name:'inv_confirmar_contrato',
+  args:{
+   p_contrato_id:'contrato-uuid',
+   p_ubicaciones:[
+    {detalle_id:'detalle-a',location_id:1},
+    {detalle_id:'detalle-b',location_id:2}
+   ],
+   p_client_op_id:'operacion-uuid'
+  }
+ });
+});
+test('rechaza líneas repetidas o ubicaciones no autorizadas',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.confirmarContrato('c',[
+  {detalleId:'x',ubicacionId:1},{detalleId:'x',ubicacionId:2}
+ ],'op'),/inválidas/);
+ assert.throws(()=>api.confirmarContrato('c',[
+  {detalleId:'x',ubicacionId:3}
+ ],'op'),/inválidas/);
+ assert.equal(m.calls.length,0);
+});
+
+test('crea cliente con vivienda, trabajo y dos referencias',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearCliente({
+  nombre:'Cliente de prueba',dui:'01234567-8',vivienda:'propia',
+  lugarTrabajo:'Comercio',telefonoTrabajo:'2222-2222',
+  referencias:[{nombre:'Referencia A',telefono:'1111-1111'},
+              {nombre:'Referencia B',parentesco:'Familiar'}]
+ });
+ const llamada=m.calls[0];
+ assert.equal(llamada.name,'inv_crear_cliente');
+ assert.equal(llamada.args.p_dui,'012345678');
+ assert.equal(llamada.args.p_vivienda,'propia');
+ assert.equal(llamada.args.p_lugar_trabajo,'Comercio');
+ assert.equal(llamada.args.p_referencias.length,2);
+});
+test('consulta historial y detalle de contrato por RPC',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.historialCliente('cliente-1');
+ await api.detalleContrato('contrato-1');
+ assert.deepEqual(m.calls,[
+  {name:'inv_historial_cliente',args:{p_cliente_id:'cliente-1'}},
+  {name:'inv_detalle_contrato',args:{p_contrato_id:'contrato-1'}}
+ ]);
+});
+test('confirmación requiere identificador de operación',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.confirmarContrato('c',[{detalleId:'d',ubicacionId:1}],null),/Faltan datos/);
+ assert.equal(m.calls.length,0);
+});
+
+test('rechaza prima superior al total y saldo inicial inconsistente',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:'0.61'}),/prima supera/);
+ assert.throws(()=>api.crearContratoBorrador({...base,saldoInicial:'0.50'}),/Saldo inicial/);
+ assert.equal(m.calls.length,0);
+});
+test('acepta saldo igual al total menos prima',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearContratoBorrador({...base,saldoInicial:'0.40'});
+ assert.equal(m.calls[0].args.p_saldo_inicial,0.4);
+});
+test('rechaza montos superiores a numeric 14,2',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,comision:'1000000000000'}),/Importe/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza más de cien líneas y cantidades fuera del límite SQL',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,articulos:Array(101).fill(base.articulos[0])}),/Máximo 100/);
+ assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad:1000000000}]}),/Cantidad/);
+ assert.equal(m.calls.length,0);
+});
+
+test('no transforma precio vacío en venta gratis',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const precio of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],precio}]}),/Importe/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('no convierte cantidad vacía a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const cantidad of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad}]}),/Cantidad/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza prima vacía y mantiene prima cero explícita',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:''}),/Importe/);
+ await api.crearContratoBorrador({...base,prima:0});
+ assert.equal(m.calls[0].args.p_prima,0);
+});
+
+test('suma diez precios de diez centavos sin error de coma flotante',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ await api.crearContratoBorrador({...base,prima:0.1,saldoInicial:0.9,
+  articulos:Array.from({length:10},()=>({...base.articulos[0],cantidad:1,precio:0.1}))});
+ assert.equal(m.calls.length,1);
+ assert.equal(m.calls[0].args.p_saldo_inicial,0.9);
+});
+test('rechaza saldo inconsistente por un centavo',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,prima:0.1,saldoInicial:0.8,
+  articulos:Array.from({length:10},()=>({...base.articulos[0],cantidad:1,precio:0.1}))}),/Saldo inicial/);
+ assert.equal(m.calls.length,0);
+});
+
+test('rechaza artículos sin identificador antes de llamar al servidor',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const itemId of ['', ' ', null, undefined]){
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],itemId}]}),/artículo válido/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza saldo vacío en vez de convertirlo a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador({...base,saldoInicial:''}),/Importe/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza identificadores y líneas de confirmación mal formados',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const contrato of ['', ' ']){
+  assert.throws(()=>api.confirmarContrato(contrato,[{detalleId:'d',ubicacionId:1}],'op'),/Faltan datos/);
+ }
+ assert.throws(()=>api.confirmarContrato('c',[null],'op'),/inválidas/);
+ assert.throws(()=>api.confirmarContrato('c',[{detalleId:' ',ubicacionId:1}],'op'),/inválidas/);
+ assert.equal(m.calls.length,0);
+});
+
+test('ubicaciones requieren números estrictos, no cadenas ni booleanos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const ubicacionId of ['1','2',true,false,null,1.5]){
+  assert.throws(()=>api.confirmarContrato('c',[{detalleId:'d',ubicacionId}],'op'),/inválidas/);
+ }
+ assert.equal(m.calls.length,0);
+});
+
+test('rechaza nombres de cliente inválidos antes de RPC',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const nombre of ['', ' ', 'A', 'A'.repeat(201),null]){
+  assert.throws(()=>api.crearCliente({nombre}),/Nombre de cliente/);
+ }
+ assert.equal(m.calls.length,0);
+});
+test('rechaza más de dos referencias y nombres vacíos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',referencias:[{nombre:'A'},{nombre:'B'},{nombre:'C'}]}),/referencias/);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',referencias:[{nombre:' ' }]}),/referencias/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza DUI con longitud distinta de nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',dui:'123-45'}),/DUI/);
+ assert.equal(m.calls.length,0);
+});
+
+test('no acepta booleanos como dinero ni como cantidades',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const precio of [true,false])assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],precio}]}),/Importe/);
+ for(const cantidad of [true,false])assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],cantidad}]}),/Cantidad/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza DUI con letras aunque contenga nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente válido',dui:'A01234567-8'}),/DUI/);
+ assert.equal(m.calls.length,0);
+});
+test('rechaza contratos vacíos sin causar TypeError',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearContratoBorrador(null),/Agrega artículos/);
+ assert.equal(m.calls.length,0);
+});
+
+test('no envía más de cien ubicaciones al confirmar',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ const ubicaciones=Array.from({length:101},(_,i)=>({detalleId:'detalle-'+i,ubicacionId:1}));
+ assert.throws(()=>api.confirmarContrato('contrato',ubicaciones,'op'),/Máximo 100/);
+ assert.equal(m.calls.length,0);
+});
+
+test('prima recibida requiere booleano real',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const primaRecibida of ['false','true',1,0,null])
+  assert.throws(()=>api.crearContratoBorrador({...base,primaRecibida}),/Estado de prima/);
+ assert.equal(m.calls.length,0);
+});
+test('comisiones booleanas no se convierten a cero',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const comision of [false,true]){
+  assert.throws(()=>api.crearContratoBorrador({...base,comision}),/Importe/);
+  assert.throws(()=>api.crearContratoBorrador({...base,articulos:[{...base.articulos[0],comision}]}),/Importe/);
+ }
+ assert.equal(m.calls.length,0);
+});
+
+test('recorta nombres y rechaza referencias mayores de 200 caracteres',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ assert.throws(()=>api.crearCliente({nombre:'Cliente',referencias:[{nombre:'R'.repeat(201)}]}),/referencias/);
+ await api.crearCliente({nombre:'  Cliente Ejemplo  ',referencias:[{nombre:'  Referencia Ejemplo  '}]});
+ assert.equal(m.calls.length,1);
+ assert.equal(m.calls[0].args.p_nombre,'Cliente Ejemplo');
+ assert.equal(m.calls[0].args.p_referencias[0].nombre,'Referencia Ejemplo');
+});
+
+test('DUI admite solo nueve dígitos o formato ocho guion uno',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const dui of ['012345678','01234567-8']){
+  await api.crearCliente({nombre:'Cliente prueba',dui});
+ }
+ assert.equal(m.calls.length,2);
+ assert.equal(m.calls[0].args.p_dui,'012345678');
+ assert.equal(m.calls[1].args.p_dui,'012345678');
+});
+test('DUI rechaza separadores adicionales aunque contenga nueve dígitos',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const dui of ['0123 45678','012-34567-8','012345678-','0-12345678']){
+  assert.throws(()=>api.crearCliente({nombre:'Cliente prueba',dui}),/DUI inválido/);
+ }
+ assert.equal(m.calls.length,0);
+});
+
+test('alta de vendedor manual valida nombre y no toca inventario',async()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ for(const nombre of ['', ' ', 'A', 'X'.repeat(201),null])assert.throws(()=>api.crearVendedor(nombre),/Nombre de vendedor/);
+ assert.equal(m.calls.length,0);
+ await api.crearVendedor('  Vendedor Nuevo  ');
+ assert.deepEqual(m.calls,[{name:'inv_crear_vendedor_manual',args:{p_nombre:'Vendedor Nuevo'}}]);
+});
+
+test('catalogo manual vacio devuelve lista vacia sin crear vendedores',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:[],error:null}}});
+ assert.deepEqual(await api.catalogoVendedores(),[]);
+ assert.deepEqual(calls,[{name:'inv_catalogo_vendedores_manual',args:{}}]);
+});
+test('alta manual conserva nombres validos y no invoca catalogo de articulos',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:'uuid-nuevo',error:null}}});
+ assert.equal(await api.crearVendedor('  María López  '),'uuid-nuevo');
+ assert.deepEqual(calls,[{name:'inv_crear_vendedor_manual',args:{p_nombre:'María López'}}]);
+});
+test('alta manual rechazada por servidor no activa ninguna escritura alternativa',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:{message:'No autorizado'}}}});
+ await assert.rejects(api.crearVendedor('Vendedor nuevo'),/No autorizado/);
+ assert.deepEqual(calls.map(x=>x.name),['inv_crear_vendedor_manual']);
+});
+test('confirmacion fallida por stock propaga error sin enviar segundo descuento',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:null,error:{message:'Existencias insuficientes'}}}});
+ await assert.rejects(api.confirmarContrato('contrato',[{detalleId:'detalle',ubicacionId:1}],'op-unica'),/Existencias insuficientes/);
+ assert.deepEqual(calls.map(x=>x.name),['inv_confirmar_contrato']);
+});
+test('confirmacion de varios articulos usa una unica RPC de ventas',async()=>{
+ const calls=[];
+ const api=crearServicioContratos({rpc:async(name,args)=>{calls.push({name,args});return {data:'venta-uuid',error:null}}});
+ assert.equal(await api.confirmarContrato('contrato',[{detalleId:'a',ubicacionId:1},{detalleId:'b',ubicacionId:2},{detalleId:'c',ubicacionId:1}],'op-unica'),'venta-uuid');
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'inv_confirmar_contrato');
+ assert.deepEqual(calls[0].args.p_ubicaciones,[{detalle_id:'a',location_id:1},{detalle_id:'b',location_id:2},{detalle_id:'c',location_id:1}]);
+});
+test('confirmacion rechaza 101 ubicaciones antes de invocar servidor',()=>{
+ const m=clienteMock(),api=crearServicioContratos(m.client);
+ const ubicaciones=Array.from({length:101},(_,i)=>({detalleId:'detalle-'+i,ubicacionId:1}));
+ assert.throws(()=>api.confirmarContrato('contrato',ubicaciones,'operacion'),/Máximo 100/);
+ assert.equal(m.calls.length,0);
+});

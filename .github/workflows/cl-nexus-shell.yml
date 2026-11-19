@@ -1,0 +1,62 @@
+name: CL Nexus shell - validacion estatica
+on:
+  push:
+    branches: [integracion-inventario-fase15]
+    paths:
+      - 'index.html'
+      - 'sw.js'
+      - 'tests/debt-sw.test.mjs'
+      - 'cl-nexus-shell.js'
+      - 'cl-nexus-adapter.cjs'
+      - 'debt-gate-client.cjs'
+      - 'debt-module-controller.cjs'
+      - 'debt-cache-preflight.cjs'
+      - 'tests/debt-cache-preflight.test.mjs'
+      - 'tests/debt-gate-integration.test.mjs'
+      - 'tests/debt-main-screen.test.mjs'
+      - 'tests/debt-module-hub.test.mjs'
+      - 'tests/debt-module-controller.test.mjs'
+      - 'tests/cl-nexus-adapter.test.mjs'
+      - 'tests/debt-gate-client.test.mjs'
+      - 'tests/debt-gate-sql.test.mjs'
+      - 'docs/sql/debt-gate-review-only.sql'
+      - 'tests/cl-nexus-shell.test.mjs'
+      - '.github/workflows/cl-nexus-shell.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'sw.js'
+      - 'tests/debt-sw.test.mjs'
+      - 'cl-nexus-shell.js'
+      - 'cl-nexus-adapter.cjs'
+      - 'debt-gate-client.cjs'
+      - 'debt-module-controller.cjs'
+      - 'debt-cache-preflight.cjs'
+      - 'tests/debt-cache-preflight.test.mjs'
+      - 'tests/debt-gate-integration.test.mjs'
+      - 'tests/debt-main-screen.test.mjs'
+      - 'tests/debt-module-hub.test.mjs'
+      - 'tests/debt-module-controller.test.mjs'
+      - 'tests/cl-nexus-adapter.test.mjs'
+      - 'tests/debt-gate-client.test.mjs'
+      - 'tests/debt-gate-sql.test.mjs'
+      - 'docs/sql/debt-gate-review-only.sql'
+      - 'tests/cl-nexus-shell.test.mjs'
+      - '.github/workflows/cl-nexus-shell.yml'
+permissions:
+  contents: read
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check cl-nexus-shell.js
+      - run: node --check cl-nexus-adapter.cjs
+      - run: node --check debt-gate-client.cjs
+      - run: node --check debt-module-controller.cjs
+      - run: node --check debt-cache-preflight.cjs
+      - run: node --check sw.js
+      - run: node --test tests/cl-nexus-shell.test.mjs tests/cl-nexus-adapter.test.mjs tests/debt-gate-client.test.mjs tests/debt-gate-sql.test.mjs tests/debt-module-controller.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-integration.test.mjs tests/debt-main-screen.test.mjs tests/debt-sw.test.mjs tests/debt-module-hub.test.mjs
