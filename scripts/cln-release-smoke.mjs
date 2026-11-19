@@ -143,6 +143,7 @@ const rpcCalls=[];
 const testClient={rpc:async(name,args)=>{
  rpcCalls.push({name,args});
  if(name==='inv_catalogo_vendedores_manual')return {data:[{id:'11111111-1111-4111-8111-111111111111',nombre:'Vendedor de prueba'}],error:null};
+ if(name==='inv_catalogo_articulos_contratos')return {data:[{id:'33333333-3333-4333-8333-333333333333',nombre:'Artículo de prueba',categoria:'Prueba'}],error:null};
  if(name==='inv_buscar_clientes')return {data:[{id:'22222222-2222-4222-8222-222222222222',nombre:'Cliente de prueba',dui_mostrado:'*****1234',telefono:''}],error:null};
  return {data:'11111111-1111-4111-8111-111111111111',error:null};
 }};
