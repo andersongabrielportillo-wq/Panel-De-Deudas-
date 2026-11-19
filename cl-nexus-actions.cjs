@@ -4,6 +4,7 @@
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const specs=Object.freeze({
  move:{rpc:'inv_registrar_movimiento',required:['p_item_id','p_tipo','p_cantidad','p_observaciones','p_client_op_id'],optional:['p_origen','p_destino','p_vendedor']},
+ renameItem:{rpc:'inv_corregir_nombre_articulo',required:['p_item_id','p_nombre','p_nombre_esperado'],optional:[]},
  sale:{rpc:'inv_registrar_venta',required:['p_vendedor_id','p_modalidad','p_articulos','p_descuento','p_observaciones','p_client_op_id'],optional:[]},
  voidSale:{rpc:'inv_anular_venta',required:['p_venta_id','p_motivo'],optional:[]},
  warrantyRelease:{rpc:'inv_liberar_garantia',required:['p_item_id','p_destino','p_cantidad','p_observaciones'],optional:[]},
