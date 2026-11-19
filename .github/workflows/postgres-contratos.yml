@@ -155,60 +155,39 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql
       - name: Verify all inventory objects, RLS, API privileges and no copied data
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/inventory_snapshot_assertions.sql
-      - name: Reject outsiders and incomplete 3-account role mapping
+      - name: Reject outsider, missing member and Secretaria role (three admins required)
         shell: bash
         run: |
           set -euo pipefail
-          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000099","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_outsider.log 2>&1; then
-            echo 'Outsider mapping must fail'; exit 1
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000099","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_user.log 2>&1; then
+            echo 'Unrelated account must never receive inventory admin'; exit 1
           fi
-          grep -q 'outsider' /tmp/cln_rejected_outsider.log
+          grep -q 'Role assignment includes an outsider' /tmp/cln_wrong_user.log
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_missing_user.log 2>&1; then
+            echo 'All three accounts are required'; exit 1
+          fi
+          grep -q 'Expected exactly 3 authorized admins' /tmp/cln_missing_user.log
+          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"},{"user_id":"00000000-0000-0000-0000-000000000004","rol":"admin"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_mixed_role.log 2>&1; then
+            echo 'Secretary privilege is not the approved all-admin configuration'; exit 1
+          fi
+          grep -Ei 'cln_roles_cutover_rol_check|check constraint' /tmp/cln_mixed_role.log
           psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-          if psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_rejected_incomplete.log 2>&1; then
-            echo 'Two-only mapping must fail: three accounts required'; exit 1
-          fi
-          grep -q 'Expected exactly 3' /tmp/cln_rejected_incomplete.log
-          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-      - name: Prepare three synthetic original Panel Auth emails
+      - name: Provision the exact three current Deudas members as admins, excluding unrelated Auth user
         shell: bash
         run: |
           set -euo pipefail
-          psql -X -v ON_ERROR_STOP=1 -c "ALTER TABLE auth.users ADD COLUMN email text UNIQUE"
-          psql -X -v ON_ERROR_STOP=1 -c "UPDATE auth.users SET email=CASE id WHEN '00000000-0000-0000-0000-000000000002'::uuid THEN 'admin-fake@example.invalid' WHEN '00000000-0000-0000-0000-000000000003'::uuid THEN 'secretary-fake@example.invalid' ELSE 'third-fake@example.invalid' END"
-      - name: Reject missing or incorrect third identity and role
-        shell: bash
-        run: |
-          set -euo pipefail
-          if psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_missing_third.log 2>&1; then
-            echo 'Third account required'; exit 1
-          fi
-          grep -q 'Missing third_email' /tmp/cln_missing_third.log
-          if psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -v third_email='unknown-fake@example.invalid' -v third_role='admin' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_id.log 2>&1; then
-            echo 'Unknown third account accepted'; exit 1
-          fi
-          grep -q 'Expected exactly 3' /tmp/cln_wrong_id.log
-          if psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -v third_email='third-fake@example.invalid' -v third_role='desconocido' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_role.log 2>&1; then
-            echo 'Unapproved third role accepted'; exit 1
-          fi
-          if ! grep -Eqi 'cln_roles_cutover_rol_check|check constraint|invalid input value' /tmp/cln_wrong_role.log; then
-            echo 'Unexpected rejection reason for third role'; cat /tmp/cln_wrong_role.log; exit 1
-          fi
-          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-      - name: Assign all three original Panel accounts explicitly with role for third
-        shell: bash
-        run: |
-          set -euo pipefail
-          psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -v third_email='third-fake@example.invalid' -v third_role='admin' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql
-          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=3 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=2 AND (SELECT count(*) FROM public.inv_members WHERE rol='secretaria')=1 AND EXISTS(SELECT 1 FROM public.inv_members WHERE user_id='00000000-0000-0000-0000-000000000004' AND rol='admin')" | grep -qx t
-      - name: Confirm all 3 approved accounts can call CL Nexus, and an outsider cannot
+          psql -X -v ON_ERROR_STOP=1 -c "INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000099')"
+          psql -X -v ON_ERROR_STOP=1 -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql
+          psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=3 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=3 AND NOT EXISTS(SELECT 1 FROM public.inv_members WHERE user_id='00000000-0000-0000-0000-000000000099') AND NOT EXISTS(SELECT user_id FROM public.workspace_members EXCEPT SELECT user_id FROM public.inv_members)" | grep -qx t
+      - name: Verify three authenticated admin sessions and outsider denial in isolated DB
         shell: bash
         run: |
           set -euo pipefail
           for user in 00000000-0000-0000-0000-000000000002 00000000-0000-0000-0000-000000000003 00000000-0000-0000-0000-000000000004; do
-            psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','$user',true); SELECT count(*) FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_authorized.log
+            psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','$user',true); SELECT count(*) FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_admin_verified.log
           done
           if psql -X -v ON_ERROR_STOP=1 -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000099',true); SELECT * FROM public.inv_catalogo_vendedores(); ROLLBACK;" > /tmp/cln_denied.log 2>&1; then
-            echo 'An outsider could access CL Nexus'; exit 1
+            echo 'Non-member Auth account must be rejected'; exit 1
           fi
           grep -qi 'No autorizado' /tmp/cln_denied.log
       - uses: actions/setup-node@v4
