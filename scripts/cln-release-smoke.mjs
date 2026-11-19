@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {createRequire} from 'node:module';
 const read=p=>fs.readFileSync(p,'utf8');
 const html=read('index.html'),sw=read('sw.js'),manifest=JSON.parse(read('manifest.webmanifest'));
 assert.match(html,/const DEBT_GATE_ENABLED=true;/);
@@ -14,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v13-sesion-unica-estable-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v14-contratos-identidades-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -114,4 +115,67 @@ assert.equal(connectionCalls,1,'Returning to Inventory initialized another sign-
 assert.ok(html.includes('id="debtBackToNexus"'),'Missing Deudas to Inventario navigation');
 assert.ok(html.includes('const locked=await debtController.lock();'),'Must revoke Deudas before returning to Inventario');
 assert.ok(html.includes('if(locked)showModuleHub(true);'),'Return to Nexus must keep global login');
+
+/* Los contratos usan siempre identificadores de cliente y vendedor del servidor. */
+assert.match(html,/const clientName=field\("Nombre completo del cliente","text",true\)/);
+assert.match(html,/const clientDui=field\("DUI del cliente/);
+assert.match(html,/const vendor=field\("Nombre del vendedor","text",true\)/);
+assert.match(html,/nexusReader\.list\("contracts",duiDigits\)/);
+assert.match(html,/matchingClient\.nombre/);
+assert.match(html,/const matches=contractSellers\.filter/);
+assert.match(html,/const inventory=await nexusReader\.list\("contractInventory"\)/);
+assert.match(html,/await actions\.execute\("createSeller",\{p_nombre:sellerEntered\}\)/);
+assert.match(html,/await actions\.execute\("createContract",params\)/);
+assert.match(html,/params\.p_cliente_id=matchingClient\.id/);
+assert.match(html,/params\.p_vendedor_id=String\(createdVendor\)/);
+assert.match(html,/sellerList\.append\(list,report\)/);
+assert.match(html,/const sellers=await nexusReader\.list\("contractSellers"\)/);
+assert.match(html,/SB\.rpc\("inv_historial_vendedor"/);
+assert.match(html,/DUI terminado en/);
+assert.match(html,/SB\.rpc\("inv_ficha_cliente",\{p_cliente_id:data\.cliente_id\}\)/);
+assert.match(html,/const foundSeller=manualSellers\.find\(item=>item\.id===data\.vendedor_id\)/);
+assert.match(html,/identity\.textContent="Cliente: "/);
+assert.doesNotMatch(html,/p_vendedor_id:vendor\.value/);
+const testRequire=createRequire(import.meta.url);
+const identityActions=testRequire('../cl-nexus-actions.cjs');
+const identityReader=testRequire('../cl-nexus-reader.cjs');
+const rpcCalls=[];
+const testClient={rpc:async(name,args)=>{
+ rpcCalls.push({name,args});
+ if(name==='inv_catalogo_vendedores_manual')return {data:[{id:'11111111-1111-4111-8111-111111111111',nombre:'Vendedor de prueba'}],error:null};
+ if(name==='inv_catalogo_articulos_contratos')return {data:[{id:'33333333-3333-4333-8333-333333333333',nombre:'Artículo de prueba',categoria:'Prueba'}],error:null};
+ if(name==='inv_buscar_clientes')return {data:[{id:'22222222-2222-4222-8222-222222222222',nombre:'Cliente de prueba',dui_mostrado:'*****1234',telefono:''}],error:null};
+ return {data:'11111111-1111-4111-8111-111111111111',error:null};
+}};
+const testActions=identityActions.createNexusActions({client:testClient,authorized:()=>true});
+await testActions.execute('createClient',{
+ p_nombre:'Cliente de prueba',p_dui:'012345678',
+ p_direccion:'',p_ubicacion:'',p_telefono:'',p_vivienda:null,
+ p_lugar_trabajo:'',p_telefono_trabajo:'',p_referencias:[]
+});
+assert.equal(rpcCalls.at(-1).name,'inv_crear_cliente');
+assert.equal(rpcCalls.at(-1).args.p_vivienda,null);
+await testActions.execute('createContract',{
+ p_numero:'C-PRUEBA',p_cliente_id:'22222222-2222-4222-8222-222222222222',
+ p_vendedor_id:'11111111-1111-4111-8111-111111111111',
+ p_fecha:'2026-11-19',p_modalidad:'credito',p_frecuencia:'mensual',p_plan:'normal',
+ p_cuota:null,p_saldo_inicial:null,p_fecha_plan:null,p_ruta:'',p_dia_cobro:'',
+ p_receptor_alterno:'',p_comision:0,p_prima:0,p_prima_recibida:false,
+ p_detalles:[{item_id:'33333333-3333-4333-8333-333333333333',cantidad:1,precio_credito_unitario:12,comision_linea:0}],
+ p_observaciones:''
+});
+assert.equal(rpcCalls.at(-1).name,'inv_crear_contrato_borrador');
+assert.equal(rpcCalls.at(-1).args.p_cliente_id,'22222222-2222-4222-8222-222222222222');
+assert.equal(rpcCalls.at(-1).args.p_vendedor_id,'11111111-1111-4111-8111-111111111111');
+const testReader=identityReader.createNexusReader({client:testClient,authorized:()=>true});
+const testSellers=await testReader.list('contractSellers');
+assert.equal(rpcCalls.at(-1).name,'inv_catalogo_vendedores_manual');
+assert.equal(testSellers[0].nombre,'Vendedor de prueba');
+const testClients=await testReader.list('contracts','012345678');
+assert.equal(rpcCalls.at(-1).name,'inv_buscar_clientes');
+assert.equal(rpcCalls.at(-1).args.p_busqueda,'012345678');
+const contractItems=await testReader.list('contractInventory');
+assert.equal(rpcCalls.at(-1).name,'inv_catalogo_articulos_contratos');
+assert.equal(Array.isArray(contractItems),true);
+assert.equal(testClients[0].dui_mostrado,'*****1234');
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');

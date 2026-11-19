@@ -1648,6 +1648,7 @@ async function openIndependentModule(id){
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
     const params={p_referencias:[]};
     for(const [key] of fields)params[key]=inputs[key].value.trim();
+    if(!params.p_vivienda)params.p_vivienda=null;
     if(!params.p_nombre||!params.p_dui){status.textContent="Nombre y DUI son obligatorios.";return}
     if(!confirm("¿Registrar este cliente?"))return;
     customerButton.disabled=true;status.textContent="Registrando cliente…";
@@ -1680,6 +1681,8 @@ async function openIndependentModule(id){
    let loadedDraftId=null,loadedDraftLines=[];
    const clearLoaded=()=>{
     loadedDraftId=null;loadedDraftLines=[];allocation.replaceChildren();
+    const oldIdentity=confirmForm.querySelector(".cln-contract-identity");
+    if(oldIdentity)oldIdentity.remove();
     const prompt=document.createElement("p");prompt.className="cln-empty";
     prompt.textContent="Cargá los artículos del contrato para elegir dónde se entregarán.";
     allocation.append(prompt);
@@ -1700,6 +1703,21 @@ async function openIndependentModule(id){
      if(!data||data.estado!=="borrador"||!Array.isArray(data.articulos)||!data.articulos.length){
       throw Error("El contrato no está en estado borrador o no tiene artículos.");
      }
+     // Mostrar los datos persistidos del contrato real; no depender de los campos
+     // del formulario que podrían haberse limpiado o escrito en otro dispositivo.
+     const [profileResponse,manualSellers]=await Promise.all([
+      SB.rpc("inv_ficha_cliente",{p_cliente_id:data.cliente_id}),
+      nexusReader.list("contractSellers")
+     ]);
+     if(token!==nexusViewEpoch||moduleHub.hidden||draftId.value.trim()!==requested)return;
+     if(profileResponse.error||!profileResponse.data)throw Error("No se pudo consultar el nombre y DUI del cliente.");
+     const profile=profileResponse.data;
+     const foundSeller=manualSellers.find(item=>item.id===data.vendedor_id);
+     if(!foundSeller)throw Error("No se pudo verificar el vendedor registrado en este contrato.");
+     const identity=confirmForm.querySelector(".cln-contract-identity")||document.createElement("p");
+     identity.className="cln-contract-identity";
+     identity.textContent="Cliente: "+String(profile.nombre||"")+" · DUI: "+String(profile.dui||"Sin registrar")+" · Vendedor: "+foundSeller.nombre;
+     confirmForm.insertBefore(identity,draftId);
      allocation.replaceChildren();loadedDraftLines=[];
      const heading=document.createElement("p");heading.className="cln-small-kpi";
      heading.textContent="Contrato "+String(data.numero||"")+" · "+data.articulos.length+" artículo(s)";
@@ -1760,46 +1778,83 @@ async function openIndependentModule(id){
    const field=(label,type="text",required=false)=>{
     const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
    };
+
    const number=field("Número de contrato", "text",true);
-   const customer=document.createElement("select");customer.required=true;customer.setAttribute("aria-label","Cliente del contrato");draftForm.append(customer);
-   const vendor=document.createElement("select");vendor.required=true;vendor.setAttribute("aria-label","Vendedor del contrato");draftForm.append(vendor);
+   const identityTitle=document.createElement("h5");identityTitle.textContent="Cliente del contrato";draftForm.append(identityTitle);
+   const clientName=field("Nombre completo del cliente","text",true);
+   clientName.maxLength=200;clientName.autocomplete="name";
+   const clientDui=field("DUI del cliente (########-#)","text",true);
+   clientDui.maxLength=10;clientDui.inputMode="numeric";
+   clientDui.pattern="[0-9]{9}|[0-9]{8}-[0-9]";
+   const customerLookup=document.createElement("input");
+   customerLookup.type="search";customerLookup.autocomplete="off";
+   customerLookup.maxLength=100;customerLookup.placeholder="Buscar cliente existente por nombre o DUI…";
+   customerLookup.setAttribute("aria-label","Buscar cliente registrado");
+   draftForm.append(customerLookup);
+   const customer=document.createElement("select");
+   customer.required=false;customer.setAttribute("aria-label","Cliente existente encontrado");draftForm.append(customer);
+   const clientFeedback=document.createElement("small");clientFeedback.className="cln-field-helper";
+   clientFeedback.textContent="Escribí nombre Y DUI. Si el DUI ya está registrado, se reutiliza ese cliente. Si es nuevo, se registra al guardar el borrador.";
+   draftForm.append(clientFeedback);
+   const sellerTitle=document.createElement("h5");sellerTitle.textContent="Vendedor responsable";draftForm.append(sellerTitle);
+   const vendor=field("Nombre del vendedor","text",true);
+   vendor.maxLength=200;vendor.autocomplete="off";
+   const sellerDatalist=document.createElement("datalist");
+   sellerDatalist.id="cln-contract-sellers-"+token;
+   vendor.setAttribute("list",sellerDatalist.id);draftForm.append(sellerDatalist);
+   const vendorChoice=document.createElement("select");
+   vendorChoice.hidden=true;vendorChoice.setAttribute("aria-label","Elegir vendedor con el mismo nombre");
+   draftForm.append(vendorChoice);
+   const sellerFeedback=document.createElement("small");sellerFeedback.className="cln-field-helper";
+   sellerFeedback.textContent="Escribí un nombre o elegí uno de las sugerencias. El contrato aparecerá en su historial; los vendedores nuevos se registran al guardar.";
+   draftForm.append(sellerFeedback);
    const fillSelect=(select,items,label)=>{
     select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
     for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
    };
-   // No llamar inv_buscar_clientes con texto vacío: el servidor exige al menos tres caracteres.
-   fillSelect(customer,[],"Buscá primero al cliente por nombre o DUI");
-   const customerLookup=document.createElement("input");
-   customerLookup.type="search";customerLookup.autocomplete="off";
-   customerLookup.maxLength=100;customerLookup.placeholder="Escribí al menos 3 letras del cliente o su DUI…";
-   customerLookup.setAttribute("aria-label","Buscar cliente para nuevo contrato");
-   draftForm.insertBefore(customerLookup,customer);
-   const customerFeedback=document.createElement("small");
-   customerFeedback.className="cln-field-helper";
-   customerFeedback.textContent="Buscá y seleccioná al cliente. No necesitás recorrer una lista de todos los clientes.";
-   draftForm.insertBefore(customerFeedback,customer);
-   let customerLookupTimer=null,customerLookupEpoch=0;
+   fillSelect(customer,[],"No hay cliente seleccionado; se comprobará el DUI al guardar");
+   let clientQueryTimer=null,clientQueryEpoch=0;
    customerLookup.addEventListener("input",()=>{
-    const sequence=++customerLookupEpoch,term=customerLookup.value.trim();
-    if(customerLookupTimer)clearTimeout(customerLookupTimer);
-    fillSelect(customer,[],term.length<3?"Escribí 3 caracteres o más":"Buscando clientes…");
+    const sequence=++clientQueryEpoch,term=customerLookup.value.trim();
+    if(clientQueryTimer)clearTimeout(clientQueryTimer);
+    fillSelect(customer,[],term.length<3?"Escribí al menos 3 caracteres":"Buscando…");
     if(term.length<3)return;
-    customerLookupTimer=setTimeout(async()=>{
+    clientQueryTimer=setTimeout(async()=>{
      try{
-      const matches=await nexusReader.list("contracts",term);
-      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==customerLookupEpoch)return;
-      fillSelect(customer,matches,matches.length?"Seleccioná al cliente":"No hay clientes con ese nombre");
+      const found=await nexusReader.list("contracts",term);
+      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==clientQueryEpoch)return;
+      fillSelect(customer,found,found.length?"Elegí un cliente existente":"No se encontraron clientes");
+      found.forEach((item,index)=>{customer.options[index+1].textContent=item.nombre+(item.dui_mostrado?" · DUI "+item.dui_mostrado:"");});
+      clientFeedback.textContent=found.length?"Elegí al cliente y completá su DUI para verificar que sea el correcto.":"No se encontraron coincidencias. Podés crear uno nuevo con nombre y DUI.";
      }catch(e){
-      if(token===nexusViewEpoch&&sequence===customerLookupEpoch){
-       fillSelect(customer,[],"No se pudo buscar");
-       customerFeedback.textContent="Error de búsqueda: "+String(e.message||e);
+      if(token===nexusViewEpoch&&sequence===clientQueryEpoch){
+       fillSelect(customer,[],"Búsqueda no disponible");
+       clientFeedback.textContent="No se pudo buscar: "+String(e.message||e);
       }
      }
-    },260);
+    },300);
    });
-   const vendors=await nexusReader.list("sellers");
+   customer.addEventListener("change",()=>{
+    const selected=customer.selectedOptions[0];
+    if(!selected?.value)return;
+    const cleanName=selected.textContent.split(" · DUI ")[0];
+    clientName.value=cleanName;
+    const searchedDigits=customerLookup.value.replace(/\D/g,"");
+    clientDui.value=searchedDigits.length===9?searchedDigits:"";
+   });
+   for(const control of [clientName,clientDui])
+    control.addEventListener("input",()=>{if(customer.value)customer.value="";});
+   let contractSellers=await nexusReader.list("contractSellers");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   fillSelect(vendor,vendors,"Seleccionar vendedor");
+   function paintContractSellerSuggestions(){
+    sellerDatalist.replaceChildren();
+    for(const seller of contractSellers){
+     const option=document.createElement("option");option.value=seller.nombre;
+     sellerDatalist.append(option);
+    }
+   }
+   paintContractSellerSuggestions();
+   vendor.addEventListener("input",()=>{vendorChoice.hidden=true;vendorChoice.value="";});
    const date=field("Fecha de contrato","date",true);date.value=new Date().toISOString().slice(0,10);
    const choose=(label,options)=>{
     const el=document.createElement("select");el.setAttribute("aria-label",label);
@@ -1822,7 +1877,8 @@ async function openIndependentModule(id){
    const detailsTitle=document.createElement("h5");detailsTitle.textContent="Artículos del contrato";draftForm.append(detailsTitle);
    const details=document.createElement("div");draftForm.append(details);
    const contractLines=[];
-   const inventory=await nexusReader.list("inventory");
+   // Catálogo accesible para admin y secretaria sin exponer existencias administrativas.
+   const inventory=await nexusReader.list("contractInventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
    const addDetail=document.createElement("button");addDetail.type="button";addDetail.className="g2";addDetail.textContent="Agregar artículo";
    const newDetail=()=>{
@@ -1841,25 +1897,136 @@ async function openIndependentModule(id){
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
    const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
    const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Guardar contrato borrador";draftForm.append(draftButton);
+
+   // El contrato enlaza IDs verificados: nunca guarda un nombre suelto de vendedor o cliente.
    draftForm.onsubmit=async event=>{
     event.preventDefault();
-    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-    const contractDetails=contractLines.map(line=>({item_id:line.item.value,cantidad:Number(line.qty.value),precio_credito_unitario:Number(line.price.value),comision_linea:Number(line.lineCommission.value)}));
-    if(contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){status.textContent="Revisa artículos, cantidades y precios.";return}
-    const params={p_numero:number.value.trim(),p_cliente_id:customer.value,p_vendedor_id:vendor.value,p_fecha:date.value,p_modalidad:modality.value,p_frecuencia:frequency.value,p_plan:plan.value,p_cuota:installment.value===""?null:Number(installment.value),p_saldo_inicial:initialBalance.value===""?null:Number(initialBalance.value),p_fecha_plan:planDate.value||null,p_ruta:route.value.trim(),p_dia_cobro:collectionDay.value.trim(),p_receptor_alterno:alternate.value.trim(),p_comision:Number(commission.value),p_prima:Number(deposit.value),p_prima_recibida:depositCheckbox.checked,p_detalles:contractDetails,p_observaciones:draftNotes.value.trim()};
-    if(!confirm("¿Crear contrato borrador? No se descontará inventario hasta su confirmación."))return;
-    draftButton.disabled=true;status.textContent="Guardando contrato borrador…";
+    if(token!==nexusViewEpoch||moduleHub.hidden||draftButton.disabled)return;
+    const fullName=clientName.value.trim().replace(/\s+/g," ");
+    const duiEntered=clientDui.value.trim();
+    const duiDigits=duiEntered.replace(/\D/g,"");
+    const sellerEntered=vendor.value.trim().replace(/\s+/g," ");
+    const selectedCustomerId=customer.value;
+    const comparable=name=>clnNormalizeLookup(name).replace(/\s+/g," ");
+    if(fullName.length<2||fullName.length>200){
+     status.textContent="Escribí el nombre completo del cliente.";clientName.focus();return;
+    }
+    if(!/^(?:[0-9]{9}|[0-9]{8}-[0-9])$/.test(duiEntered)||duiDigits.length!==9){
+     status.textContent="Ingresá el DUI completo de 9 dígitos (########-#).";clientDui.focus();return;
+    }
+    if(sellerEntered.length<2||sellerEntered.length>200){
+     status.textContent="Escribí el nombre completo del vendedor.";vendor.focus();return;
+    }
+    const contractDetails=contractLines.map(line=>({
+     item_id:line.item.value,cantidad:Number(line.qty.value),
+     precio_credito_unitario:Number(line.price.value),comision_linea:Number(line.lineCommission.value)
+    }));
+    if(!contractDetails.length||contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){
+     status.textContent="Revisá artículos, cantidades y precios.";return;
+    }
+    if(!number.value.trim()||!date.value){
+     status.textContent="Faltan el número o la fecha del contrato.";return;
+    }
+    const params={
+     p_numero:number.value.trim(),p_cliente_id:null,p_vendedor_id:null,p_fecha:date.value,
+     p_modalidad:modality.value,p_frecuencia:frequency.value,p_plan:plan.value,
+     p_cuota:installment.value===""?null:Number(installment.value),
+     p_saldo_inicial:initialBalance.value===""?null:Number(initialBalance.value),
+     p_fecha_plan:planDate.value||null,p_ruta:route.value.trim(),
+     p_dia_cobro:collectionDay.value.trim(),p_receptor_alterno:alternate.value.trim(),
+     p_comision:Number(commission.value),p_prima:Number(deposit.value),
+     p_prima_recibida:depositCheckbox.checked,p_detalles:contractDetails,
+     p_observaciones:draftNotes.value.trim()
+    };
+    const total=contractDetails.reduce((sum,item)=>sum+item.cantidad*item.precio_credito_unitario,0);
+    if(!Number.isFinite(total)||total>999999999999.99||params.p_prima>total){
+     status.textContent="La prima no puede superar el valor total de los artículos.";return;
+    }
+    if(params.p_saldo_inicial!==null&&Math.abs(params.p_saldo_inicial-(total-params.p_prima))>0.009){
+     status.textContent="El saldo inicial debe ser el total de artículos menos la prima.";return;
+    }
+    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor antes de guardar el borrador. No se descontará inventario hasta confirmarlo."))return;
+    draftButton.disabled=true;status.textContent="Comprobando cliente y vendedor…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     // La búsqueda completa del DUI coincide exactamente con nueve dígitos del servidor.
+     // El RPC devuelve el DUI enmascarado; no se expone ningún documento adicional.
+     let customers=await nexusReader.list("contracts",duiDigits);
+     if(token!==nexusViewEpoch||moduleHub.hidden)throw Error("La sesión o el módulo cambió; comprobá el registro.");
+     if(customers.length>1)throw Error("Hay varios clientes con ese DUI; revisá los datos antes de continuar.");
+     let matchingClient=customers[0]||null;
+     if(matchingClient&&comparable(matchingClient.nombre)!==comparable(fullName)){
+      throw Error("El DUI pertenece a un cliente registrado con otro nombre. Buscalo en Clientes y comprobá ambos datos antes de crear el contrato.");
+     }
+     if(selectedCustomerId&&matchingClient&&selectedCustomerId!==matchingClient.id){
+      throw Error("El cliente elegido no coincide con el DUI escrito. Verificá los dos datos.");
+     }
+     if(selectedCustomerId&&!matchingClient){
+      throw Error("El cliente elegido no coincide con el DUI ingresado. Buscalo por su documento o registrá el correcto.");
+     }
+     if(!matchingClient){
+      status.textContent="Registrando cliente "+fullName+"…";
+      try{
+       const createdId=await actions.execute("createClient",{
+        p_nombre:fullName,p_dui:duiDigits,p_direccion:"",p_ubicacion:"",
+        p_telefono:"",p_vivienda:null,p_lugar_trabajo:"",
+        p_telefono_trabajo:"",p_referencias:[]
+       });
+       matchingClient={id:String(createdId),nombre:fullName};
+      }catch(error){
+       // Si otro dispositivo registró el mismo DUI, reutilizar el cliente verificado.
+       if(!/ya existe un cliente con ese dui/i.test(String(error.message||"")))throw error;
+       customers=await nexusReader.list("contracts",duiDigits);
+       matchingClient=customers.length===1?customers[0]:null;
+       if(!matchingClient||comparable(matchingClient.nombre)!==comparable(fullName))throw Error("Ya existe un cliente con ese DUI. Revisá el nombre en Clientes.");
+      }
+      if(token!==nexusViewEpoch||moduleHub.hidden)throw Error("La sesión cambió después de registrar el cliente. Comprobá el estado antes de reintentar.");
+     }
+     params.p_cliente_id=matchingClient.id;
+     status.textContent="Comprobando vendedor "+sellerEntered+"…";
+     contractSellers=await nexusReader.list("contractSellers");
+     if(token!==nexusViewEpoch||moduleHub.hidden)throw Error("La sesión o el módulo cambió; comprobá el registro.");
+     const matches=contractSellers.filter(item=>comparable(item.nombre)===comparable(sellerEntered));
+     if(matches.length>1){
+      const selected=matches.find(item=>item.id===vendorChoice.value);
+      if(!selected){
+       vendorChoice.replaceChildren();
+       const blank=document.createElement("option");blank.value="";blank.textContent="Elegí el vendedor correcto";vendorChoice.append(blank);
+       for(const item of matches){
+        const option=document.createElement("option");option.value=item.id;
+        option.textContent=item.nombre+" · Ref. "+item.id.slice(-6);vendorChoice.append(option);
+       }
+       vendorChoice.hidden=false;
+       throw Error("Hay vendedores con nombres iguales. Seleccioná el correcto y volvé a guardar.");
+      }
+      params.p_vendedor_id=selected.id;
+     }else if(matches.length===1){
+      params.p_vendedor_id=matches[0].id;
+     }else{
+      status.textContent="Registrando vendedor "+sellerEntered+"…";
+      const createdVendor=await actions.execute("createSeller",{p_nombre:sellerEntered});
+      if(token!==nexusViewEpoch||moduleHub.hidden)throw Error("La sesión cambió después de registrar al vendedor. Comprobá el estado antes de reintentar.");
+      params.p_vendedor_id=String(createdVendor);
+      contractSellers.push({id:String(createdVendor),nombre:sellerEntered});
+      paintContractSellerSuggestions();
+     }
+     status.textContent="Guardando contrato de "+fullName+"…";
      const result=await actions.execute("createContract",params);
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Borrador guardado. Revisá las ubicaciones antes de confirmar; todavía no se ha descontado inventario.";
      draftId.value=String(result);
-     draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+     status.textContent="Borrador guardado con cliente y vendedor vinculados. Lo encontrarás en el historial del vendedor. Aún falta confirmar ubicaciones para descontar inventario.";
+     const summary=document.createElement("p");summary.className="cln-contract-identity";
+     summary.textContent="Contrato "+params.p_numero+" · Cliente: "+fullName+" · DUI terminado en "+duiDigits.slice(-4)+" · Vendedor: "+sellerEntered;
+     const oldPreview=confirmForm.querySelector(".cln-contract-identity");if(oldPreview)oldPreview.remove();
+     confirmForm.insertBefore(summary,draftId);
+     draftForm.reset();date.value=new Date().toISOString().slice(0,10);details.replaceChildren();contractLines.length=0;newDetail();
+     customerLookup.value="";fillSelect(customer,[],"Buscá un cliente o escribí nombre y DUI");
+     vendorChoice.hidden=true;vendorChoice.replaceChildren();
      await loadDraftDetails();
-    }catch(e){if(token===nexusViewEpoch)status.textContent="Borrador no confirmado; verifica antes de reintentar: "+e.message}
-    finally{draftButton.disabled=false}
+    }catch(e){
+     if(token===nexusViewEpoch)status.textContent="No se pudo completar el borrador: "+String(e.message||e)+". Si se registró el cliente o vendedor, se reutilizará su identificación en el siguiente intento.";
+    }finally{draftButton.disabled=false}
    };
    clnHubDetail.append(draftForm);
    const search=document.createElement("input");
@@ -1880,7 +2047,7 @@ async function openIndependentModule(id){
    async function refreshSellerList(){
     sellerButton.disabled=true;
     try{
-     const sellers=await nexusReader.list("sellers");
+     const sellers=await nexusReader.list("contractSellers");
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      sellerList.replaceChildren();
      const summary=document.createElement("p");summary.className="cln-small-kpi";
@@ -2293,6 +2460,11 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-metric small{color:var(--mut)}
 #clnHubDetail .cln-metric strong{font-size:16px}
 #clnHubDetail .cln-history-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+
+/* Identidad de contratos: nombre + DUI, y vendedor relacionado con historial. */
+#clnHubDetail .cln-subpanel form>h5{flex:1 0 100%;font-size:15px;font-weight:750;letter-spacing:-.01em;color:var(--tx);margin:15px 0 0}
+#clnHubDetail .cln-contract-identity{font-size:13px;color:var(--tx);line-height:1.6;background:color-mix(in srgb,var(--ac) 9%,var(--card));padding:12px 14px;border:1px solid color-mix(in srgb,var(--ac) 22%,var(--bd));border-radius:13px}
+#clnHubDetail .cln-field-helper{line-height:1.5;margin-top:-3px;color:var(--mut)}
 </style>
 
 </body></html>
