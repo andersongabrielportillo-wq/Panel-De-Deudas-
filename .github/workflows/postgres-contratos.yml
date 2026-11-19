@@ -4,6 +4,8 @@ on:
     branches: [integracion-inventario-fase15]
     paths:
       - 'tests/postgres/**'
+      - 'sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql'
+      - 'sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql'
       - 'scripts/prepare-cln-inventory-import.mjs'
       - 'tests/fixtures/generate-synthetic-cln-stock.mjs'
       - 'sql/cl_nexus_schema_lab_SNAPSHOT_SOLO_ENSAYO_NO_PRODUCCION.sql'
@@ -165,11 +167,26 @@ jobs:
             echo 'No-secretary mapping must fail'; exit 1
           fi
           psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
-      - name: Assign only owner and secretary; leave third Deudas account outside inventory
+      - name: Prepare synthetic original Panel Auth emails (NEVER real usernames)
         shell: bash
         run: |
           set -euo pipefail
-          psql -X -v ON_ERROR_STOP=1 -v roles_json='[{"user_id":"00000000-0000-0000-0000-000000000002","rol":"admin"},{"user_id":"00000000-0000-0000-0000-000000000003","rol":"secretaria"}]' -f sql/cl_nexus_roles_provision_PREPARADO_NO_EJECUTAR.sql
+          psql -X -v ON_ERROR_STOP=1 -c "ALTER TABLE auth.users ADD COLUMN email text UNIQUE"
+          psql -X -v ON_ERROR_STOP=1 -c "UPDATE auth.users SET email=CASE id WHEN '00000000-0000-0000-0000-000000000002'::uuid THEN 'admin-fake@example.invalid' WHEN '00000000-0000-0000-0000-000000000003'::uuid THEN 'secretary-fake@example.invalid' ELSE 'third-fake@example.invalid' END"
+      - name: Reject nonexistent production account before provisioning any role
+        shell: bash
+        run: |
+          set -euo pipefail
+          if psql -X -v ON_ERROR_STOP=1 -v admin_email='unrelated-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_id.log 2>&1; then
+            echo 'Nonexistent member was accepted'; exit 1
+          fi
+          grep -q 'Expected exactly 2 explicitly authorized members' /tmp/cln_wrong_id.log
+          psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
+      - name: Assign only existing original Panel accounts; leave third Deudas account outside inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql
           psql -X -Atq -c "SELECT (SELECT count(*) FROM public.inv_members)=2 AND (SELECT count(*) FROM public.inv_members WHERE rol='admin')=1 AND (SELECT count(*) FROM public.inv_members WHERE rol='secretaria')=1 AND NOT EXISTS (SELECT 1 FROM public.inv_members WHERE user_id='00000000-0000-0000-0000-000000000004')" | grep -qx t
       - name: Confirm unauthorized third user cannot invoke CL Nexus API
         shell: bash
