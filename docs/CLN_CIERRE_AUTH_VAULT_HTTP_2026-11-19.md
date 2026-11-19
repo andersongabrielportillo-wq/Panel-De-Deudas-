@@ -2,6 +2,16 @@
 
 **Estado: NO PUBLICAR TODAVÍA.** Se trabaja únicamente en la rama de integración. Ningún comando de este documento ejecuta una migración automáticamente.
 
+## Pausa de laboratorio ejecutada con autorización (19 noviembre 2026)
+
+- **Autorización explícita del propietario:** pausar TEMPORALMENTE solo el proyecto de LAB `Comercial Lopez Pruebas` para preparar ensayo real de recuperación Auth/Vault; NO borrar laboratorio, NO tocar producción.
+- Acción efectiva `mcp__Supabase__pause_project` sobre el proyecto existente de LAB `dozcnytevqhoymzqlxah`: `success=true`. Verificación posterior de `get_project`: **`INACTIVE`**.
+- Verificación simultánea de `Panel de Deudas` original `josdmjjbnrugiwlwgjky`: **`ACTIVE_HEALTHY`**. No se ejecutó SQL modificador, migración, borrado ni despliegue en producción.
+- Supabase documenta que un proyecto pausado se puede **reanudar desde el panel con datos y configuración previos**, dentro de **90 días** de la pausa. Ref: https://supabase.com/docs/guides/platform/free-project-pausing
+- Solo hay una organización accesible para el usuario, denominada `Panel de Deudas`, y todavía debe confirmar que será la organización de destino del ensayo. Verificar tarifa con `get_cost` antes de crear proyecto; NO aceptar un cobro no autorizado.
+- Proyecto temporal de recuperación todavía **NO creado**; no se ha restaurado Auth/Vault ni extraído/copied ninguna clave raíz. NO-GO de publicación sigue vigente.
+- Al terminar el ensayo de restauración: antes de reactivar LAB puede ser necesario retirar el proyecto temporal creado; **no eliminar ningún proyecto** sin nueva autorización explícita del propietario.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
