@@ -96,15 +96,68 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
 <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol><symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace"><div class="cln-workspace-content"><h2>CL Nexus</h2><p>Inventario, Garantías y Contratos usan el mismo inicio de sesión de la aplicación. Solo Deudas necesita su contraseña adicional.</p><div id="clnModuleChoices"><button class="g2" type="button" id="clnHubDebts">Deudas · desbloquear</button><button class="g2" type="button" id="clnHubInventory">Inventario</button><button class="g2" type="button" id="clnHubWarranties">Garantías</button><button class="g2" type="button" id="clnHubContracts">Contratos</button><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button></div><p id="clnHubStatus" role="status" aria-live="polite"></p><div id="clnHubDetail" aria-live="polite"></div><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace">
+<div class="cln-workspace-content">
+ <header class="cln-header">
+  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, garantías y contratos con una sola sesión.</p></div></div>
+  <span class="cln-session-chip">Sesión activa</span>
+ </header>
+ <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
+  <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
+  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
+  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas · acceso protegido</button>
+ </nav>
+ <main class="cln-content">
+  <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
+  <div id="clnHubDetail" aria-live="polite"></div>
+ </main>
+ <footer class="cln-footer"><span>Las existencias se registran después del conteo físico; no se toman del inventario histórico.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
+</div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}
-#clnModuleHub{min-height:80vh;padding:clamp(14px,3vw,36px);background:var(--bg)}
-#clnModuleHub .cln-workspace-content{max-width:1120px;margin:0 auto;padding:clamp(18px,3vw,30px);border:1px solid var(--rim);border-radius:24px;background:var(--card);box-shadow:var(--sh)}
-#clnModuleChoices{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
-#clnModuleChoices button{margin:0}
-#clnHubDetail{min-height:260px;overflow-wrap:anywhere}
-#clnHubLogout{margin-top:18px}
-@media(max-width:599px){#clnModuleHub{padding:10px}#clnModuleHub .cln-workspace-content{padding:16px;border-radius:20px}#clnModuleChoices button{flex:1 1 135px}}
+#clnModuleHub{min-height:100dvh;padding:clamp(12px,2.8vw,32px);background:var(--bg);color:var(--tx)}
+#clnModuleHub .cln-workspace-content{width:min(1200px,100%);margin:auto;border:1px solid var(--rim,var(--bd));border-radius:28px;background:var(--card);box-shadow:var(--sh);overflow:hidden}
+#clnModuleHub .cln-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:clamp(20px,3.5vw,34px);background:linear-gradient(112deg,color-mix(in srgb,var(--ac) 12%,var(--card)),color-mix(in srgb,var(--ac2) 7%,var(--card)));border-bottom:1px solid var(--rim,var(--bd))}
+#clnModuleHub .cln-header-brand{display:flex;align-items:center;gap:16px;min-width:0}
+#clnModuleHub .cln-logo{width:54px;height:54px;flex:none;display:grid;place-items:center;border-radius:18px;color:#fff;font-size:19px;font-weight:800;letter-spacing:-.07em;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 10px 24px rgba(24,88,180,.2)}
+#clnModuleHub .cln-kicker{margin:0 0 5px;font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--mut)}
+#clnModuleHub .cln-header h2{font-size:clamp(22px,3vw,32px);font-weight:750;line-height:1.1;margin:0;color:var(--tx)}
+#clnModuleHub .cln-subtitle{font-size:13px;line-height:1.5;color:var(--mut);margin:7px 0 0}
+#clnModuleHub .cln-session-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bd);border-radius:100px;padding:8px 12px;font-size:12px;color:var(--mut);background:var(--card);white-space:nowrap}
+#clnModuleHub .cln-session-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grn)}
+#clnModuleChoices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:16px clamp(20px,3.5vw,34px);border-bottom:1px solid var(--rim,var(--bd));background:color-mix(in srgb,var(--card) 92%,var(--ac))}
+#clnModuleChoices button.cln-tab{border-radius:13px;padding:11px 16px;margin:0;min-height:42px;font-weight:650;border:1px solid transparent;color:var(--mut);background:transparent;transition:background .18s,color .18s}
+#clnModuleChoices button.cln-tab:hover{background:color-mix(in srgb,var(--ac) 8%,transparent);color:var(--tx)}
+#clnModuleChoices button.cln-tab[aria-pressed="true"]{background:color-mix(in srgb,var(--ac) 15%,var(--card));border-color:color-mix(in srgb,var(--ac) 27%,var(--bd));color:var(--ac)}
+#clnModuleChoices button.cln-tab-protected{margin-left:auto;border-color:var(--bd);color:var(--tx)}
+#clnModuleHub .cln-content{padding:clamp(18px,3vw,32px);min-height:360px}
+#clnModuleHub .cln-section-status{font-size:12px;color:var(--mut);min-height:18px;margin:0 0 16px}
+#clnHubDetail{overflow-wrap:anywhere}
+#clnModuleHub .cln-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px clamp(20px,3.5vw,34px);border-top:1px solid var(--rim,var(--bd));color:var(--mut);font-size:12px}
+#clnModuleHub .cln-utilities{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#clnModuleHub .cln-utilities button{margin:0}
+@supports (backdrop-filter:blur(12px)){#clnModuleHub .cln-workspace-content{background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(22px) saturate(135%);-webkit-backdrop-filter:blur(22px) saturate(135%)}}
+
+/* Pestañas interiores: conservan los formularios reales y evitan desplazarse entre operaciones. */
+#clnHubDetail .cln-subtabs{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:5px 1px 16px;margin:10px 0 16px;scroll-snap-type:x proximity}
+#clnHubDetail .cln-subtab{flex:0 0 auto;min-height:40px;padding:9px 14px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--card) 91%,var(--ac));color:var(--mut);font:inherit;font-size:13px;font-weight:650;cursor:pointer;scroll-snap-align:start}
+#clnHubDetail .cln-subtab:hover,#clnHubDetail .cln-subtab:focus-visible{border-color:var(--ac);color:var(--tx)}
+#clnHubDetail .cln-subtab[aria-selected="true"]{color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,var(--card));border-color:color-mix(in srgb,var(--ac) 38%,var(--bd))}
+#clnHubDetail .cln-subpanel[hidden]{display:none!important}
+#clnHubDetail .cln-subpanel{min-height:190px}
+#clnHubDetail .cln-subpanel-title{font-size:17px;color:var(--tx);margin:4px 0 17px}
+#clnHubDetail .cln-subpanel>form{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:17px;margin:0 0 14px;background:color-mix(in srgb,var(--ac) 3%,var(--card));border:1px solid var(--bd);border-radius:17px}
+#clnHubDetail .cln-subpanel>form>h4,#clnHubDetail .cln-subpanel>form>h5,#clnHubDetail .cln-subpanel>form>p{flex:1 0 100%;margin:0}
+#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{min-width:0;flex:1 1 210px;max-width:100%;box-sizing:border-box}
+#clnHubDetail .cln-subpanel>form>div{display:flex;flex:1 0 100%;flex-wrap:wrap;gap:9px}
+#clnHubDetail .cln-subpanel>form>div>div{display:flex;flex-wrap:wrap;gap:8px;width:100%;padding:10px;border:1px solid var(--bd);border-radius:11px}
+#clnHubDetail .cln-subpanel>form>div>div>input,#clnHubDetail .cln-subpanel>form>div>div>select{min-width:0;flex:1 1 130px}
+#clnHubDetail .cln-subpanel>form>button{margin:0;max-width:100%}
+#clnHubDetail .cln-subpanel ul{max-height:min(55dvh,540px);overflow:auto;padding:7px 8px 7px 25px}
+#clnHubDetail .cln-subpanel li{padding:7px 5px;overflow-wrap:anywhere;border-bottom:1px solid var(--bd);font-size:13px}
+@media(max-width:599px){#clnHubDetail .cln-subtabs{margin-inline:-8px;padding-inline:8px}#clnHubDetail .cln-subpanel>form{padding:12px;gap:10px}#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{flex-basis:100%}#clnHubDetail .cln-subpanel>form>button{flex:1 1 100%}}
+@media(max-width:700px){#clnModuleHub{padding:9px}#clnModuleHub .cln-workspace-content{border-radius:20px}#clnModuleHub .cln-header{align-items:flex-start;padding:20px 16px}#clnModuleHub .cln-session-chip{display:none}#clnModuleHub .cln-logo{width:46px;height:46px;border-radius:14px}#clnModuleChoices{padding:12px;gap:6px}#clnModuleChoices button.cln-tab{flex:1 1 calc(50% - 8px);padding:11px 8px;text-align:center}#clnModuleChoices button.cln-tab-protected{margin-left:0}#clnModuleHub .cln-content{padding:16px}#clnModuleHub .cln-footer{flex-direction:column;align-items:stretch;padding:16px}#clnModuleHub .cln-utilities{justify-content:stretch}#clnModuleHub .cln-utilities button{flex:1 1 120px}}
+
 </style>
 <script src="./cl-nexus-reader.cjs"></script>
 <script src="./cl-nexus-actions.cjs"></script>
@@ -874,9 +927,57 @@ const clnHubViews=Object.freeze({
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
+
+// Navegación secundaria visual: mover nodos no altera RPC, listeners, formularios ni permisos.
+function arrangeNexusSections(groups,epoch){
+ if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
+ const tabs=document.createElement("nav");
+ tabs.className="cln-subtabs";tabs.setAttribute("role","tablist");
+ tabs.setAttribute("aria-label","Operaciones del módulo");
+ const buttons=[],panels=[];
+ for(const [index,group] of groups.entries()){
+  const [label,nodes]=group;
+  const button=document.createElement("button");
+  button.type="button";button.className="cln-subtab";button.textContent=label;
+  button.id="cln-subtab-"+epoch+"-"+index;
+  button.setAttribute("role","tab");button.setAttribute("aria-controls","cln-subpanel-"+epoch+"-"+index);
+  const panel=document.createElement("section");
+  panel.className="cln-subpanel";panel.id="cln-subpanel-"+epoch+"-"+index;
+  panel.setAttribute("role","tabpanel");panel.setAttribute("aria-labelledby",button.id);
+  const heading=document.createElement("h4");heading.className="cln-subpanel-title";heading.textContent=label;
+  panel.append(heading,...nodes);
+  tabs.append(button);buttons.push(button);panels.push(panel);
+ }
+ const activate=index=>{
+  if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
+  for(let i=0;i<buttons.length;i++){
+   const active=i===index;
+   buttons[i].setAttribute("aria-selected",String(active));
+   buttons[i].tabIndex=active?0:-1;
+   panels[i].hidden=!active;panels[i].inert=!active;
+  }
+ };
+ buttons.forEach((button,index)=>{
+  button.onclick=()=>activate(index);
+  button.onkeydown=event=>{
+   let next=index;
+   if(event.key==="ArrowRight")next=(index+1)%buttons.length;
+   else if(event.key==="ArrowLeft")next=(index+buttons.length-1)%buttons.length;
+   else if(event.key==="Home")next=0;
+   else if(event.key==="End")next=buttons.length-1;
+   else return;
+   event.preventDefault();activate(next);buttons[next].focus();
+  };
+ });
+ clnHubDetail.insertBefore(tabs,clnHubDetail.children[2]||null);
+ clnHubDetail.append(...panels);
+ activate(0);
+}
 async function openIndependentModule(id){
  const config=clnHubViews[id];
  if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
+ // Visual state only: authorization remains enforced by Supabase RPC and RLS.
+ for(const name of Object.keys(clnHubViews))document.getElementById(name).setAttribute("aria-pressed",String(name===id));
  const token=++nexusViewEpoch;
  clnHubDetail.replaceChildren();
  const title=document.createElement("h3");title.textContent=config.title;
@@ -1031,6 +1132,7 @@ async function openIndependentModule(id){
     finally{resolveButton.disabled=false}
    };
    clnHubDetail.append(resolveForm);
+   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token);
    return;
   }
   const kind=id==="clnHubInventory"?"inventory":"contracts";
@@ -1038,6 +1140,7 @@ async function openIndependentModule(id){
   let requestSequence=0;
   let inventorySelector=null;
   let renameSelector=null;
+  let sectionLayout=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
@@ -1263,6 +1366,7 @@ async function openIndependentModule(id){
     finally{saleButton.disabled=false}
    };
    clnHubDetail.append(saleForm);
+   sectionLayout=[["Existencias",[results]],["Entradas",[form,reviewForm]],["Traslados",[transferForm]],["Ventas",[saleForm,voidForm]],["Artículos",[renameForm]]];
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
@@ -1480,8 +1584,10 @@ async function openIndependentModule(id){
     finally{sellerButton.disabled=false}
    };
    clnHubDetail.append(search,searchButton,sellerButton);
+   sectionLayout=[["Clientes",[customerForm,search,searchButton,results]],["Vendedores",[sellerForm,sellerButton]],["Contratos",[draftForm,confirmForm]],["Primas",[depositForm]]];
   }
   clnHubDetail.append(results);
+  arrangeNexusSections(sectionLayout,token);
   if(kind==="inventory"){
    renderRows(await nexusReader.list("inventory"),++requestSequence);
   }else{
@@ -1566,7 +1672,7 @@ startAuth();
 #pwaUpdate{position:fixed;z-index:10000;bottom:calc(90px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));padding:15px;border:1px solid var(--bd);border-radius:18px;background:var(--solid,var(--card));color:var(--tx);box-shadow:0 14px 44px rgba(0,0,0,.28)}
 #pwaUpdate[hidden]{display:none!important}#pwaUpdate p{margin:5px 0 12px;color:var(--mut);font-size:13px}#pwaUpdate .row{margin:0;justify-content:flex-end}
 </style>
-<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del Panel de Deudas.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
+<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del CL Nexus.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
 <script>
 /* Actualizaciones PWA: no recargar con pagos pendientes ni mientras se guarda. */
 (function(){
@@ -1575,7 +1681,7 @@ startAuth();
   const apply=document.getElementById('pwaApply'),later=document.getElementById('pwaLater');
   let reg=null,waiting=null,requested=false,refreshing=false;
   const pending=()=>typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');
-  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del Panel de Deudas lista para instalar.';apply.disabled=false;}
+  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del CL Nexus lista para instalar.';apply.disabled=false;}
   apply.addEventListener('click',()=>{
     if(pending()){msg.textContent='Hay cambios pendientes. Espera a que aparezca «Sincronizado» y vuelve a intentarlo.';return;}
     if(!waiting)return;

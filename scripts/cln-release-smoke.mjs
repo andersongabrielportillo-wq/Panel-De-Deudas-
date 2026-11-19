@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 const read=p=>fs.readFileSync(p,'utf8');
 const html=read('index.html'),sw=read('sw.js'),manifest=JSON.parse(read('manifest.webmanifest'));
 assert.match(html,/const DEBT_GATE_ENABLED=true;/);
@@ -13,7 +14,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v10-login-unico-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v11-liquidglass-secciones-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -31,4 +32,22 @@ assert.match(html,/SB\.auth\.signInWithPassword\(\{email,password\}\)/);
 assert.match(html,/document\.getElementById\("debtUnlockButton"\)\.onclick=async/);
 assert.match(html,/await debtController\.open\(password\)/);
 
-console.log('PASS: unified gated CL Nexus PWA - all core assets, login controls and manifest present. No deployment performed.');
+assert.match(html,/COMERCIAL LÓPEZ · PANEL DE GESTIÓN/);
+assert.match(html,/cln-session-chip/);
+assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
+assert.match(html,/id="clnModuleChoices"[^>]*aria-label="Secciones de CL Nexus"/);
+assert.match(html,/name===id\)\)/);
+assert.match(html,/await debtController\.open\(password\)/);
+// Comprueba el JavaScript embebido además de los archivos externos.
+const embeddedScripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match=>match[1]).filter(code=>code.trim());
+assert.ok(embeddedScripts.length>=3,'Expected app and PWA inline scripts');
+for(const [index,code] of embeddedScripts.entries())assert.doesNotThrow(()=>new vm.Script(code,{filename:'index-inline-'+index+'.js'}),'JavaScript inline invalid');
+for(const label of ['Existencias','Entradas','Traslados','Ventas','Artículos','Liberación','Devoluciones','Reparaciones','Clientes','Vendedores','Contratos','Primas']){
+ assert.ok(html.includes('["'+label+'",['),'Missing sub-tab '+label);
+}
+assert.match(html,/function arrangeNexusSections\(groups,epoch\)/);
+assert.match(html,/panel\.setAttribute\("role","tabpanel"\)/);
+assert.match(html,/button\.setAttribute\("role","tab"\)/);
+assert.match(html,/panels\[i\]\.hidden=!active;panels\[i\]\.inert=!active/);
+assert.match(html,/arrangeNexusSections\(sectionLayout,token\)/);
+console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
