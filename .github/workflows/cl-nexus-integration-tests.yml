@@ -23,10 +23,11 @@ jobs:
           node --check debt-gate-client.cjs
           node --check debt-module-controller.cjs
           node --check scripts/build-cln-candidate.mjs
+          node --check cln-http-auth-probe.cjs
           node --check scripts/prepare-cln-inventory-import.mjs
           node --check scripts/prepare-cln-catalog-2026-3.mjs
       - name: Run debt backup tests
-        run: node --test tests/cln-catalog-only.test.mjs tests/cln-item-rename.test.mjs tests/cln-inventory-import-guard.test.mjs tests/cln-customer-search.test.mjs tests/cln-cutover-candidate.test.mjs tests/cl-nexus-rpc-parity.test.mjs tests/debt-production-rpc-contract.test.mjs tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
+        run: node --test tests/cln-http-auth-probe.test.mjs tests/cln-catalog-only.test.mjs tests/cln-item-rename.test.mjs tests/cln-inventory-import-guard.test.mjs tests/cln-customer-search.test.mjs tests/cln-cutover-candidate.test.mjs tests/cl-nexus-rpc-parity.test.mjs tests/debt-production-rpc-contract.test.mjs tests/debt-legacy-backup.test.mjs tests/debt-encrypted-backup.test.mjs tests/debt-migration-isolated.test.mjs tests/debt-main-screen.test.mjs tests/debt-cache-preflight.test.mjs tests/debt-gate-client.test.mjs tests/debt-module-controller.test.mjs tests/debt-gate-integration.test.mjs
       - name: Upload gated preview artifact (not deployed)
         uses: actions/upload-artifact@v4
         with:
