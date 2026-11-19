@@ -39,6 +39,15 @@
 - Próximo paso en la PC del propietario: comprobar/instalar e iniciar Docker Desktop desde fuente oficial y confirmar que `docker version` responde correctamente. Luego preparar, **sin exponer contraseñas en el chat ni logs**, las copias `roles.sql`, `schema.sql`, `data.sql` mediante comandos oficiales y ensayar importación exclusiva al TEMPORAL en una transacción con `ON_ERROR_STOP`. Completar `Auth/Vault` + pruebas HTTP reales de los tres usuarios ANTES de publicar.
 - Los tres proyectos mantienen sus roles: producción activa intacta, LAB pausado, recuperación temporal aislada activa. No hubo importaciones ni modificación de origen en esta etapa.
 
+## Camino sin Docker — respaldos selectivos, sin tocar producción
+
+- Decisión del propietario: **continuar sin instalar Docker**. `pg_restore` local puede inspeccionar el archivo `.dump` en modo de solo lectura; la restauración directa COMPLETA de un archivo `pg_dump -Fc` sobre Supabase gestionado está prohibida por el riesgo de duplicar los esquemas internos de Auth/Vault.
+- Comprobación SOLO LECTURA de la base original: `auth.users=3`, `auth.identities=3`, `vault.secrets=1`, `public.debts=1`, huella MD5 `cae1aed74556ce96dde7f673e33d4668`. El clon temporal no contiene usuarios ni secretos hasta importar datos.
+- Se generó y entregó al propietario `CLN_Preparar_Restauracion_Selectiva_SIN_DOCKER_SOLO_LECTURA.ps1`. En Windows, usando solo `pg_restore --list`, exige que el backup contenga exactamente una entrada de `TABLE DATA` para cada una de las **7 tablas**: `auth.users`, `auth.identities`, `vault.secrets`, `public.workspaces`, `public.workspace_members`, `public.debts`, `public.transactions`. Emite un informe sin datos privados y un archivo local de índices TOC no ejecutado. No pide token, contraseña o conexión.
+- **Nunca migrar sesiones antiguas ni intentos/desbloqueos temporales**: excluir `auth.sessions`, `auth.refresh_tokens`, `auth.one_time_tokens`, `auth.mfa_factors` (no hay MFA de origen) y `app_private.debt_unlocks`, `app_private.debt_attempts`. Las tres personas tendrán que iniciar sesión de nuevo contra el clon con Auth original recuperada.
+- **El script NO importa**, NO copia hashes de contraseñas a GitHub/ChatGPT y NO valida la estructura completa ni PK/FK/policies; requiere revisar el resultado y preparar un procedimiento de importación transaccional que instale antes las **tablas/funciones/políticas personalizadas** del proyecto original y deshabilite triggers solo en el destino cuando corresponda.
+- El SHA-256 de la copia local difiere de un respaldo previo; no asumir equivalencia. Después de recuperar hay que cotejar contenidos en clon con la consulta solo lectura de origen e iniciar las tres sesiones HTTP reales. Mantener PWA en NO-GO hasta verificar Vault descifrable, controles RLS y copia funcional.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
