@@ -1467,6 +1467,7 @@ async function openIndependentModule(id){
     const line={wrap,itemSelect,locationSelect,qty,price,discount};saleItems.push(line);
     remove.onclick=()=>{if(saleItems.length<=1)return;const i=saleItems.indexOf(line);if(i>=0)saleItems.splice(i,1);wrap.remove()};
     wrap.append(itemSelect,locationSelect,qty,price,discount,remove);lines.append(wrap);
+    if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    const inventoryArticles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
@@ -1756,6 +1757,7 @@ async function openIndependentModule(id){
     const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
     remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
     wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+    if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
    const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
