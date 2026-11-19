@@ -14,7 +14,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v11-liquidglass-secciones-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v12-buscador-vendedores-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -45,9 +45,33 @@ for(const [index,code] of embeddedScripts.entries())assert.doesNotThrow(()=>new 
 for(const label of ['Existencias','Entradas','Traslados','Ventas','Artículos','Liberación','Devoluciones','Reparaciones','Clientes','Vendedores','Contratos','Primas']){
  assert.ok(html.includes('["'+label+'",['),'Missing sub-tab '+label);
 }
-assert.match(html,/function arrangeNexusSections\(groups,epoch\)/);
+assert.match(html,/function arrangeNexusSections\(groups,epoch,initialLabel/);
 assert.match(html,/panel\.setAttribute\("role","tabpanel"\)/);
 assert.match(html,/button\.setAttribute\("role","tab"\)/);
 assert.match(html,/panels\[i\]\.hidden=!active;panels\[i\]\.inert=!active/);
-assert.match(html,/arrangeNexusSections\(sectionLayout,token\)/);
+assert.match(html,/arrangeNexusSections\(sectionLayout,token,id===/);
+
+for(const id of ['clnHubInventory','clnHubSales','clnHubContracts','clnHubSellers','clnHubWarranties','clnHubDebts'])
+ assert.match(html,new RegExp('id="'+id+'"'),'Main menu missing '+id);
+assert.match(html,/function clnEnhanceArticleSearch\(container\)/);
+assert.match(html,/input\.setAttribute\("role","combobox"\)/);
+assert.match(html,/select\.clnPickerRefresh/);
+assert.match(html,/article\.nombre/);
+assert.match(html,/cln-item-catalog/);
+assert.match(html,/cln-seller-grid/);
+assert.match(html,/id="cln-mobile-upgrade"/);
+assert.match(html,/if\(id==="clnHubSellers"\)await refreshSellerList\(\)/);
+assert.match(html,/id==="clnHubSales"\?"Ventas"/);
+assert.doesNotMatch(html,/option\.textContent=article\.nombre\+\(article\.codigo/);
+// UI regression: Contracts must not request a forbidden empty-client search.
+assert.doesNotMatch(html,/await nexusReader\.list\("contracts"\);/);
+assert.match(html,/nexusReader\.list\("contracts",term\)/);
+assert.match(html,/SB\.rpc\("inv_detalle_contrato",\{p_contrato_id:requested\}\)/);
+assert.match(html,/detalle_id:line\.detalle_id/);
+assert.match(html,/location_id:Number\(line\.location\.value\)/);
+assert.match(html,/SB\.rpc\("inv_resumen_vendedor"/);
+assert.match(html,/SB\.rpc\("inv_historial_vendedor"/);
+assert.match(html,/if\(clnHubDetail\.contains\(wrap\)\)clnEnhanceArticleSearch\(wrap\)/);
+assert.doesNotMatch(html,/Ubicaciones JSON/);
+assert.match(html,/cln-catalog-search/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');

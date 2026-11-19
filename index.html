@@ -99,14 +99,16 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace">
 <div class="cln-workspace-content">
  <header class="cln-header">
-  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, garantías y contratos con una sola sesión.</p></div></div>
+  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, ventas y contratos en un solo lugar.</p></div></div>
   <span class="cln-session-chip">Sesión activa</span>
  </header>
  <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
   <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
-  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubSales">Ventas</button>
   <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
-  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas · acceso protegido</button>
+  <button class="g2 cln-tab" type="button" id="clnHubSellers">Vendedores</button>
+  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas</button>
  </nav>
  <main class="cln-content">
   <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
@@ -921,15 +923,110 @@ document.getElementById("clnHubLogout").onclick=()=>document.getElementById("deb
 // CL Nexus stays independent from Deudas. A separate authenticated view
 // is shown without mounting or reading the private Deudas application.
 const clnHubViews=Object.freeze({
- clnHubInventory:{title:"Inventario",sections:["Artículos","Movimientos","Bodegas","Autorizaciones"]},
- clnHubWarranties:{title:"Garantías",sections:["Recepción","En revisión","Reparación o proveedor","Liberación"]},
- clnHubContracts:{title:"Contratos",sections:["Clientes","Vendedores","Artículos","Historial"]}
+ clnHubInventory:{title:"Inventario",description:"Consultá tus existencias y gestioná entradas, traslados y artículos."},
+ clnHubSales:{title:"Ventas",description:"Registrá ventas con búsqueda rápida de artículos y selección de vendedor."},
+ clnHubContracts:{title:"Contratos",description:"Creá contratos, asigná clientes y vendedores, y administrá primas."},
+ clnHubSellers:{title:"Vendedores",description:"Registrá y consultá los vendedores disponibles en CL Nexus."},
+ clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
 
+let clnPickerCounter=0;
+function clnNormalizeLookup(value){
+ return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es").trim();
+}
+// Buscador de artículos: conserva el select y su ID UUID para cada RPC existente.
+// Solo se muestran nombres; códigos del Excel nunca aparecen en las sugerencias.
+function clnEnhanceArticleSearch(container){
+ for(const select of container.querySelectorAll('select[aria-label]')){
+  if(select.dataset.clnPickerReady==="1"||!/artículo/i.test(select.getAttribute("aria-label")||""))continue;
+  const nativeLabel=select.getAttribute("aria-label")||"Artículo";
+  const wrapper=document.createElement("div");
+  wrapper.className="cln-article-picker";
+  const id="cln-suggestions-"+(++clnPickerCounter);
+  const input=document.createElement("input");
+  input.type="search";input.className="cln-article-search";input.required=true;
+  input.autocomplete="off";input.spellcheck=false;
+  input.placeholder="Escribí el nombre del artículo…";
+  input.setAttribute("aria-label","Buscar "+nativeLabel.toLowerCase());
+  input.setAttribute("role","combobox");input.setAttribute("aria-autocomplete","list");
+  input.setAttribute("aria-expanded","false");input.setAttribute("aria-controls",id);
+  const suggestions=document.createElement("div");
+  suggestions.className="cln-article-results";suggestions.id=id;
+  suggestions.setAttribute("role","listbox");suggestions.hidden=true;
+  const help=document.createElement("small");help.textContent="Escribí para buscar y elegí una sugerencia.";
+  const parent=select.parentNode;parent.insertBefore(wrapper,select);
+  wrapper.append(input,suggestions,help,select);
+  select.required=false;select.tabIndex=-1;select.classList.add("cln-article-native");
+  select.setAttribute("aria-hidden","true");select.dataset.clnPickerReady="1";
+  let matching=[],active=-1;
+  const options=()=>Array.from(select.options).filter(o=>o.value).map(o=>({id:o.value,name:o.textContent.trim()}));
+  function close(){suggestions.hidden=true;input.setAttribute("aria-expanded","false");input.removeAttribute("aria-activedescendant");}
+  function choose(option){
+   select.value=option.id;
+   input.value=option.name;input.setCustomValidity("");
+   select.dispatchEvent(new Event("change",{bubbles:true}));
+   close();
+  }
+  function paint(){
+   const term=clnNormalizeLookup(input.value);
+   const choices=options();
+   matching=choices.filter(x=>clnNormalizeLookup(x.name).includes(term)).sort((a,b)=>{
+    const aStarts=clnNormalizeLookup(a.name).startsWith(term)?0:1,bStarts=clnNormalizeLookup(b.name).startsWith(term)?0:1;
+    return aStarts-bStarts||a.name.localeCompare(b.name,"es");
+   }).slice(0,9);
+   active=-1;suggestions.replaceChildren();
+   if(!matching.length){
+    const empty=document.createElement("p");
+    empty.textContent=choices.length?"No encontramos artículos con ese nombre.":"No hay artículos disponibles.";
+    suggestions.append(empty);
+   }else matching.forEach((option,index)=>{
+    const button=document.createElement("button");
+    button.type="button";button.setAttribute("role","option");
+    button.id=id+"-"+index;button.textContent=option.name;
+    button.onpointerdown=event=>event.preventDefault();
+    button.onclick=()=>{choose(option);input.focus();};
+    suggestions.append(button);
+   });
+   suggestions.hidden=false;input.setAttribute("aria-expanded","true");
+  }
+  input.addEventListener("input",()=>{
+   select.value="";
+   input.setCustomValidity("Seleccioná un artículo de las sugerencias.");
+   paint();
+  });
+  input.addEventListener("focus",paint);
+  input.addEventListener("keydown",event=>{
+   if(event.key==="Escape"){close();return;}
+   if(!["ArrowDown","ArrowUp","Enter"].includes(event.key))return;
+   if(suggestions.hidden&&event.key!=="Enter"){paint();}
+   if(!matching.length)return;
+   if(event.key==="ArrowDown")active=(active+1)%matching.length;
+   else if(event.key==="ArrowUp")active=(active+matching.length-1)%matching.length;
+   else if(event.key==="Enter"){
+    if(suggestions.hidden)return;
+    event.preventDefault();choose(matching[Math.max(0,active)]);return;
+   }
+   event.preventDefault();
+   const buttons=suggestions.querySelectorAll('[role="option"]');
+   buttons.forEach((button,index)=>button.setAttribute("aria-selected",String(index===active)));
+   input.setAttribute("aria-activedescendant",id+"-"+active);
+  });
+  wrapper.addEventListener("focusout",event=>{if(!wrapper.contains(event.relatedTarget))close();});
+  select.clnPickerRefresh=()=>{
+   const option=Array.from(select.options).find(o=>o.value&&o.value===select.value);
+   input.value=option?option.textContent.trim():"";
+   input.setCustomValidity("");
+   close();
+  };
+  select.clnPickerRefresh();
+  select.form?.addEventListener("reset",()=>queueMicrotask(()=>{select.value="";input.value="";input.setCustomValidity("");close();}));
+ }
+}
+
 // Navegación secundaria visual: mover nodos no altera RPC, listeners, formularios ni permisos.
-function arrangeNexusSections(groups,epoch){
+function arrangeNexusSections(groups,epoch,initialLabel=""){
  if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
  const tabs=document.createElement("nav");
  tabs.className="cln-subtabs";tabs.setAttribute("role","tablist");
@@ -969,9 +1066,11 @@ function arrangeNexusSections(groups,epoch){
    event.preventDefault();activate(next);buttons[next].focus();
   };
  });
- clnHubDetail.insertBefore(tabs,clnHubDetail.children[2]||null);
+ clnHubDetail.insertBefore(tabs,clnHubDetail.children[3]||null);
  clnHubDetail.append(...panels);
- activate(0);
+ clnEnhanceArticleSearch(clnHubDetail);
+ const initialIndex=groups.findIndex(group=>group[0]===initialLabel);
+ activate(initialIndex<0?0:initialIndex);
 }
 async function openIndependentModule(id){
  const config=clnHubViews[id];
@@ -980,9 +1079,10 @@ async function openIndependentModule(id){
  for(const name of Object.keys(clnHubViews))document.getElementById(name).setAttribute("aria-pressed",String(name===id));
  const token=++nexusViewEpoch;
  clnHubDetail.replaceChildren();
- const title=document.createElement("h3");title.textContent=config.title;
- const status=document.createElement("p");status.textContent="Consultando datos autorizados…";
- clnHubDetail.append(title,status);
+ const title=document.createElement("h3");title.textContent=config.title;title.className="cln-view-title";
+ const subtitle=document.createElement("p");subtitle.className="cln-view-intro";subtitle.textContent=config.description;
+ const status=document.createElement("p");status.className="cln-status";status.setAttribute("role","status");status.textContent="Consultando datos autorizados…";
+ clnHubDetail.append(title,subtitle,status);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
@@ -995,7 +1095,7 @@ async function openIndependentModule(id){
    const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
    const articles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");item.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;item.append(option)}
    const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
    for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
    const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
@@ -1023,7 +1123,7 @@ async function openIndependentModule(id){
    const returnTitle=document.createElement("h4");returnTitle.textContent="Solicitar devolución para revisión";
    const returnItem=document.createElement("select");returnItem.required=true;returnItem.setAttribute("aria-label","Artículo devuelto");
    const returnBlank=document.createElement("option");returnBlank.value="";returnBlank.textContent="Seleccionar artículo";returnItem.append(returnBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");returnItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;returnItem.append(option)}
    const returnQty=document.createElement("input");returnQty.type="number";returnQty.min="1";returnQty.step="1";returnQty.required=true;returnQty.placeholder="Cantidad devuelta";returnQty.setAttribute("aria-label","Cantidad devuelta");
    const returnReason=document.createElement("textarea");returnReason.required=true;returnReason.placeholder="Motivo de devolución";returnReason.setAttribute("aria-label","Motivo de devolución");
    const returnButton=document.createElement("button");returnButton.type="submit";returnButton.className="g2";returnButton.textContent="Enviar devolución a revisión";
@@ -1067,7 +1167,7 @@ async function openIndependentModule(id){
    const repairTitle=document.createElement("h4");repairTitle.textContent="Crear orden de reparación";
    const repairItem=document.createElement("select");repairItem.required=true;repairItem.setAttribute("aria-label","Artículo para reparación");
    const repairBlank=document.createElement("option");repairBlank.value="";repairBlank.textContent="Seleccionar artículo";repairItem.append(repairBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");repairItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;repairItem.append(option)}
    const repairQty=document.createElement("input");repairQty.type="number";repairQty.min="1";repairQty.step="1";repairQty.required=true;repairQty.placeholder="Cantidad";repairQty.setAttribute("aria-label","Cantidad a reparar");
    const repairType=document.createElement("select");repairType.setAttribute("aria-label","Tipo de destino");
    for(const value of ["proveedor","taller"]){const option=document.createElement("option");option.value=value;option.textContent=value==="taller"?"Taller":"Proveedor";repairType.append(option)}
@@ -1132,11 +1232,12 @@ async function openIndependentModule(id){
     finally{resolveButton.disabled=false}
    };
    clnHubDetail.append(resolveForm);
-   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token);
+   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token,"Devoluciones");
    return;
   }
-  const kind=id==="clnHubInventory"?"inventory":"contracts";
+  const kind=(id==="clnHubInventory"||id==="clnHubSales")?"inventory":"contracts";
   const results=document.createElement("div");
+  let inventoryFindTerm="";
   let requestSequence=0;
   let inventorySelector=null;
   let renameSelector=null;
@@ -1145,23 +1246,53 @@ async function openIndependentModule(id){
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
    results.replaceChildren();
-   status.textContent=kind==="inventory"?rows.length+" artículos. Una existencia sin registrar no es cero confirmado; registrala mediante entrada aprobada.":rows.length+" clientes encontrados.";
-   const list=document.createElement("ul");
-   for(const item of rows.slice(0,1000)){
-    const li=document.createElement("li");
-    li.textContent=kind==="inventory"?(item.codigo||"Sin código")+" · "+item.nombre+" · Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+" · Bodega: "+(item.bodega===""?"Sin registrar":item.bodega):item.nombre+" · "+item.dui_mostrado;
-    list.append(li);
+   if(kind==="inventory"){
+    status.textContent=rows.length+" artículos disponibles. Las existencias se confirman al aprobar entradas; sin registrar no significa cero.";
+    const search=document.createElement("input");search.type="search";
+    search.className="cln-catalog-search";search.maxLength=120;search.autocomplete="off";
+    search.placeholder="Buscar un artículo en tu inventario…";
+    search.setAttribute("aria-label","Buscar artículos del inventario");
+    search.value=inventoryFindTerm;
+    const count=document.createElement("p");count.className="cln-small-kpi";
+    const cards=document.createElement("div");cards.className="cln-item-catalog";
+    const paint=()=>{
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     cards.replaceChildren();
+     const query=clnNormalizeLookup(inventoryFindTerm);
+     const matches=rows.filter(item=>clnNormalizeLookup(item.nombre).includes(query));
+     const slice=matches.slice(0,query?70:30);
+     count.textContent=matches.length+" coincidencia"+(matches.length===1?"":"s")+(matches.length>slice.length?" · Mostrando "+slice.length+"; escribí para filtrar":"");
+     for(const item of slice){
+      const card=document.createElement("article");card.className="cln-item-card";
+      const name=document.createElement("strong");name.textContent=item.nombre;
+      const numbers=document.createElement("small");
+      numbers.textContent="Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+"    Bodega: "+(item.bodega===""?"Sin registrar":item.bodega);
+      card.append(name,numbers);cards.append(card);
+     }
+     if(!slice.length){const empty=document.createElement("p");empty.className="cln-empty";empty.textContent="No encontramos artículos con ese nombre.";cards.append(empty)}
+    };
+    search.addEventListener("input",()=>{inventoryFindTerm=search.value;paint();});
+    results.append(search,count,cards);paint();
+   }else{
+    status.textContent=rows.length+" clientes encontrados.";
+    const list=document.createElement("ul");
+    for(const item of rows.slice(0,1000)){
+     const li=document.createElement("li");
+     li.textContent=item.nombre+" · "+item.dui_mostrado;list.append(li);
+    }
+    results.append(list);
    }
-   results.append(list);
    if(kind==="inventory"&&inventorySelector){
     inventorySelector.replaceChildren();
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
-    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");inventorySelector.append(option)}
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;inventorySelector.append(option)}
+    inventorySelector.clnPickerRefresh?.();
    }
    if(kind==="inventory"&&renameSelector){
     renameSelector.replaceChildren();
     const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
-    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");option.dataset.expectedName=article.nombre;renameSelector.append(option)}
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;option.dataset.expectedName=article.nombre;renameSelector.append(option)}
+    renameSelector.clnPickerRefresh?.();
    }
   };
   if(kind==="inventory"){
@@ -1254,7 +1385,7 @@ async function openIndependentModule(id){
    const transferPlaceholder=document.createElement("option");transferPlaceholder.value="";transferPlaceholder.textContent="Seleccionar artículo";transferItem.append(transferPlaceholder);
    const transferArticles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");transferItem.append(option)}
+   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;transferItem.append(option)}
    const origin=document.createElement("select");origin.setAttribute("aria-label","Origen");
    const destination=document.createElement("select");destination.setAttribute("aria-label","Destino");
    for(const select of [origin,destination])for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option)}
@@ -1336,6 +1467,7 @@ async function openIndependentModule(id){
     const line={wrap,itemSelect,locationSelect,qty,price,discount};saleItems.push(line);
     remove.onclick=()=>{if(saleItems.length<=1)return;const i=saleItems.indexOf(line);if(i>=0)saleItems.splice(i,1);wrap.remove()};
     wrap.append(itemSelect,locationSelect,qty,price,discount,remove);lines.append(wrap);
+    if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    const inventoryArticles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
@@ -1385,12 +1517,15 @@ async function openIndependentModule(id){
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
      const result=await actions.execute("createSeller",{p_nombre:name});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Vendedor registrado por el servidor. ID: "+String(result);
+     status.textContent="Vendedor registrado correctamente.";
      sellerForm.reset();
+     void refreshSellerList();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
     finally{sellerSubmit.disabled=false}
    };
    clnHubDetail.append(sellerForm);
+   const sellerList=document.createElement("div");sellerList.className="cln-seller-list";
+   sellerList.textContent="Consultando vendedores…";
    const depositForm=document.createElement("form");
    const contractId=document.createElement("input");contractId.required=true;contractId.placeholder="ID del contrato (UUID)";contractId.setAttribute("aria-label","ID del contrato");
    const depositNotes=document.createElement("textarea");depositNotes.required=true;depositNotes.placeholder="Observaciones sobre la prima recibida";depositNotes.setAttribute("aria-label","Observaciones de prima");
@@ -1450,30 +1585,93 @@ async function openIndependentModule(id){
    clnHubDetail.append(customerForm);
    const confirmForm=document.createElement("form");
    const confirmHeading=document.createElement("h4");confirmHeading.textContent="Confirmar contrato borrador";
-   const draftId=document.createElement("input");draftId.required=true;draftId.placeholder="ID del contrato borrador (UUID)";draftId.setAttribute("aria-label","ID de contrato");
-   const allocation=document.createElement("textarea");allocation.required=true;allocation.placeholder='Ubicaciones JSON, ejemplo: [{"item_id":"UUID","location_id":1,"cantidad":1}]';allocation.setAttribute("aria-label","Asignaciones de inventario JSON");
-   const confirmButton=document.createElement("button");confirmButton.type="submit";confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
-   confirmForm.append(confirmHeading,draftId,allocation,confirmButton);
+   const draftId=document.createElement("input");draftId.required=true;
+   draftId.placeholder="ID del contrato borrador (se completa solo al crearlo)";
+   draftId.setAttribute("aria-label","Identificador del contrato borrador");
+   const loadDraft=document.createElement("button");loadDraft.type="button";loadDraft.className="g2";
+   loadDraft.textContent="Cargar artículos del contrato";
+   const allocation=document.createElement("div");allocation.className="cln-allocations";
+   const initialHelp=document.createElement("p");initialHelp.className="cln-empty";
+   initialHelp.textContent="Creá un borrador o ingresá su ID para cargar sus artículos. Después elegí Oficina o Bodega para cada uno.";
+   allocation.append(initialHelp);
+   const confirmButton=document.createElement("button");confirmButton.type="submit";
+   confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
+   confirmForm.append(confirmHeading,draftId,loadDraft,allocation,confirmButton);
    let pendingContractOp=null,pendingContractPayload=null;
+   let loadedDraftId=null,loadedDraftLines=[];
+   const clearLoaded=()=>{
+    loadedDraftId=null;loadedDraftLines=[];allocation.replaceChildren();
+    const prompt=document.createElement("p");prompt.className="cln-empty";
+    prompt.textContent="Cargá los artículos del contrato para elegir dónde se entregarán.";
+    allocation.append(prompt);
+   };
+   draftId.addEventListener("input",()=>{
+    if(draftId.value.trim()!==loadedDraftId)clearLoaded();
+   });
+   async function loadDraftDetails(){
+    const requested=draftId.value.trim();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requested)){
+     status.textContent="Ingresá un ID válido del contrato borrador.";return;
+    }
+    loadDraft.disabled=true;status.textContent="Cargando artículos del borrador…";
+    try{
+     const {data,error}=await SB.rpc("inv_detalle_contrato",{p_contrato_id:requested});
+     if(token!==nexusViewEpoch||moduleHub.hidden||draftId.value.trim()!==requested)return;
+     if(error)throw Error(error.message||"Consulta denegada");
+     if(!data||data.estado!=="borrador"||!Array.isArray(data.articulos)||!data.articulos.length){
+      throw Error("El contrato no está en estado borrador o no tiene artículos.");
+     }
+     allocation.replaceChildren();loadedDraftLines=[];
+     const heading=document.createElement("p");heading.className="cln-small-kpi";
+     heading.textContent="Contrato "+String(data.numero||"")+" · "+data.articulos.length+" artículo(s)";
+     allocation.append(heading);
+     for(const entry of data.articulos){
+      const detailId=String(entry.detalle_id||""),quantity=Number(entry.cantidad);
+      if(!detailId||!Number.isInteger(quantity)||quantity<=0)throw Error("El detalle del contrato no es válido.");
+      const row=document.createElement("div");row.className="cln-allocation-row";
+      const title=document.createElement("strong");title.textContent=String(entry.nombre||"Artículo");
+      const info=document.createElement("small");info.textContent="Cantidad: "+quantity;
+      const destination=document.createElement("select");destination.required=true;
+      destination.setAttribute("aria-label","Ubicación de "+String(entry.nombre||"artículo"));
+      for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){
+       const option=document.createElement("option");option.value=value;option.textContent=label;destination.append(option);
+      }
+      row.append(title,info,destination);allocation.append(row);
+      loadedDraftLines.push({detalle_id:detailId,location:destination});
+     }
+     loadedDraftId=requested;
+     status.textContent="Artículos cargados. Elegí la ubicación de entrega y confirmá el contrato.";
+    }catch(e){
+     clearLoaded();if(token===nexusViewEpoch)status.textContent="No se pudo cargar el borrador: "+String(e.message||e);
+    }finally{loadDraft.disabled=false}
+   }
+   loadDraft.onclick=loadDraftDetails;
    confirmForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
-    let allocations;
-    try{allocations=JSON.parse(allocation.value)}catch{status.textContent="JSON de ubicaciones inválido.";return}
-    if(!Array.isArray(allocations)||!allocations.length||allocations.some(line=>!line||typeof line!=="object"||!line.item_id||![1,2].includes(Number(line.location_id))||!Number.isInteger(Number(line.cantidad))||Number(line.cantidad)<=0)){status.textContent="Cada línea requiere artículo, ubicación 1/2 y cantidad positiva.";return}
-    const payload=JSON.stringify({contract:draftId.value.trim(),allocations});
-    if(pendingContractOp&&pendingContractPayload!==payload){status.textContent="Existe una confirmación anterior sin verificar. Comprueba su resultado antes de cambiar datos.";return}
+    const contract=draftId.value.trim();
+    if(!loadedDraftId||loadedDraftId!==contract||!loadedDraftLines.length){
+     status.textContent="Primero cargá los artículos del contrato borrador.";return;
+    }
+    const allocations=loadedDraftLines.map(line=>({detalle_id:line.detalle_id,location_id:Number(line.location.value)}));
+    if(allocations.some(line=>!line.detalle_id||![1,2].includes(line.location_id))){
+     status.textContent="Cada artículo necesita una ubicación válida.";return;
+    }
+    const payload=JSON.stringify({contract,allocations});
+    if(pendingContractOp&&pendingContractPayload!==payload){
+     status.textContent="Hay una confirmación anterior incierta. Verificá su resultado antes de cambiar datos.";return;
+    }
     if(!confirm("¿Confirmar contrato? El servidor validará y descontará las existencias."))return;
     if(!pendingContractOp){pendingContractOp=crypto.randomUUID();pendingContractPayload=payload}
     confirmButton.disabled=true;status.textContent="Confirmando contrato…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
-     const result=await actions.execute("confirmContract",{p_contrato_id:draftId.value.trim(),p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
+     const result=await actions.execute("confirmContract",{p_contrato_id:contract,p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      status.textContent="Contrato confirmado por el servidor: "+String(result);
-     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();
-    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación incierta: verifica el contrato antes de reintentar. Operación "+pendingContractOp+". "+e.message}
+     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();clearLoaded();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación no verificada. Revisá el contrato antes de reintentar. Operación "+pendingContractOp+". "+String(e.message||e)}
     finally{confirmButton.disabled=false}
    };
    clnHubDetail.append(confirmForm);
@@ -1490,9 +1688,36 @@ async function openIndependentModule(id){
     select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
     for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
    };
-   const customers=await nexusReader.list("contracts");
-   if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   fillSelect(customer,customers,"Seleccionar cliente");
+   // No llamar inv_buscar_clientes con texto vacío: el servidor exige al menos tres caracteres.
+   fillSelect(customer,[],"Buscá primero al cliente por nombre o DUI");
+   const customerLookup=document.createElement("input");
+   customerLookup.type="search";customerLookup.autocomplete="off";
+   customerLookup.maxLength=100;customerLookup.placeholder="Escribí al menos 3 letras del cliente o su DUI…";
+   customerLookup.setAttribute("aria-label","Buscar cliente para nuevo contrato");
+   draftForm.insertBefore(customerLookup,customer);
+   const customerFeedback=document.createElement("small");
+   customerFeedback.className="cln-field-helper";
+   customerFeedback.textContent="Buscá y seleccioná al cliente. No necesitás recorrer una lista de todos los clientes.";
+   draftForm.insertBefore(customerFeedback,customer);
+   let customerLookupTimer=null,customerLookupEpoch=0;
+   customerLookup.addEventListener("input",()=>{
+    const sequence=++customerLookupEpoch,term=customerLookup.value.trim();
+    if(customerLookupTimer)clearTimeout(customerLookupTimer);
+    fillSelect(customer,[],term.length<3?"Escribí 3 caracteres o más":"Buscando clientes…");
+    if(term.length<3)return;
+    customerLookupTimer=setTimeout(async()=>{
+     try{
+      const matches=await nexusReader.list("contracts",term);
+      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==customerLookupEpoch)return;
+      fillSelect(customer,matches,matches.length?"Seleccioná al cliente":"No hay clientes con ese nombre");
+     }catch(e){
+      if(token===nexusViewEpoch&&sequence===customerLookupEpoch){
+       fillSelect(customer,[],"No se pudo buscar");
+       customerFeedback.textContent="Error de búsqueda: "+String(e.message||e);
+      }
+     }
+    },260);
+   });
    const vendors=await nexusReader.list("sellers");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
    fillSelect(vendor,vendors,"Seleccionar vendedor");
@@ -1532,6 +1757,7 @@ async function openIndependentModule(id){
     const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
     remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
     wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+    if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
    const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
@@ -1549,8 +1775,10 @@ async function openIndependentModule(id){
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
      const result=await actions.execute("createContract",params);
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Borrador creado en el servidor. ID: "+String(result)+". Confírmalo por separado para descontar existencias.";
+     status.textContent="Borrador guardado. Revisá las ubicaciones antes de confirmar; todavía no se ha descontado inventario.";
+     draftId.value=String(result);
      draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+     await loadDraftDetails();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Borrador no confirmado; verifica antes de reintentar: "+e.message}
     finally{draftButton.disabled=false}
    };
@@ -1570,30 +1798,98 @@ async function openIndependentModule(id){
    };
    searchButton.onclick=doSearch;
    search.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch()});
-   sellerButton.onclick=async()=>{
-    const requestId=++requestSequence;
-    sellerButton.disabled=true;status.textContent="Consultando vendedores…";
+   async function refreshSellerList(){
+    sellerButton.disabled=true;
     try{
      const sellers=await nexusReader.list("sellers");
-     if(token!==nexusViewEpoch||requestId!==requestSequence||moduleHub.hidden)return;
-     results.replaceChildren();status.textContent=sellers.length+" vendedores (solo lectura).";
-     const list=document.createElement("ul");
-     for(const seller of sellers.slice(0,100)){const li=document.createElement("li");li.textContent=seller.nombre;list.append(li)}
-     results.append(list);
-    }catch(e){if(token===nexusViewEpoch&&requestId===requestSequence)status.textContent="Consulta denegada: "+e.message}
-    finally{sellerButton.disabled=false}
-   };
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     sellerList.replaceChildren();
+     const summary=document.createElement("p");summary.className="cln-small-kpi";
+     summary.textContent=sellers.length+" vendedores registrados";sellerList.append(summary);
+     if(!sellers.length){
+      const empty=document.createElement("p");empty.className="cln-empty";
+      empty.textContent="Todavía no hay vendedores registrados. Usá el formulario para agregar el primero.";
+      sellerList.append(empty);
+     }else{
+      const list=document.createElement("div");list.className="cln-seller-grid";
+      const report=document.createElement("section");report.className="cln-seller-report";
+      report.setAttribute("aria-live","polite");
+      const money=value=>new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(value)||0);
+      for(const seller of sellers){
+       const entry=document.createElement("div");entry.className="cln-seller-item";
+       const name=document.createElement("strong");name.textContent=seller.nombre;
+       const see=document.createElement("button");see.className="g2";see.type="button";see.textContent="Ver historial";
+       see.onclick=async()=>{
+        if(token!==nexusViewEpoch||moduleHub.hidden)return;
+        see.disabled=true;report.replaceChildren();
+        const loading=document.createElement("p");loading.textContent="Cargando historial de "+seller.nombre+"…";report.append(loading);
+        try{
+         const [summaryResult,historyResult]=await Promise.all([
+          SB.rpc("inv_resumen_vendedor",{p_vendedor_id:seller.id}),
+          SB.rpc("inv_historial_vendedor",{p_vendedor_id:seller.id})
+         ]);
+         if(token!==nexusViewEpoch||moduleHub.hidden)return;
+         if(summaryResult.error||historyResult.error)throw Error(summaryResult.error?.message||historyResult.error?.message||"No autorizado");
+         const sum=Array.isArray(summaryResult.data)?summaryResult.data[0]:null;
+         const rows=Array.isArray(historyResult.data)?historyResult.data:[];
+         report.replaceChildren();
+         const title=document.createElement("h4");title.textContent="Historial de contratos de "+seller.nombre;report.append(title);
+         if(sum){
+          const metrics=document.createElement("div");metrics.className="cln-metric-grid";
+          for(const [label,value] of [["Contratos",sum.contratos],["Confirmados",sum.contratos_confirmados],
+           ["Total en contratos",money(sum.ventas_brutas)],["Comisiones",money(sum.comisiones_generadas)],
+           ["Primas recibidas",money(sum.primas_recibidas)]]){
+           const tile=document.createElement("div");tile.className="cln-metric";
+           const key=document.createElement("small");key.textContent=label;
+           const amount=document.createElement("strong");amount.textContent=String(value??"0");
+           tile.append(key,amount);metrics.append(tile);
+          }
+          report.append(metrics);
+         }
+         if(!rows.length){
+          const empty=document.createElement("p");empty.className="cln-empty";
+          empty.textContent="Este vendedor todavía no tiene contratos registrados.";report.append(empty);
+         }else{
+          const items=document.createElement("div");items.className="cln-history-list";
+          for(const row of rows){
+           const entry=document.createElement("article");entry.className="cln-item-card";
+           const title=document.createElement("strong");title.textContent="Contrato "+String(row.numero||"")+" · "+String(row.cliente_nombre||"Cliente");
+           const detail=document.createElement("small");
+           detail.textContent=String(row.fecha||"")+" · "+String(row.estado||"")+" · Venta: "+money(row.total_articulos)+" · Comisión: "+money(row.comision);
+           entry.append(title,detail);items.append(entry);
+          }
+          report.append(items);
+         }
+        }catch(e){
+         if(token===nexusViewEpoch&&!moduleHub.hidden){
+          report.replaceChildren();const p=document.createElement("p");p.className="cln-empty";
+          p.textContent="No se pudo obtener el historial de contratos: "+String(e.message||e);report.append(p);
+         }
+        }finally{see.disabled=false}
+       };
+       entry.append(name,see);list.append(entry);
+      }
+      sellerList.append(list,report);
+     }
+     status.textContent="Vendedores actualizados.";
+    }catch(e){
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     sellerList.textContent="No se pudo consultar vendedores: "+String(e.message||e);
+    }finally{sellerButton.disabled=false}
+   }
+   sellerButton.onclick=refreshSellerList;
    clnHubDetail.append(search,searchButton,sellerButton);
-   sectionLayout=[["Clientes",[customerForm,search,searchButton,results]],["Vendedores",[sellerForm,sellerButton]],["Contratos",[draftForm,confirmForm]],["Primas",[depositForm]]];
+   sectionLayout=[["Contratos",[draftForm,confirmForm]],["Clientes",[customerForm,search,searchButton,results]],["Primas",[depositForm]],["Vendedores",[sellerForm,sellerButton,sellerList]]];
   }
   clnHubDetail.append(results);
-  arrangeNexusSections(sectionLayout,token);
   if(kind==="inventory"){
    renderRows(await nexusReader.list("inventory"),++requestSequence);
   }else{
    results.replaceChildren();
-   status.textContent="Busca clientes por nombre o DUI (mínimo 3 caracteres).";
+   status.textContent="Buscá clientes por nombre o DUI desde la sección Clientes.";
+   if(id==="clnHubSellers")await refreshSellerList();
   }
+  arrangeNexusSections(sectionLayout,token,id==="clnHubSales"?"Ventas":id==="clnHubSellers"?"Vendedores":kind==="contracts"?"Contratos":"Existencias");
  }catch(e){
   if(token!==nexusViewEpoch)return;
   status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
@@ -1799,5 +2095,86 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 })();
 </script>
 
+
+
+<style id="cln-mobile-upgrade">
+/* CL Nexus 2.1: vidrio translúcido, pantallas de trabajo y controles táctiles auténticos. */
+#clnModuleHub{padding:clamp(10px,2vw,25px);background:radial-gradient(ellipse at 90% 0%,rgba(37,99,235,.14),transparent 50%),var(--bg)}
+#clnModuleHub,#clnModuleHub *{box-sizing:border-box}
+#clnModuleHub .cln-workspace-content{width:min(1220px,100%);border:1px solid color-mix(in srgb,var(--ac) 14%,var(--rim));border-radius:26px;background:color-mix(in srgb,var(--card) 87%,transparent);box-shadow:0 25px 85px rgba(0,0,0,.16)}
+#clnModuleHub .cln-header{padding:clamp(18px,2.5vw,31px);background:linear-gradient(110deg,color-mix(in srgb,var(--ac) 15%,var(--card)),color-mix(in srgb,var(--ac2) 6%,var(--card)));gap:10px}
+#clnModuleHub .cln-header-brand{gap:13px}
+#clnModuleHub .cln-header h2{font-weight:800;letter-spacing:-.045em}
+#clnModuleHub .cln-subtitle{font-size:12px}
+#clnModuleChoices{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:15px clamp(16px,3vw,29px);overflow:visible}
+#clnModuleChoices .cln-tab{margin:0!important;padding:12px 8px!important;min-width:0!important;font-weight:700!important;text-align:center;border:1px solid transparent!important;border-radius:13px!important;white-space:normal;color:var(--mut)!important;background:transparent!important}
+#clnModuleChoices .cln-tab[aria-pressed="true"]{color:var(--ac)!important;background:color-mix(in srgb,var(--ac) 15%,var(--card))!important;border-color:color-mix(in srgb,var(--ac) 32%,transparent)!important;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+#clnModuleChoices .cln-tab-protected{margin-left:0!important}
+#clnModuleHub .cln-content{padding:clamp(17px,3vw,30px);min-width:0}
+#clnModuleHub .cln-view-title{font-size:clamp(25px,3.5vw,33px);font-weight:800;letter-spacing:-.045em;margin:0 0 7px}
+#clnModuleHub .cln-view-intro{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--mut)}
+#clnModuleHub .cln-status{font-size:12px;line-height:1.6;color:var(--mut);margin:4px 0 12px;overflow-wrap:anywhere}
+#clnHubDetail .cln-subtabs{margin:16px 0 22px;padding:2px 1px 9px;gap:8px;flex-wrap:wrap;overflow:visible;scroll-snap-type:none}
+#clnHubDetail .cln-subtab{flex:0 1 auto;border-radius:999px;font-size:13px;padding:11px 17px;background:color-mix(in srgb,var(--ac) 4%,var(--card));border-color:var(--bd)}
+#clnHubDetail .cln-subtab[aria-selected="true"]{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 5px 15px color-mix(in srgb,var(--ac) 23%,transparent)}
+#clnHubDetail .cln-subpanel-title{font-size:18px;letter-spacing:-.025em;margin:0 0 15px}
+#clnHubDetail .cln-subpanel{max-width:100%;min-width:0}
+#clnHubDetail .cln-subpanel>form{width:100%;max-width:100%;min-width:0;gap:12px;padding:clamp(13px,2.7vw,23px);border-radius:19px;border:1px solid color-mix(in srgb,var(--ac) 13%,var(--bd));background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 6px 23px rgba(0,0,0,.035);align-items:stretch}
+#clnHubDetail form, #clnHubDetail form>div,#clnHubDetail form>div>div{max-width:100%;min-width:0}
+#clnHubDetail form input:not([type="checkbox"]),#clnHubDetail form select,#clnHubDetail form textarea,#clnHubDetail .cln-catalog-search,#clnHubDetail .cln-article-search{
+ appearance:none;-webkit-appearance:none;box-sizing:border-box;outline:none;color:var(--tx);font:inherit;font-size:14px;line-height:1.35;
+ background:color-mix(in srgb,var(--solid) 66%,transparent);border:1px solid color-mix(in srgb,var(--mut) 17%,var(--bd));
+ border-radius:13px;min-height:46px;padding:11px 13px;box-shadow:none;
+}
+#clnHubDetail form input::placeholder,#clnHubDetail form textarea::placeholder,#clnHubDetail .cln-catalog-search::placeholder{color:var(--mut);opacity:.73}
+#clnHubDetail form input:focus,#clnHubDetail form select:focus,#clnHubDetail form textarea:focus,#clnHubDetail .cln-catalog-search:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 14%,transparent)}
+#clnHubDetail form select{padding-right:33px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23859bb7' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:17px}
+#clnHubDetail form select option{background:var(--solid);color:var(--tx)}
+#clnHubDetail form button{font:inherit;font-size:14px;font-weight:700;min-height:44px}
+#clnHubDetail .cln-subpanel>form>div>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%;padding:12px;border:1px solid var(--bd);border-radius:14px}
+#clnHubDetail .cln-subpanel>form>div>div>input,#clnHubDetail .cln-subpanel>form>div>div>select{min-width:0!important;width:100%;max-width:100%}
+#clnHubDetail .cln-subpanel>form>div>div>button{width:100%;max-width:100%}
+#clnHubDetail .cln-article-picker{position:relative;flex:1 1 230px;min-width:0;max-width:100%;width:100%;z-index:5}
+#clnHubDetail .cln-article-picker:focus-within{z-index:30}
+#clnHubDetail .cln-article-picker .cln-article-search{width:100%;max-width:100%;padding:12px 14px;background:color-mix(in srgb,var(--ac) 5%,var(--solid));border-color:color-mix(in srgb,var(--ac) 20%,var(--bd))}
+#clnHubDetail .cln-article-picker .cln-article-search:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 14%,transparent)}
+#clnHubDetail .cln-article-picker .cln-article-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;min-height:0!important;border:0!important}
+#clnHubDetail .cln-article-picker>small{display:block;color:var(--mut);font-size:11px;margin:5px 3px 0}
+#clnHubDetail .cln-article-results{position:absolute;z-index:100;top:48px;left:0;right:0;max-height:280px;overflow:auto;border:1px solid color-mix(in srgb,var(--ac) 30%,var(--bd));border-radius:14px;background:var(--solid);box-shadow:0 18px 44px rgba(0,0,0,.3);padding:6px}
+#clnHubDetail .cln-article-results[hidden]{display:none!important}
+#clnHubDetail .cln-article-results button{width:100%;padding:11px;text-align:left;border:0;border-radius:8px;color:var(--tx);background:transparent;min-height:40px;font-weight:500;line-height:1.4}
+#clnHubDetail .cln-article-results button:hover,#clnHubDetail .cln-article-results button[aria-selected="true"]{background:color-mix(in srgb,var(--ac) 16%,var(--solid));color:var(--ac)}
+#clnHubDetail .cln-article-results p{font-size:12px;color:var(--mut);padding:8px}
+#clnHubDetail .cln-seller-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:12px 0}
+#clnHubDetail .cln-seller-item{padding:14px 16px;border:1px solid var(--bd);background:var(--card);border-radius:13px}
+#clnHubDetail .cln-small-kpi{font-size:13px;color:var(--mut);font-weight:700}
+#clnHubDetail .cln-empty{color:var(--mut);padding:24px 12px;text-align:center;border:1px dashed var(--bd);border-radius:14px}
+#clnHubDetail .cln-item-catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:9px;margin-top:14px;max-height:480px;overflow:auto}
+#clnHubDetail .cln-item-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--bd);border-radius:14px;padding:14px;background:var(--card)}
+#clnHubDetail .cln-item-card strong{font-size:13px;font-weight:700;letter-spacing:-.015em;line-height:1.4}
+#clnHubDetail .cln-item-card small{font-size:11px;color:var(--mut);line-height:1.55}
+#clnHubDetail .cln-catalog-search{width:100%;font-size:15px}
+@media(max-width:850px){#clnModuleChoices{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}#clnHubDetail .cln-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#clnHubDetail .cln-subtab{width:100%;padding:10px 6px;border-radius:11px;font-size:12px}#clnHubDetail .cln-subpanel>form>div>div{grid-template-columns:1fr}}
+@media(max-width:500px){#clnModuleHub .cln-workspace-content{border-radius:16px}#clnModuleHub .cln-header{padding:18px 14px}#clnModuleHub .cln-header .cln-logo{width:44px;height:44px}#clnModuleHub .cln-header .cln-kicker{font-size:9px}#clnModuleHub .cln-subtitle{font-size:11px}#clnModuleChoices{padding:11px;gap:6px}#clnModuleChoices .cln-tab{padding:11px 2px!important;font-size:12px!important;min-height:43px!important}#clnModuleHub .cln-content{padding:17px 13px}#clnHubDetail .cln-subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}#clnHubDetail .cln-subpanel>form{padding:13px;gap:10px}#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{flex-basis:100%}#clnHubDetail .cln-article-picker{flex-basis:100%}#clnHubDetail .cln-subpanel>form>button{width:100%}#clnHubDetail .cln-seller-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#clnHubDetail *,#clnModuleChoices *{transition:none!important}}
+
+#clnHubDetail .cln-allocations{flex:1 0 100%;display:flex;flex-direction:column;gap:9px;max-width:100%}
+#clnHubDetail .cln-allocation-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(120px,170px);align-items:center;gap:10px;padding:12px;border:1px solid var(--bd);border-radius:13px;background:var(--card)}
+#clnHubDetail .cln-allocation-row strong{font-size:13px;line-height:1.4}
+#clnHubDetail .cln-allocation-row small{font-size:12px;color:var(--mut)}
+#clnHubDetail .cln-allocation-row select{width:100%;max-width:100%;min-width:0}
+#clnHubDetail .cln-field-helper{flex:1 0 100%;color:var(--mut);font-size:11px}
+@media(max-width:650px){#clnHubDetail .cln-allocation-row{grid-template-columns:minmax(0,1fr) auto}#clnHubDetail .cln-allocation-row select{grid-column:1/-1}}
+
+#clnHubDetail .cln-seller-item{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+#clnHubDetail .cln-seller-item button{font-size:12px;padding:8px 13px;min-height:35px}
+#clnHubDetail .cln-seller-report{margin:18px 0;max-width:100%}
+#clnHubDetail .cln-seller-report h4{margin:0 0 12px;font-size:17px}
+#clnHubDetail .cln-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+#clnHubDetail .cln-metric{display:flex;flex-direction:column;gap:5px;padding:13px 14px;background:var(--card);border:1px solid var(--bd);border-radius:13px}
+#clnHubDetail .cln-metric small{color:var(--mut)}
+#clnHubDetail .cln-metric strong{font-size:16px}
+#clnHubDetail .cln-history-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+</style>
 
 </body></html>
