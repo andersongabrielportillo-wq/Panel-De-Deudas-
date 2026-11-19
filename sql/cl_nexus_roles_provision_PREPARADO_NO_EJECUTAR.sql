@@ -1,6 +1,6 @@
 -- CL Nexus: ROLE CUTOVER - PREPARATION ONLY / NO EJECUTAR EN PRODUCCION.
 -- Run with psql in an approved, backed-up maintenance window, AFTER the inventory schema exists.
--- Example: psql -v roles_json='[{"user_id":"...","rol":"admin"},{"user_id":"...","rol":"secretaria"},{"user_id":"...","rol":"admin"}]' -f THIS_FILE
+-- Prepared role assignment ONLY for two preexisting Panel de Deudas accounts. No extra registration.
 -- Never copy inv_members from LAB; authenticated identities are project-specific.
 -- Only explicitly listed users get inventory access; other Deudas members remain unprivileged here.
 \set ON_ERROR_STOP on
@@ -22,8 +22,8 @@ DO $audit$
 DECLARE v_workspace uuid;
 BEGIN
  SELECT id INTO STRICT v_workspace FROM public.workspaces;
- IF (SELECT count(*) FROM cln_roles_cutover) NOT BETWEEN 2 AND 3
- THEN RAISE EXCEPTION 'Expected exactly 2 or 3 explicitly authorized members'; END IF;
+ IF (SELECT count(*) FROM cln_roles_cutover) <> 2
+ THEN RAISE EXCEPTION 'Expected exactly 2 explicitly authorized members (Administrador and Secretaria)'; END IF;
  IF NOT EXISTS(SELECT 1 FROM cln_roles_cutover WHERE rol='admin')
  OR NOT EXISTS(SELECT 1 FROM cln_roles_cutover WHERE rol='secretaria')
  THEN RAISE EXCEPTION 'Both Administrador and Secretaria must be explicitly mapped'; END IF;
@@ -34,7 +34,7 @@ BEGIN
    EXCEPT SELECT id FROM auth.users)
  THEN RAISE EXCEPTION 'Role assignment includes an unknown Auth user'; END IF;
  -- Intentionally do NOT require every Deudas workspace member to receive CL Nexus privileges.
- -- The owner and secretary may be the only two authorized inventory operators.
+ -- The two explicitly approved users are the only authorized inventory operators.
  -- A third Deudas-only user must NOT be silently promoted to CL Nexus admin.
 END $audit$;
 INSERT INTO public.inv_members(user_id,rol)
