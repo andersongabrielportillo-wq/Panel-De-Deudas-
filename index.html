@@ -1624,9 +1624,36 @@ async function openIndependentModule(id){
     select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
     for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
    };
-   const customers=await nexusReader.list("contracts");
-   if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   fillSelect(customer,customers,"Seleccionar cliente");
+   // No llamar inv_buscar_clientes con texto vacío: el servidor exige al menos tres caracteres.
+   fillSelect(customer,[],"Buscá primero al cliente por nombre o DUI");
+   const customerLookup=document.createElement("input");
+   customerLookup.type="search";customerLookup.autocomplete="off";
+   customerLookup.maxLength=100;customerLookup.placeholder="Escribí al menos 3 letras del cliente o su DUI…";
+   customerLookup.setAttribute("aria-label","Buscar cliente para nuevo contrato");
+   draftForm.insertBefore(customerLookup,customer);
+   const customerFeedback=document.createElement("small");
+   customerFeedback.className="cln-field-helper";
+   customerFeedback.textContent="Buscá y seleccioná al cliente. No necesitás recorrer una lista de todos los clientes.";
+   draftForm.insertBefore(customerFeedback,customer);
+   let customerLookupTimer=null,customerLookupEpoch=0;
+   customerLookup.addEventListener("input",()=>{
+    const sequence=++customerLookupEpoch,term=customerLookup.value.trim();
+    if(customerLookupTimer)clearTimeout(customerLookupTimer);
+    fillSelect(customer,[],term.length<3?"Escribí 3 caracteres o más":"Buscando clientes…");
+    if(term.length<3)return;
+    customerLookupTimer=setTimeout(async()=>{
+     try{
+      const matches=await nexusReader.list("contracts",term);
+      if(token!==nexusViewEpoch||moduleHub.hidden||sequence!==customerLookupEpoch)return;
+      fillSelect(customer,matches,matches.length?"Seleccioná al cliente":"No hay clientes con ese nombre");
+     }catch(e){
+      if(token===nexusViewEpoch&&sequence===customerLookupEpoch){
+       fillSelect(customer,[],"No se pudo buscar");
+       customerFeedback.textContent="Error de búsqueda: "+String(e.message||e);
+      }
+     }
+    },260);
+   });
    const vendors=await nexusReader.list("sellers");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
    fillSelect(vendor,vendors,"Seleccionar vendedor");
