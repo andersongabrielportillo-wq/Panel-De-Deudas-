@@ -36,7 +36,8 @@ function createNexusActions({client,authorized}={}){
   for(const key of spec.required){
    const nullableContract=action==='createContract'&&['p_cuota','p_saldo_inicial','p_fecha_plan'].includes(key);
    const blankCustomer=action==='createClient'&&key!=='p_nombre'&&key!=='p_dui';
-   if(!(key in params)||params[key]===undefined||(params[key]===null&&!nullableContract&&!blankCustomer)||(typeof params[key]==='string'&&!params[key].trim()&&!blankCustomer))throw Error('Falta '+key);
+   const blankContract=action==='createContract'&&['p_ruta','p_dia_cobro','p_receptor_alterno','p_observaciones'].includes(key);
+   if(!(key in params)||params[key]===undefined||(params[key]===null&&!nullableContract&&!blankCustomer)||(typeof params[key]==='string'&&!params[key].trim()&&!blankCustomer&&!blankContract))throw Error('Falta '+key);
   }
   for(const [key,value] of Object.entries(params)){
    if(key.endsWith('_id')&&key!=='p_location_id'&&value!==null&&!uuid.test(String(value)))throw Error('ID inválido');
