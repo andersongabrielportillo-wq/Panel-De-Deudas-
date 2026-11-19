@@ -1672,7 +1672,7 @@ startAuth();
 #pwaUpdate{position:fixed;z-index:10000;bottom:calc(90px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));padding:15px;border:1px solid var(--bd);border-radius:18px;background:var(--solid,var(--card));color:var(--tx);box-shadow:0 14px 44px rgba(0,0,0,.28)}
 #pwaUpdate[hidden]{display:none!important}#pwaUpdate p{margin:5px 0 12px;color:var(--mut);font-size:13px}#pwaUpdate .row{margin:0;justify-content:flex-end}
 </style>
-<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del Panel de Deudas.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
+<div id="pwaUpdate" role="status" aria-live="polite" hidden><strong>Actualización disponible</strong><p id="pwaUpdateText">Hay una nueva versión del CL Nexus.</p><div class="row"><button type="button" class="g2" id="pwaLater">Más tarde</button><button type="button" class="b" id="pwaApply">Actualizar ahora</button></div></div>
 <script>
 /* Actualizaciones PWA: no recargar con pagos pendientes ni mientras se guarda. */
 (function(){
@@ -1681,7 +1681,7 @@ startAuth();
   const apply=document.getElementById('pwaApply'),later=document.getElementById('pwaLater');
   let reg=null,waiting=null,requested=false,refreshing=false;
   const pending=()=>typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');
-  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del Panel de Deudas lista para instalar.';apply.disabled=false;}
+  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del CL Nexus lista para instalar.';apply.disabled=false;}
   apply.addEventListener('click',()=>{
     if(pending()){msg.textContent='Hay cambios pendientes. Espera a que aparezca «Sincronizado» y vuelve a intentarlo.';return;}
     if(!waiting)return;
