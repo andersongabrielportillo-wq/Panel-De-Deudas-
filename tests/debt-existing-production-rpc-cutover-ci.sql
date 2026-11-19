@@ -1,6 +1,20 @@
 -- Executed only in disposable GitHub Actions PostgreSQL 17; all identities/data are synthetic.
 \i tests/fixtures/deudas_schema_sintetico_SOLO_CI.sql
 
+-- Dependency stubs are synthetic and intentionally incapable of revealing real secrets.
+CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id));
+CREATE SCHEMA app_private;
+CREATE TABLE app_private.debt_unlocks(user_id uuid,session_id uuid,expires_at timestamptz);
+CREATE TABLE app_private.debt_attempts(user_id uuid,failed_count integer);
+CREATE SCHEMA vault;
+CREATE TABLE vault.secrets(name text PRIMARY KEY);
+CREATE VIEW vault.decrypted_secrets AS SELECT name,'fixture-secret-not-real'::text AS decrypted_secret FROM vault.secrets;
+INSERT INTO vault.secrets(name) VALUES('deudas_access_password');
+INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003');
+INSERT INTO auth.sessions(id,user_id) VALUES('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000002');
+
+
 CREATE TABLE public.transactions (
  id text PRIMARY KEY,
  workspace_id uuid NOT NULL REFERENCES public.workspaces(id),
