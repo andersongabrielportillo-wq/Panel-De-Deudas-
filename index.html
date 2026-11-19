@@ -1321,6 +1321,7 @@ async function openIndependentModule(id){
   let inventorySelector=null;
   let renameSelector=null;
   let sectionLayout=null;
+  let refreshSellerList=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
@@ -2044,7 +2045,7 @@ async function openIndependentModule(id){
    };
    searchButton.onclick=doSearch;
    search.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch()});
-   async function refreshSellerList(){
+   refreshSellerList=async function(){
     sellerButton.disabled=true;
     try{
      const sellers=await nexusReader.list("contractSellers");
@@ -2122,7 +2123,7 @@ async function openIndependentModule(id){
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      sellerList.textContent="No se pudo consultar vendedores: "+String(e.message||e);
     }finally{sellerButton.disabled=false}
-   }
+   };
    sellerButton.onclick=refreshSellerList;
    clnHubDetail.append(search,searchButton,sellerButton);
    sectionLayout=[["Contratos",[draftForm,confirmForm]],["Clientes",[customerForm,search,searchButton,results]],["Primas",[depositForm]],["Vendedores",[sellerForm,sellerButton,sellerList]]];
@@ -2133,9 +2134,11 @@ async function openIndependentModule(id){
   }else{
    results.replaceChildren();
    status.textContent="Buscá clientes por nombre o DUI desde la sección Clientes.";
-   if(id==="clnHubSellers")await refreshSellerList();
   }
+  // Construir la navegación antes de cualquier solicitud opcional de vendedores:
+  // si la consulta falla, no deben quedar todos los formularios amontonados.
   arrangeNexusSections(sectionLayout,token,id==="clnHubSales"?"Ventas":id==="clnHubSellers"?"Vendedores":kind==="contracts"?"Contratos":"Existencias");
+  if(id==="clnHubSellers"&&refreshSellerList)await refreshSellerList();
  }catch(e){
   if(token!==nexusViewEpoch)return;
   status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
