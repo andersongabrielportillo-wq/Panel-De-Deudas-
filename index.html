@@ -104,9 +104,11 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
  </header>
  <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
   <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
-  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubSales">Ventas</button>
   <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
-  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas · acceso protegido</button>
+  <button class="g2 cln-tab" type="button" id="clnHubSellers">Vendedores</button>
+  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas</button>
  </nav>
  <main class="cln-content">
   <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
@@ -921,15 +923,110 @@ document.getElementById("clnHubLogout").onclick=()=>document.getElementById("deb
 // CL Nexus stays independent from Deudas. A separate authenticated view
 // is shown without mounting or reading the private Deudas application.
 const clnHubViews=Object.freeze({
- clnHubInventory:{title:"Inventario",sections:["Artículos","Movimientos","Bodegas","Autorizaciones"]},
- clnHubWarranties:{title:"Garantías",sections:["Recepción","En revisión","Reparación o proveedor","Liberación"]},
- clnHubContracts:{title:"Contratos",sections:["Clientes","Vendedores","Artículos","Historial"]}
+ clnHubInventory:{title:"Inventario",description:"Consultá tus existencias y gestioná entradas, traslados y artículos."},
+ clnHubSales:{title:"Ventas",description:"Registrá ventas con búsqueda rápida de artículos y selección de vendedor."},
+ clnHubContracts:{title:"Contratos",description:"Creá contratos, asigná clientes y vendedores, y administrá primas."},
+ clnHubSellers:{title:"Vendedores",description:"Registrá y consultá los vendedores disponibles en CL Nexus."},
+ clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
 
+let clnPickerCounter=0;
+function clnNormalizeLookup(value){
+ return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es").trim();
+}
+// Buscador de artículos: conserva el select y su ID UUID para cada RPC existente.
+// Solo se muestran nombres; códigos del Excel nunca aparecen en las sugerencias.
+function clnEnhanceArticleSearch(container){
+ for(const select of container.querySelectorAll('select[aria-label]')){
+  if(select.dataset.clnPickerReady==="1"||!/artículo/i.test(select.getAttribute("aria-label")||""))continue;
+  const nativeLabel=select.getAttribute("aria-label")||"Artículo";
+  const wrapper=document.createElement("div");
+  wrapper.className="cln-article-picker";
+  const id="cln-suggestions-"+(++clnPickerCounter);
+  const input=document.createElement("input");
+  input.type="search";input.className="cln-article-search";input.required=true;
+  input.autocomplete="off";input.spellcheck=false;
+  input.placeholder="Escribí el nombre del artículo…";
+  input.setAttribute("aria-label","Buscar "+nativeLabel.toLowerCase());
+  input.setAttribute("role","combobox");input.setAttribute("aria-autocomplete","list");
+  input.setAttribute("aria-expanded","false");input.setAttribute("aria-controls",id);
+  const suggestions=document.createElement("div");
+  suggestions.className="cln-article-results";suggestions.id=id;
+  suggestions.setAttribute("role","listbox");suggestions.hidden=true;
+  const help=document.createElement("small");help.textContent="Escribí para buscar y elegí una sugerencia.";
+  const parent=select.parentNode;parent.insertBefore(wrapper,select);
+  wrapper.append(input,suggestions,help,select);
+  select.required=false;select.tabIndex=-1;select.classList.add("cln-article-native");
+  select.setAttribute("aria-hidden","true");select.dataset.clnPickerReady="1";
+  let matching=[],active=-1;
+  const options=()=>Array.from(select.options).filter(o=>o.value).map(o=>({id:o.value,name:o.textContent.trim()}));
+  function close(){suggestions.hidden=true;input.setAttribute("aria-expanded","false");input.removeAttribute("aria-activedescendant");}
+  function choose(option){
+   select.value=option.id;
+   input.value=option.name;input.setCustomValidity("");
+   select.dispatchEvent(new Event("change",{bubbles:true}));
+   close();
+  }
+  function paint(){
+   const term=clnNormalizeLookup(input.value);
+   const choices=options();
+   matching=choices.filter(x=>clnNormalizeLookup(x.name).includes(term)).sort((a,b)=>{
+    const aStarts=clnNormalizeLookup(a.name).startsWith(term)?0:1,bStarts=clnNormalizeLookup(b.name).startsWith(term)?0:1;
+    return aStarts-bStarts||a.name.localeCompare(b.name,"es");
+   }).slice(0,9);
+   active=-1;suggestions.replaceChildren();
+   if(!matching.length){
+    const empty=document.createElement("p");
+    empty.textContent=choices.length?"No encontramos artículos con ese nombre.":"No hay artículos disponibles.";
+    suggestions.append(empty);
+   }else matching.forEach((option,index)=>{
+    const button=document.createElement("button");
+    button.type="button";button.setAttribute("role","option");
+    button.id=id+"-"+index;button.textContent=option.name;
+    button.onpointerdown=event=>event.preventDefault();
+    button.onclick=()=>{choose(option);input.focus();};
+    suggestions.append(button);
+   });
+   suggestions.hidden=false;input.setAttribute("aria-expanded","true");
+  }
+  input.addEventListener("input",()=>{
+   select.value="";
+   input.setCustomValidity("Seleccioná un artículo de las sugerencias.");
+   paint();
+  });
+  input.addEventListener("focus",paint);
+  input.addEventListener("keydown",event=>{
+   if(event.key==="Escape"){close();return;}
+   if(!["ArrowDown","ArrowUp","Enter"].includes(event.key))return;
+   if(suggestions.hidden&&event.key!=="Enter"){paint();}
+   if(!matching.length)return;
+   if(event.key==="ArrowDown")active=(active+1)%matching.length;
+   else if(event.key==="ArrowUp")active=(active+matching.length-1)%matching.length;
+   else if(event.key==="Enter"){
+    if(suggestions.hidden)return;
+    event.preventDefault();choose(matching[Math.max(0,active)]);return;
+   }
+   event.preventDefault();
+   const buttons=suggestions.querySelectorAll('[role="option"]');
+   buttons.forEach((button,index)=>button.setAttribute("aria-selected",String(index===active)));
+   input.setAttribute("aria-activedescendant",id+"-"+active);
+  });
+  wrapper.addEventListener("focusout",event=>{if(!wrapper.contains(event.relatedTarget))close();});
+  select.clnPickerRefresh=()=>{
+   const option=Array.from(select.options).find(o=>o.value&&o.value===select.value);
+   input.value=option?option.textContent.trim():"";
+   input.setCustomValidity("");
+   close();
+  };
+  select.clnPickerRefresh();
+  select.form?.addEventListener("reset",()=>queueMicrotask(()=>{select.value="";input.value="";input.setCustomValidity("");close();}));
+ }
+}
+
 // Navegación secundaria visual: mover nodos no altera RPC, listeners, formularios ni permisos.
-function arrangeNexusSections(groups,epoch){
+function arrangeNexusSections(groups,epoch,initialLabel=""){
  if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
  const tabs=document.createElement("nav");
  tabs.className="cln-subtabs";tabs.setAttribute("role","tablist");
@@ -969,9 +1066,11 @@ function arrangeNexusSections(groups,epoch){
    event.preventDefault();activate(next);buttons[next].focus();
   };
  });
- clnHubDetail.insertBefore(tabs,clnHubDetail.children[2]||null);
+ clnHubDetail.insertBefore(tabs,clnHubDetail.children[3]||null);
  clnHubDetail.append(...panels);
- activate(0);
+ clnEnhanceArticleSearch(clnHubDetail);
+ const initialIndex=groups.findIndex(group=>group[0]===initialLabel);
+ activate(initialIndex<0?0:initialIndex);
 }
 async function openIndependentModule(id){
  const config=clnHubViews[id];
@@ -980,9 +1079,10 @@ async function openIndependentModule(id){
  for(const name of Object.keys(clnHubViews))document.getElementById(name).setAttribute("aria-pressed",String(name===id));
  const token=++nexusViewEpoch;
  clnHubDetail.replaceChildren();
- const title=document.createElement("h3");title.textContent=config.title;
- const status=document.createElement("p");status.textContent="Consultando datos autorizados…";
- clnHubDetail.append(title,status);
+ const title=document.createElement("h3");title.textContent=config.title;title.className="cln-view-title";
+ const subtitle=document.createElement("p");subtitle.className="cln-view-intro";subtitle.textContent=config.description;
+ const status=document.createElement("p");status.className="cln-status";status.setAttribute("role","status");status.textContent="Consultando datos autorizados…";
+ clnHubDetail.append(title,subtitle,status);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
@@ -995,7 +1095,7 @@ async function openIndependentModule(id){
    const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
    const articles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");item.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;item.append(option)}
    const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
    for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
    const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
@@ -1023,7 +1123,7 @@ async function openIndependentModule(id){
    const returnTitle=document.createElement("h4");returnTitle.textContent="Solicitar devolución para revisión";
    const returnItem=document.createElement("select");returnItem.required=true;returnItem.setAttribute("aria-label","Artículo devuelto");
    const returnBlank=document.createElement("option");returnBlank.value="";returnBlank.textContent="Seleccionar artículo";returnItem.append(returnBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");returnItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;returnItem.append(option)}
    const returnQty=document.createElement("input");returnQty.type="number";returnQty.min="1";returnQty.step="1";returnQty.required=true;returnQty.placeholder="Cantidad devuelta";returnQty.setAttribute("aria-label","Cantidad devuelta");
    const returnReason=document.createElement("textarea");returnReason.required=true;returnReason.placeholder="Motivo de devolución";returnReason.setAttribute("aria-label","Motivo de devolución");
    const returnButton=document.createElement("button");returnButton.type="submit";returnButton.className="g2";returnButton.textContent="Enviar devolución a revisión";
@@ -1067,7 +1167,7 @@ async function openIndependentModule(id){
    const repairTitle=document.createElement("h4");repairTitle.textContent="Crear orden de reparación";
    const repairItem=document.createElement("select");repairItem.required=true;repairItem.setAttribute("aria-label","Artículo para reparación");
    const repairBlank=document.createElement("option");repairBlank.value="";repairBlank.textContent="Seleccionar artículo";repairItem.append(repairBlank);
-   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");repairItem.append(option)}
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;repairItem.append(option)}
    const repairQty=document.createElement("input");repairQty.type="number";repairQty.min="1";repairQty.step="1";repairQty.required=true;repairQty.placeholder="Cantidad";repairQty.setAttribute("aria-label","Cantidad a reparar");
    const repairType=document.createElement("select");repairType.setAttribute("aria-label","Tipo de destino");
    for(const value of ["proveedor","taller"]){const option=document.createElement("option");option.value=value;option.textContent=value==="taller"?"Taller":"Proveedor";repairType.append(option)}
@@ -1132,10 +1232,10 @@ async function openIndependentModule(id){
     finally{resolveButton.disabled=false}
    };
    clnHubDetail.append(resolveForm);
-   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token);
+   arrangeNexusSections([["Liberación",[form]],["Devoluciones",[returnForm,reviewReturn]],["Reparaciones",[repairForm,dispatchForm,resolveForm]]],token,"Devoluciones");
    return;
   }
-  const kind=id==="clnHubInventory"?"inventory":"contracts";
+  const kind=(id==="clnHubInventory"||id==="clnHubSales")?"inventory":"contracts";
   const results=document.createElement("div");
   let requestSequence=0;
   let inventorySelector=null;
@@ -1149,19 +1249,19 @@ async function openIndependentModule(id){
    const list=document.createElement("ul");
    for(const item of rows.slice(0,1000)){
     const li=document.createElement("li");
-    li.textContent=kind==="inventory"?(item.codigo||"Sin código")+" · "+item.nombre+" · Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+" · Bodega: "+(item.bodega===""?"Sin registrar":item.bodega):item.nombre+" · "+item.dui_mostrado;
+    li.textContent=kind==="inventory"?item.nombre:item.nombre+" · "+item.dui_mostrado;
     list.append(li);
    }
    results.append(list);
    if(kind==="inventory"&&inventorySelector){
     inventorySelector.replaceChildren();
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
-    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");inventorySelector.append(option)}
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;inventorySelector.append(option)}
    }
    if(kind==="inventory"&&renameSelector){
     renameSelector.replaceChildren();
     const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
-    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");option.dataset.expectedName=article.nombre;renameSelector.append(option)}
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;option.dataset.expectedName=article.nombre;renameSelector.append(option)}
    }
   };
   if(kind==="inventory"){
@@ -1254,7 +1354,7 @@ async function openIndependentModule(id){
    const transferPlaceholder=document.createElement("option");transferPlaceholder.value="";transferPlaceholder.textContent="Seleccionar artículo";transferItem.append(transferPlaceholder);
    const transferArticles=await nexusReader.list("inventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");transferItem.append(option)}
+   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;transferItem.append(option)}
    const origin=document.createElement("select");origin.setAttribute("aria-label","Origen");
    const destination=document.createElement("select");destination.setAttribute("aria-label","Destino");
    for(const select of [origin,destination])for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option)}
@@ -1385,12 +1485,15 @@ async function openIndependentModule(id){
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
      const result=await actions.execute("createSeller",{p_nombre:name});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Vendedor registrado por el servidor. ID: "+String(result);
+     status.textContent="Vendedor registrado correctamente.";
      sellerForm.reset();
+     void refreshSellerList();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
     finally{sellerSubmit.disabled=false}
    };
    clnHubDetail.append(sellerForm);
+   const sellerList=document.createElement("div");sellerList.className="cln-seller-list";
+   sellerList.textContent="Consultando vendedores…";
    const depositForm=document.createElement("form");
    const contractId=document.createElement("input");contractId.required=true;contractId.placeholder="ID del contrato (UUID)";contractId.setAttribute("aria-label","ID del contrato");
    const depositNotes=document.createElement("textarea");depositNotes.required=true;depositNotes.placeholder="Observaciones sobre la prima recibida";depositNotes.setAttribute("aria-label","Observaciones de prima");
@@ -1570,30 +1673,46 @@ async function openIndependentModule(id){
    };
    searchButton.onclick=doSearch;
    search.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch()});
-   sellerButton.onclick=async()=>{
-    const requestId=++requestSequence;
-    sellerButton.disabled=true;status.textContent="Consultando vendedores…";
+   async function refreshSellerList(){
+    sellerButton.disabled=true;
     try{
      const sellers=await nexusReader.list("sellers");
-     if(token!==nexusViewEpoch||requestId!==requestSequence||moduleHub.hidden)return;
-     results.replaceChildren();status.textContent=sellers.length+" vendedores (solo lectura).";
-     const list=document.createElement("ul");
-     for(const seller of sellers.slice(0,100)){const li=document.createElement("li");li.textContent=seller.nombre;list.append(li)}
-     results.append(list);
-    }catch(e){if(token===nexusViewEpoch&&requestId===requestSequence)status.textContent="Consulta denegada: "+e.message}
-    finally{sellerButton.disabled=false}
-   };
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     sellerList.replaceChildren();
+     const summary=document.createElement("p");summary.className="cln-small-kpi";
+     summary.textContent=sellers.length+" vendedores registrados";sellerList.append(summary);
+     if(!sellers.length){
+      const empty=document.createElement("p");empty.className="cln-empty";
+      empty.textContent="Todavía no hay vendedores registrados. Usá el formulario para agregar el primero.";
+      sellerList.append(empty);
+     }else{
+      const list=document.createElement("div");list.className="cln-seller-grid";
+      for(const seller of sellers){
+       const entry=document.createElement("div");entry.className="cln-seller-item";
+       const name=document.createElement("strong");name.textContent=seller.nombre;
+       entry.append(name);list.append(entry);
+      }
+      sellerList.append(list);
+     }
+     status.textContent="Vendedores actualizados.";
+    }catch(e){
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     sellerList.textContent="No se pudo consultar vendedores: "+String(e.message||e);
+    }finally{sellerButton.disabled=false}
+   }
+   sellerButton.onclick=refreshSellerList;
    clnHubDetail.append(search,searchButton,sellerButton);
-   sectionLayout=[["Clientes",[customerForm,search,searchButton,results]],["Vendedores",[sellerForm,sellerButton]],["Contratos",[draftForm,confirmForm]],["Primas",[depositForm]]];
+   sectionLayout=[["Contratos",[draftForm,confirmForm]],["Clientes",[customerForm,search,searchButton,results]],["Primas",[depositForm]],["Vendedores",[sellerForm,sellerButton,sellerList]]];
   }
   clnHubDetail.append(results);
-  arrangeNexusSections(sectionLayout,token);
   if(kind==="inventory"){
    renderRows(await nexusReader.list("inventory"),++requestSequence);
   }else{
    results.replaceChildren();
-   status.textContent="Busca clientes por nombre o DUI (mínimo 3 caracteres).";
+   status.textContent="Buscá clientes por nombre o DUI desde la sección Clientes.";
+   if(id==="clnHubSellers")await refreshSellerList();
   }
+  arrangeNexusSections(sectionLayout,token,id==="clnHubSales"?"Ventas":id==="clnHubSellers"?"Vendedores":kind==="contracts"?"Contratos":"Existencias");
  }catch(e){
   if(token!==nexusViewEpoch)return;
   status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
@@ -1799,5 +1918,68 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 })();
 </script>
 
+
+
+<style id="cln-mobile-upgrade">
+/* CL Nexus 2.1: vidrio translúcido, pantallas de trabajo y controles táctiles auténticos. */
+#clnModuleHub{padding:clamp(10px,2vw,25px);background:radial-gradient(ellipse at 90% 0%,rgba(37,99,235,.14),transparent 50%),var(--bg)}
+#clnModuleHub,#clnModuleHub *{box-sizing:border-box}
+#clnModuleHub .cln-workspace-content{width:min(1220px,100%);border:1px solid color-mix(in srgb,var(--ac) 14%,var(--rim));border-radius:26px;background:color-mix(in srgb,var(--card) 87%,transparent);box-shadow:0 25px 85px rgba(0,0,0,.16)}
+#clnModuleHub .cln-header{padding:clamp(18px,2.5vw,31px);background:linear-gradient(110deg,color-mix(in srgb,var(--ac) 15%,var(--card)),color-mix(in srgb,var(--ac2) 6%,var(--card)));gap:10px}
+#clnModuleHub .cln-header-brand{gap:13px}
+#clnModuleHub .cln-header h2{font-weight:800;letter-spacing:-.045em}
+#clnModuleHub .cln-subtitle{font-size:12px}
+#clnModuleChoices{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:15px clamp(16px,3vw,29px);overflow:visible}
+#clnModuleChoices .cln-tab{margin:0!important;padding:12px 8px!important;min-width:0!important;font-weight:700!important;text-align:center;border:1px solid transparent!important;border-radius:13px!important;white-space:normal;color:var(--mut)!important;background:transparent!important}
+#clnModuleChoices .cln-tab[aria-pressed="true"]{color:var(--ac)!important;background:color-mix(in srgb,var(--ac) 15%,var(--card))!important;border-color:color-mix(in srgb,var(--ac) 32%,transparent)!important;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+#clnModuleChoices .cln-tab-protected{margin-left:0!important}
+#clnModuleHub .cln-content{padding:clamp(17px,3vw,30px);min-width:0}
+#clnModuleHub .cln-view-title{font-size:clamp(25px,3.5vw,33px);font-weight:800;letter-spacing:-.045em;margin:0 0 7px}
+#clnModuleHub .cln-view-intro{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--mut)}
+#clnModuleHub .cln-status{font-size:12px;line-height:1.6;color:var(--mut);margin:4px 0 12px;overflow-wrap:anywhere}
+#clnHubDetail .cln-subtabs{margin:16px 0 22px;padding:2px 1px 9px;gap:8px;flex-wrap:wrap;overflow:visible;scroll-snap-type:none}
+#clnHubDetail .cln-subtab{flex:0 1 auto;border-radius:999px;font-size:13px;padding:11px 17px;background:color-mix(in srgb,var(--ac) 4%,var(--card));border-color:var(--bd)}
+#clnHubDetail .cln-subtab[aria-selected="true"]{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 5px 15px color-mix(in srgb,var(--ac) 23%,transparent)}
+#clnHubDetail .cln-subpanel-title{font-size:18px;letter-spacing:-.025em;margin:0 0 15px}
+#clnHubDetail .cln-subpanel{max-width:100%;min-width:0}
+#clnHubDetail .cln-subpanel>form{width:100%;max-width:100%;min-width:0;gap:12px;padding:clamp(13px,2.7vw,23px);border-radius:19px;border:1px solid color-mix(in srgb,var(--ac) 13%,var(--bd));background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 6px 23px rgba(0,0,0,.035);align-items:stretch}
+#clnHubDetail form, #clnHubDetail form>div,#clnHubDetail form>div>div{max-width:100%;min-width:0}
+#clnHubDetail form input:not([type="checkbox"]),#clnHubDetail form select,#clnHubDetail form textarea,#clnHubDetail .cln-catalog-search,#clnHubDetail .cln-article-search{
+ appearance:none;-webkit-appearance:none;box-sizing:border-box;outline:none;color:var(--tx);font:inherit;font-size:14px;line-height:1.35;
+ background:color-mix(in srgb,var(--solid) 66%,transparent);border:1px solid color-mix(in srgb,var(--mut) 17%,var(--bd));
+ border-radius:13px;min-height:46px;padding:11px 13px;box-shadow:none;
+}
+#clnHubDetail form input::placeholder,#clnHubDetail form textarea::placeholder,#clnHubDetail .cln-catalog-search::placeholder{color:var(--mut);opacity:.73}
+#clnHubDetail form input:focus,#clnHubDetail form select:focus,#clnHubDetail form textarea:focus,#clnHubDetail .cln-catalog-search:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 14%,transparent)}
+#clnHubDetail form select{padding-right:33px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23859bb7' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:17px}
+#clnHubDetail form select option{background:var(--solid);color:var(--tx)}
+#clnHubDetail form button{font:inherit;font-size:14px;font-weight:700;min-height:44px}
+#clnHubDetail .cln-subpanel>form>div>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%;padding:12px;border:1px solid var(--bd);border-radius:14px}
+#clnHubDetail .cln-subpanel>form>div>div>input,#clnHubDetail .cln-subpanel>form>div>div>select{min-width:0!important;width:100%;max-width:100%}
+#clnHubDetail .cln-subpanel>form>div>div>button{width:100%;max-width:100%}
+#clnHubDetail .cln-article-picker{position:relative;flex:1 1 230px;min-width:0;max-width:100%;width:100%;z-index:5}
+#clnHubDetail .cln-article-picker:focus-within{z-index:30}
+#clnHubDetail .cln-article-picker .cln-article-search{width:100%;max-width:100%;padding:12px 14px;background:color-mix(in srgb,var(--ac) 5%,var(--solid));border-color:color-mix(in srgb,var(--ac) 20%,var(--bd))}
+#clnHubDetail .cln-article-picker .cln-article-search:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 14%,transparent)}
+#clnHubDetail .cln-article-picker .cln-article-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;min-height:0!important;border:0!important}
+#clnHubDetail .cln-article-picker>small{display:block;color:var(--mut);font-size:11px;margin:5px 3px 0}
+#clnHubDetail .cln-article-results{position:absolute;z-index:100;top:48px;left:0;right:0;max-height:280px;overflow:auto;border:1px solid color-mix(in srgb,var(--ac) 30%,var(--bd));border-radius:14px;background:var(--solid);box-shadow:0 18px 44px rgba(0,0,0,.3);padding:6px}
+#clnHubDetail .cln-article-results[hidden]{display:none!important}
+#clnHubDetail .cln-article-results button{width:100%;padding:11px;text-align:left;border:0;border-radius:8px;color:var(--tx);background:transparent;min-height:40px;font-weight:500;line-height:1.4}
+#clnHubDetail .cln-article-results button:hover,#clnHubDetail .cln-article-results button[aria-selected="true"]{background:color-mix(in srgb,var(--ac) 16%,var(--solid));color:var(--ac)}
+#clnHubDetail .cln-article-results p{font-size:12px;color:var(--mut);padding:8px}
+#clnHubDetail .cln-seller-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:12px 0}
+#clnHubDetail .cln-seller-item{padding:14px 16px;border:1px solid var(--bd);background:var(--card);border-radius:13px}
+#clnHubDetail .cln-small-kpi{font-size:13px;color:var(--mut);font-weight:700}
+#clnHubDetail .cln-empty{color:var(--mut);padding:24px 12px;text-align:center;border:1px dashed var(--bd);border-radius:14px}
+#clnHubDetail .cln-item-catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:9px;margin-top:14px;max-height:480px;overflow:auto}
+#clnHubDetail .cln-item-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--bd);border-radius:14px;padding:14px;background:var(--card)}
+#clnHubDetail .cln-item-card strong{font-size:13px;font-weight:700;letter-spacing:-.015em;line-height:1.4}
+#clnHubDetail .cln-item-card small{font-size:11px;color:var(--mut);line-height:1.55}
+#clnHubDetail .cln-catalog-search{width:100%;font-size:15px}
+@media(max-width:850px){#clnModuleChoices{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}#clnHubDetail .cln-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#clnHubDetail .cln-subtab{width:100%;padding:10px 6px;border-radius:11px;font-size:12px}#clnHubDetail .cln-subpanel>form>div>div{grid-template-columns:1fr}}
+@media(max-width:500px){#clnModuleHub .cln-workspace-content{border-radius:16px}#clnModuleHub .cln-header{padding:18px 14px}#clnModuleHub .cln-header .cln-logo{width:44px;height:44px}#clnModuleHub .cln-header .cln-kicker{font-size:9px}#clnModuleHub .cln-subtitle{font-size:11px}#clnModuleChoices{padding:11px;gap:6px}#clnModuleChoices .cln-tab{padding:11px 2px!important;font-size:12px!important;min-height:43px!important}#clnModuleHub .cln-content{padding:17px 13px}#clnHubDetail .cln-subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}#clnHubDetail .cln-subpanel>form{padding:13px;gap:10px}#clnHubDetail .cln-subpanel>form>input:not([type="checkbox"]),#clnHubDetail .cln-subpanel>form>select,#clnHubDetail .cln-subpanel>form>textarea{flex-basis:100%}#clnHubDetail .cln-article-picker{flex-basis:100%}#clnHubDetail .cln-subpanel>form>button{width:100%}#clnHubDetail .cln-seller-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#clnHubDetail *,#clnModuleChoices *{transition:none!important}}
+</style>
 
 </body></html>
