@@ -96,8 +96,18 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
 <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol><symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
-<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="Módulos disponibles" class="debt-unlock-screen"><div class="authCard"><h2>Panel de módulos</h2><p>Sesión iniciada. Deudas necesita una contraseña adicional; Inventario, Garantías y Contratos mantienen sus permisos independientes.</p><div id="clnModuleChoices"><button class="g2" type="button" id="clnHubDebts">Deudas · desbloquear</button><button class="g2" type="button" id="clnHubInventory">Inventario</button><button class="g2" type="button" id="clnHubWarranties">Garantías</button><button class="g2" type="button" id="clnHubContracts">Contratos</button><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button></div><p id="clnHubStatus" role="status" aria-live="polite"></p><div id="clnHubDetail" aria-live="polite"></div><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
+<style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}</style>
+<script src="./cl-nexus-reader.cjs"></script>
+<script src="./cl-nexus-actions.cjs"></script>
+<script src="./cln-http-auth-probe.cjs"></script>
+<script src="./debt-gate-client.cjs"></script>
+<script src="./debt-module-controller.cjs"></script>
+<script src="./debt-cache-preflight.cjs"></script>
+<script src="./debt-legacy-backup.cjs"></script>
+<script src="./debt-encrypted-backup.cjs"></script>
+<div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
+<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
@@ -366,10 +376,12 @@ function save(){
 function schedulePush(ms){clearTimeout(SY.timer);if(!SY.doc)return;SY.timer=setTimeout(push,ms)}
 async function push(){
   if(!SY.doc||SY.pushing||!SY.pend)return;
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())){sv("Deudas bloqueadas: no se enviarán cambios pendientes",1);return}
   if(typeof navigator!=="undefined"&&navigator.onLine===false){sv("⚠ Sin conexión: cambios guardados aquí, pendientes de sincronizar",1);return}
-  SY.pushing=true;const sg=sig(S),rev=S.rev;sv("Sincronizando…");
+  SY.pushing=true;const activeState=S,sg=sig(S),rev=S.rev;sv("Sincronizando…");
   try{
     await SY.doc.set({j:JSON.stringify(S),rev,dev:DEV,ts:Date.now()});
+    if(DEBT_GATE_ENABLED&&(!APP_READY||S!==activeState||!debtGate||!debtGate.isUnlocked()))return;
     S.debts.forEach(d=>SY.known[d.id]=d.mt||0);SY.fail=0;
     if(sig(S)===sg){SY.pend=false;lsDel("cp_pend");sv("Sincronizado "+hm())}else schedulePush(300);
   }catch(e){SY.fail++;sv("⚠ No se pudo sincronizar: cambios guardados en este dispositivo y pendientes",1);schedulePush(Math.min(60000,2000*Math.pow(2,SY.fail)))}
@@ -654,11 +666,11 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 // Los datos privados se cargan y renderizan solo después de autorizar la sesión.
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
-function loadPrivate(){S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
+function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
-window.addEventListener("storage",e=>{if(!APP_READY||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
+window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
 window.addEventListener("online",()=>{SY.fail=0;if(SY.pend)push();else if(SY.doc)sv("Sincronizado "+hm())});
 window.addEventListener("offline",()=>sv("⚠ Sin conexión: los cambios se guardan aquí y se enviarán al reconectar",1));
@@ -667,30 +679,831 @@ setInterval(()=>{if(APP_READY&&refreshT())uiRefresh()},60000);
 const SUPABASE_URL="https://josdmjjbnrugiwlwgjky.supabase.co";
 const SUPABASE_KEY="sb_publishable_0CHw4JtE92-07OMNAnvESA_44sf9dk4";
 const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let SB_UID=null,SB_WID=null,SB_CH=null;
+window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
+let SB_UID=null,SB_WID=null,SB_CH=null,authSessionGeneration=0;
 const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
 async function cloudSnapshot(){
+ if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Acceso a Deudas no autorizado");
   const {data,error}=await SB.from("debts").select("data").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(error)throw error;
   return{exists:!!data,data:()=>data?{j:JSON.stringify(data.data),dev:"supabase"}:{}};
 }
 async function cloudSet(payload){
+ if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))throw Error("Acceso a Deudas no autorizado");
   const state=JSON.parse(payload.j);
   const {data:old,error:re}=await SB.from("debts").select("id").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
   if(re)throw re;
+  // An authorization can expire while the preliminary database read is in flight.
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()||!APP_READY))throw Error("Autorización caducada antes de guardar Deudas");
   if(old){const {error}=await SB.from("debts").update({data:state,updated_by:SB_UID,updated_at:new Date().toISOString()}).eq("workspace_id",SB_WID).eq("id","__shared_state__");if(error)throw error}
   else{const {error}=await SB.from("debts").insert({id:"__shared_state__",workspace_id:SB_WID,data:state,created_by:SB_UID,updated_by:SB_UID});if(error)throw error}
 }
-async function connectCloud(){
-  const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",SB_UID).limit(1).maybeSingle();
-  if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
-  if(!APP_READY)loadPrivate();
-  SY.doc={set:cloudSet};
-  const first=await cloudSnapshot();onRemote(first);
-  if(SB_CH)await SB.removeChannel(SB_CH);
-  SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;try{onRemote(await cloudSnapshot())}catch(e){sv("⚠ No se pudo leer la nube",1)}}).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED")sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
-  showPrivate();gate(false);sv("Conectado · comprobando tiempo real…");if(SY.pend)schedulePush(0);
+// Corte de Deudas requiere migración RLS productiva coordinada; NO activar por separado.
+const DEBT_GATE_ENABLED=true;
+let debtController=null,debtGate=null;
+const debtScreen=document.getElementById("debtUnlockScreen");
+const moduleHub=document.getElementById("clnModuleHub");
+function showModuleHub(yes){if(yes){document.getElementById("clnHubDetail").replaceChildren();document.getElementById("clnHubStatus").textContent=""}moduleHub.hidden=!yes;moduleHub.inert=!yes;if(yes){hidePrivate();debtScreen.hidden=true;debtScreen.inert=true;gate(false)}}
+function debtScreenVisible(yes,msg=""){
+ document.getElementById("debtLockButton").hidden=!DEBT_GATE_ENABLED||yes;
+ debtScreen.hidden=!yes;debtScreen.inert=!yes;if(yes){moduleHub.hidden=true;moduleHub.inert=true}
+ document.getElementById("debtUnlockError").textContent=msg;
+ if(yes){hidePrivate();gate(false)}
 }
+async function disconnectDebtChannel(){
+ SY.doc=null;clearTimeout(SY.timer);
+ if(SB_CH){const ch=SB_CH;SB_CH=null;await SB.removeChannel(ch)}
+}
+async function connectDebtData(reveal=true){
+ const startingUser=SB_UID,startingWorkspace=SB_WID,startingGeneration=authSessionGeneration;
+ if(!startingUser||!startingWorkspace)throw Error("Sesión requerida");
+ if(DEBT_GATE_ENABLED&&(!debtGate||!await debtGate.verify()))throw Error("Acceso a Deudas no confirmado por el servidor");
+ try{
+ if(!APP_READY)loadPrivate();
+ SY.doc={set:cloudSet};
+ const first=await cloudSnapshot();
+ if(SB_UID!==startingUser||SB_WID!==startingWorkspace||authSessionGeneration!==startingGeneration)throw Error("Sesión cambiada durante la lectura de Deudas");
+ if(DEBT_GATE_ENABLED&&(!debtGate||!await debtGate.verify()||!APP_READY))throw Error("Autorización caducada durante la lectura de Deudas");
+ onRemote(first);
+ if(SB_CH)await SB.removeChannel(SB_CH);
+ SB_CH=SB.channel("panel-deudas-"+SB_WID).on("postgres_changes",{event:"*",schema:"public",table:"debts",filter:"workspace_id=eq."+SB_WID},async p=>{
+  if((p.new&&p.new.id)!=="__shared_state__"&&(p.old&&p.old.id)!=="__shared_state__")return;
+  if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
+  try{
+   const snapshot=await cloudSnapshot();
+   // An in-flight network read must not repaint Deudas after lock/logout.
+   if(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))return;
+   if(!APP_READY)return;
+   onRemote(snapshot);
+  }catch(e){if(APP_READY)sv("⚠ No se pudo leer la nube",1)}
+ }).subscribe(status=>{if(status==="SUBSCRIBED")sv(SY.pend?"Cambios pendientes de sincronizar":"Sincronizado "+hm());else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))sv("⚠ Sin conexión en tiempo real; comprueba la sincronización",1)});
+ if(reveal){showPrivate();gate(false);debtScreenVisible(false)}sv("Conectado · comprobando tiempo real…");if(SY.pend&&reveal)schedulePush(0);
+ }catch(error){
+  // A stale request from a previous login must never reopen the unlock screen after sign-out.
+  if(DEBT_GATE_ENABLED&&SB_UID===startingUser&&authSessionGeneration===startingGeneration){
+   try{await disconnectDebtChannel()}catch(_){SY.doc=null;clearTimeout(SY.timer)}
+   hidePrivate();
+   debtScreenVisible(true,"No se pudo verificar Deudas. Vuelve a desbloquear.");
+  }
+  throw error;
+ }
+}
+async function connectCloud(){
+ const startingUser=SB_UID,startingGeneration=authSessionGeneration;
+ if(!startingUser)throw Error("Sesión requerida");
+ const {data:m,error}=await SB.from("workspace_members").select("workspace_id").eq("user_id",startingUser).limit(1).maybeSingle();
+ if(!SB_UID||SB_UID!==startingUser||startingGeneration!==authSessionGeneration)throw Error("La sesión cambió durante la autenticación");
+ if(error)throw error;if(!m)throw new Error("Esta cuenta no está autorizada para este Panel de Deudas.");SB_WID=m.workspace_id;
+ if(!DEBT_GATE_ENABLED){await connectDebtData();return}
+ // Fail closed if any required client/server gate component is absent.
+ if(!window.DebtGateClient||!window.DebtModuleController||!window.DebtCachePreflight)throw Error("Módulo de seguridad no disponible");
+ const guard=window.DebtGateClient.createDebtGate({client:SB,workspaceId:SB_WID,rpcNames:{unlock:'unlock_debts',verify:'has_debts_unlock',lock:'lock_debts'}});
+ debtGate=guard;
+ debtController=window.DebtModuleController.createDebtModuleController({
+  gate:guard,
+  load:async()=>{const report=window.DebtCachePreflight.inspectDebtCache(localStorage);
+   if(!report.storageAccessible)throw Error("No se puede verificar la caché local");
+   // Production cache encryption/migration must be reviewed before enabling.
+   await connectDebtData(false)},
+  show:()=>{showPrivate();debtScreenVisible(false);if(SY.pend)schedulePush(0)},
+  hide:()=>{debtScreenVisible(true)},
+  disconnect:disconnectDebtChannel,
+  hasPending:()=>SY.pend||lsGet("cp_pend")==="1",
+  confirmPending:async()=>confirm("Hay cambios sin sincronizar. Se conservarán en este dispositivo. ¿Bloquear Deudas?")
+ });
+ showModuleHub(true);
+}
+// Manual encrypted backup: available only after server-verified Deudas access.
+const debtBackupButton=document.createElement("button");
+debtBackupButton.type="button";debtBackupButton.className="g2";
+debtBackupButton.textContent="Exportar respaldo cifrado de Deudas";
+debtBackupButton.hidden=true;
+document.getElementById("privateApp").querySelector("header").append(debtBackupButton);
+debtBackupButton.onclick=async()=>{
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))){toast("Inicia sesión y autoriza Deudas antes de exportar",1);return}
+ if(!window.DebtLegacyBackup||!window.DebtEncryptedBackup){toast("Respaldo no disponible",1);return}
+ const pass=prompt("Respaldo SOLO de los datos locales de este navegador; NO sustituye una copia de la nube. Frase de respaldo (mínimo 12 caracteres). No la guardamos. Si la pierdes, no podrás recuperar el archivo.");
+ if(pass===null)return;
+ if(pass.length<12){toast("La frase debe tener al menos 12 caracteres",1);return}
+ debtBackupButton.disabled=true;
+ try{
+  const backup=window.DebtLegacyBackup.capture(localStorage);
+  if(!Object.keys(backup.entries).some(key=>key!=="cp_pend"))throw Error("Este navegador no tiene datos de Deudas para respaldar; falta verificar el respaldo de la nube");
+  if(backup.entries.cp_pend==="1")alert("ATENCIÓN: hay cambios de Deudas pendientes de sincronizar. Conserva este respaldo y no migres ni borres la caché hasta comprobar que esos cambios llegaron a la nube.");
+  const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
+  // Verify the encrypted artifact before offering it for download; never alter the source cache.
+  const verified=await window.DebtEncryptedBackup.decryptBackup(encrypted,pass);
+  if(JSON.stringify(verified)!==JSON.stringify(backup))throw Error("La verificación del respaldo no coincide");
+  const current=window.DebtLegacyBackup.capture(localStorage);
+  if(JSON.stringify(current.entries)!==JSON.stringify(backup.entries))throw Error("Los datos locales cambiaron durante el respaldo; vuelve a exportar para incluir los cambios recientes");
+  if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("La sesión expiró antes de exportar");
+  const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="deudas-respaldo-cifrado-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast("Respaldo LOCAL cifrado preparado. Comprueba el archivo descargado con Verificar respaldo; conserva otra copia de la nube.");
+ }catch(e){toast("No se pudo exportar: "+(e.message||e),1)}
+ finally{debtBackupButton.disabled=false}
+};
+
+// Recovery preview is deliberately read-only: never import into a live synced session.
+const debtRecoveryInput=document.createElement("input");
+debtRecoveryInput.type="file";debtRecoveryInput.accept=".json,application/json";debtRecoveryInput.hidden=true;
+const debtRecoveryButton=document.createElement("button");
+debtRecoveryButton.type="button";debtRecoveryButton.className="g2";
+debtRecoveryButton.textContent="Verificar respaldo cifrado (sin restaurar)";
+debtRecoveryButton.hidden=true;
+document.getElementById("privateApp").querySelector("header").append(debtRecoveryButton,debtRecoveryInput);
+debtRecoveryButton.onclick=async()=>{
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify()))){toast("Inicia sesión antes de revisar respaldos",1);return}
+ debtRecoveryInput.value="";debtRecoveryInput.click();
+};
+debtRecoveryInput.onchange=async()=>{
+ const file=debtRecoveryInput.files&&debtRecoveryInput.files[0];
+ if(!file)return;
+ if(file.size>20*1024*1024){toast("Archivo demasiado grande para verificar",1);return}
+ if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))return;
+ const pass=prompt("Frase del respaldo cifrado (solo para verificar; no se restaurarán datos)");
+ if(pass===null)return;
+ debtRecoveryButton.disabled=true;
+ try{
+  const envelope=JSON.parse(await file.text());
+  const backup=await window.DebtEncryptedBackup.decryptBackup(envelope,pass);
+  if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("Autorización caducada");
+  const keys=Object.keys(backup.entries);
+  const pending=backup.entries.cp_pend==="1";
+  alert("Respaldo válido. Claves presentes: "+keys.length+". Indicador de cambios pendientes: "+(pending?"SÍ":"no confirmado")+". No se ha restaurado ni modificado ningún dato.");
+ }catch(e){toast("No se pudo verificar el respaldo: "+(e.message||e),1)}
+ finally{debtRecoveryButton.disabled=false;debtRecoveryInput.value=""}
+};
+document.getElementById("clnHubHttpAudit").onclick=async()=>{
+ const button=document.getElementById("clnHubHttpAudit"),status=document.getElementById("clnHubStatus");
+ if(!DEBT_GATE_ENABLED||!SB_UID||!SB_WID||moduleHub.hidden){status.textContent="Diagnóstico disponible solo después de iniciar sesión en la PWA actualizada.";return}
+ button.disabled=true;status.textContent="Probando permisos HTTP de la sesión actual, sin modificar datos…";
+ const currentUid=SB_UID,currentGeneration=authSessionGeneration;
+ try{
+  if(!window.CLNHttpAuthProbe)throw Error("Herramienta de diagnóstico no incluida");
+  const report=await window.CLNHttpAuthProbe.probe({client:SB});
+  if(currentUid!==SB_UID||currentGeneration!==authSessionGeneration||moduleHub.hidden)return;
+  status.textContent="HTTP APROBADO · Sesión autenticada · Deudas "+report.debtState+
+   " · Filas visibles: "+report.visibleDebtRows+
+   " · Inventario: "+report.inventoryItems+
+   " · Vendedores autorizados. No se modificó ningún dato.";
+ }catch(e){
+  if(currentUid===SB_UID&&currentGeneration===authSessionGeneration&&!moduleHub.hidden)
+   status.textContent="HTTP NO APROBADO · "+String(e.message||e)+". No publicar hasta resolverlo.";
+ }finally{button.disabled=false}
+};
+document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true);
+document.getElementById("clnHubLogout").onclick=()=>document.getElementById("debtUnlockLogout").click();
+// CL Nexus stays independent from Deudas. A separate authenticated view
+// is shown without mounting or reading the private Deudas application.
+const clnHubViews=Object.freeze({
+ clnHubInventory:{title:"Inventario",sections:["Artículos","Movimientos","Bodegas","Autorizaciones"]},
+ clnHubWarranties:{title:"Garantías",sections:["Recepción","En revisión","Reparación o proveedor","Liberación"]},
+ clnHubContracts:{title:"Contratos",sections:["Clientes","Vendedores","Artículos","Historial"]}
+});
+const clnHubDetail=document.getElementById("clnHubDetail");
+let nexusReader=null,nexusViewEpoch=0;
+async function openIndependentModule(id){
+ const config=clnHubViews[id];
+ if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
+ const token=++nexusViewEpoch;
+ clnHubDetail.replaceChildren();
+ const title=document.createElement("h3");title.textContent=config.title;
+ const status=document.createElement("p");status.textContent="Consultando datos autorizados…";
+ clnHubDetail.append(title,status);
+ document.getElementById("clnHubStatus").textContent=config.title;
+ try{
+  if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
+  if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+  if(id==="clnHubWarranties"){
+   status.textContent="Liberación de garantía: requiere autorización del servidor.";
+   if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+   const form=document.createElement("form");
+   const item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo para garantía");
+   const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
+   const articles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");item.append(option)}
+   const dest=document.createElement("select");dest.setAttribute("aria-label","Destino");
+   for(const [value,label] of [["1","Destino 1"],["2","Destino 2"]]){const option=document.createElement("option");option.value=value;option.textContent=label;dest.append(option)}
+   const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
+   const notes=document.createElement("textarea");notes.required=true;notes.placeholder="Observaciones obligatorias";notes.setAttribute("aria-label","Observaciones");
+   const submit=document.createElement("button");submit.type="submit";submit.textContent="Solicitar liberación";submit.className="g2";
+   form.append(item,dest,quantity,notes,submit);
+   const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+   form.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_item_id:item.value.trim(),p_destino:Number(dest.value),p_cantidad:Number(quantity.value),p_observaciones:notes.value.trim()};
+    if(!params.p_observaciones){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Confirmar liberación de garantía? El servidor validará permisos y existencias."))return;
+    submit.disabled=true;status.textContent="Procesando liberación…";
+    try{
+     const result=await actions.execute("warrantyRelease",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Operación confirmada por el servidor. Movimiento: "+String(result);
+     form.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Operación no confirmada: "+e.message}
+    finally{submit.disabled=false}
+   };
+   clnHubDetail.append(form);
+   const returnForm=document.createElement("form");
+   const returnTitle=document.createElement("h4");returnTitle.textContent="Solicitar devolución para revisión";
+   const returnItem=document.createElement("select");returnItem.required=true;returnItem.setAttribute("aria-label","Artículo devuelto");
+   const returnBlank=document.createElement("option");returnBlank.value="";returnBlank.textContent="Seleccionar artículo";returnItem.append(returnBlank);
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");returnItem.append(option)}
+   const returnQty=document.createElement("input");returnQty.type="number";returnQty.min="1";returnQty.step="1";returnQty.required=true;returnQty.placeholder="Cantidad devuelta";returnQty.setAttribute("aria-label","Cantidad devuelta");
+   const returnReason=document.createElement("textarea");returnReason.required=true;returnReason.placeholder="Motivo de devolución";returnReason.setAttribute("aria-label","Motivo de devolución");
+   const returnButton=document.createElement("button");returnButton.type="submit";returnButton.className="g2";returnButton.textContent="Enviar devolución a revisión";
+   returnForm.append(returnTitle,returnItem,returnQty,returnReason,returnButton);
+   returnForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!returnReason.value.trim()){status.textContent="Indica el motivo de devolución.";return}
+    if(!confirm("¿Enviar devolución para revisión? No aumentará existencias hasta su aprobación."))return;
+    returnButton.disabled=true;status.textContent="Enviando devolución…";
+    try{
+     const result=await actions.execute("requestReturn",{p_item_id:returnItem.value,p_cantidad:Number(returnQty.value),p_motivo:returnReason.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Devolución pendiente de revisión. Solicitud: "+String(result);returnForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Devolución no confirmada: "+e.message}
+    finally{returnButton.disabled=false}
+   };
+   clnHubDetail.append(returnForm);
+   const reviewReturn=document.createElement("form");
+   const reviewTitle=document.createElement("h4");reviewTitle.textContent="Revisar devolución pendiente";
+   const returnRequestId=document.createElement("input");returnRequestId.required=true;returnRequestId.placeholder="ID de solicitud (UUID)";returnRequestId.setAttribute("aria-label","ID de devolución");
+   const returnDecision=document.createElement("select");returnDecision.setAttribute("aria-label","Decisión de devolución");
+   for(const [value,label] of [["true","Aprobar devolución"],["false","Rechazar devolución"]]){const option=document.createElement("option");option.value=value;option.textContent=label;returnDecision.append(option)}
+   const reviewReturnButton=document.createElement("button");reviewReturnButton.type="submit";reviewReturnButton.className="g2";reviewReturnButton.textContent="Resolver devolución";
+   reviewReturn.append(reviewTitle,returnRequestId,returnDecision,reviewReturnButton);
+   reviewReturn.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const approve=returnDecision.value==="true";
+    if(!confirm(approve?"¿Aprobar devolución? El servidor verificará si corresponde aumentar existencias.":"¿Rechazar devolución?"))return;
+    reviewReturnButton.disabled=true;status.textContent="Revisando devolución…";
+    try{
+     const result=await actions.execute("reviewReturn",{p_solicitud_id:returnRequestId.value.trim(),p_aprobar:approve});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Decisión registrada: "+String(result);reviewReturn.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Revisión no confirmada: "+e.message}
+    finally{reviewReturnButton.disabled=false}
+   };
+   clnHubDetail.append(reviewReturn);
+   const repairForm=document.createElement("form");
+   const repairTitle=document.createElement("h4");repairTitle.textContent="Crear orden de reparación";
+   const repairItem=document.createElement("select");repairItem.required=true;repairItem.setAttribute("aria-label","Artículo para reparación");
+   const repairBlank=document.createElement("option");repairBlank.value="";repairBlank.textContent="Seleccionar artículo";repairItem.append(repairBlank);
+   for(const article of articles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");repairItem.append(option)}
+   const repairQty=document.createElement("input");repairQty.type="number";repairQty.min="1";repairQty.step="1";repairQty.required=true;repairQty.placeholder="Cantidad";repairQty.setAttribute("aria-label","Cantidad a reparar");
+   const repairType=document.createElement("select");repairType.setAttribute("aria-label","Tipo de destino");
+   for(const value of ["proveedor","taller"]){const option=document.createElement("option");option.value=value;option.textContent=value==="taller"?"Taller":"Proveedor";repairType.append(option)}
+   const repairDestination=document.createElement("input");repairDestination.required=true;repairDestination.placeholder="Nombre del proveedor o taller";repairDestination.setAttribute("aria-label","Nombre del destino");
+   const repairReason=document.createElement("textarea");repairReason.required=true;repairReason.placeholder="Motivo de reparación";repairReason.setAttribute("aria-label","Motivo");
+   const repairNotes=document.createElement("textarea");repairNotes.required=true;repairNotes.placeholder="Observaciones";repairNotes.setAttribute("aria-label","Observaciones de reparación");
+   const repairButton=document.createElement("button");repairButton.type="submit";repairButton.className="g2";repairButton.textContent="Crear reparación pendiente";
+   repairForm.append(repairTitle,repairItem,repairQty,repairType,repairDestination,repairReason,repairNotes,repairButton);
+   repairForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_item_id:repairItem.value,p_cantidad:Number(repairQty.value),p_destino_tipo:repairType.value,p_destino_nombre:repairDestination.value.trim(),p_motivo:repairReason.value.trim(),p_observaciones:repairNotes.value.trim()};
+    if(Object.values(params).some(v=>v===""||v===null)){status.textContent="Completa los datos de reparación.";return}
+    if(!confirm("¿Crear orden de reparación? El envío se realizará por separado."))return;
+    repairButton.disabled=true;status.textContent="Creando reparación…";
+    try{
+     const result=await actions.execute("createRepair",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Reparación creada en el servidor. ID: "+String(result);repairForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Reparación no confirmada: "+e.message}
+    finally{repairButton.disabled=false}
+   };
+   clnHubDetail.append(repairForm);
+   const dispatchForm=document.createElement("form");
+   const dispatchTitle=document.createElement("h4");dispatchTitle.textContent="Enviar reparación pendiente";
+   const dispatchId=document.createElement("input");dispatchId.required=true;dispatchId.placeholder="ID de reparación (UUID)";dispatchId.setAttribute("aria-label","ID de reparación");
+   const dispatchButton=document.createElement("button");dispatchButton.type="submit";dispatchButton.className="g2";dispatchButton.textContent="Enviar a proveedor o taller";
+   dispatchForm.append(dispatchTitle,dispatchId,dispatchButton);
+   dispatchForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!confirm("¿Marcar esta reparación como enviada? El servidor comprobará su estado."))return;
+    dispatchButton.disabled=true;status.textContent="Registrando envío…";
+    try{
+     const result=await actions.execute("sendRepair",{p_reparacion_id:dispatchId.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Envío confirmado por el servidor: "+String(result);dispatchForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Envío no confirmado: "+e.message}
+    finally{dispatchButton.disabled=false}
+   };
+   clnHubDetail.append(dispatchForm);
+   const resolveForm=document.createElement("form");
+   const resolveTitle=document.createElement("h4");resolveTitle.textContent="Resolver reparación";
+   const resolveId=document.createElement("input");resolveId.required=true;resolveId.placeholder="ID de reparación (UUID)";resolveId.setAttribute("aria-label","ID de reparación a resolver");
+   const resolveAction=document.createElement("select");resolveAction.setAttribute("aria-label","Operación de reparación");
+   for(const value of ["recepcion","baja"]){const option=document.createElement("option");option.value=value;option.textContent=value;resolveAction.append(option)}
+   const resolveQty=document.createElement("input");resolveQty.type="number";resolveQty.min="1";resolveQty.step="1";resolveQty.required=true;resolveQty.placeholder="Cantidad";resolveQty.setAttribute("aria-label","Cantidad resuelta");
+   const resolveNotes=document.createElement("textarea");resolveNotes.required=true;resolveNotes.placeholder="Observaciones obligatorias";resolveNotes.setAttribute("aria-label","Observaciones de resolución");
+   const resolveButton=document.createElement("button");resolveButton.type="submit";resolveButton.className="g2";resolveButton.textContent="Registrar resolución";
+   resolveForm.append(resolveTitle,resolveId,resolveAction,resolveQty,resolveNotes,resolveButton);
+   resolveForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!resolveNotes.value.trim()){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Registrar "+resolveAction.value+"? El servidor comprobará el estado y las cantidades."))return;
+    resolveButton.disabled=true;status.textContent="Resolviendo reparación…";
+    try{
+     const result=await actions.execute("resolveRepair",{p_reparacion_id:resolveId.value.trim(),p_operacion:resolveAction.value,p_cantidad:Number(resolveQty.value),p_observaciones:resolveNotes.value.trim()});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Resolución confirmada por el servidor: "+String(result);resolveForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Resolución no confirmada: "+e.message}
+    finally{resolveButton.disabled=false}
+   };
+   clnHubDetail.append(resolveForm);
+   return;
+  }
+  const kind=id==="clnHubInventory"?"inventory":"contracts";
+  const results=document.createElement("div");
+  let requestSequence=0;
+  let inventorySelector=null;
+  let renameSelector=null;
+  const renderRows=(rows,requestId)=>{
+   if(requestId!==requestSequence)return;
+   if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
+   results.replaceChildren();
+   status.textContent=kind==="inventory"?rows.length+" artículos. Una existencia sin registrar no es cero confirmado; registrala mediante entrada aprobada.":rows.length+" clientes encontrados.";
+   const list=document.createElement("ul");
+   for(const item of rows.slice(0,1000)){
+    const li=document.createElement("li");
+    li.textContent=kind==="inventory"?(item.codigo||"Sin código")+" · "+item.nombre+" · Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+" · Bodega: "+(item.bodega===""?"Sin registrar":item.bodega):item.nombre+" · "+item.dui_mostrado;
+    list.append(li);
+   }
+   results.append(list);
+   if(kind==="inventory"&&inventorySelector){
+    inventorySelector.replaceChildren();
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar artículo";inventorySelector.append(placeholder);
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");inventorySelector.append(option)}
+   }
+   if(kind==="inventory"&&renameSelector){
+    renameSelector.replaceChildren();
+    const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
+    for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");option.dataset.expectedName=article.nombre;renameSelector.append(option)}
+   }
+  };
+  if(kind==="inventory"){
+   const form=document.createElement("form");
+   const item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo");
+   const initial=document.createElement("option");initial.value="";initial.textContent="Seleccionar artículo";item.append(initial);
+   inventorySelector=item;
+   const location=document.createElement("select");location.setAttribute("aria-label","Ubicación de entrada");
+   for(const [value,label] of [["1","Oficina (1)"],["2","Bodega (2)"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
+   const quantity=document.createElement("input");quantity.type="number";quantity.min="1";quantity.step="1";quantity.required=true;quantity.placeholder="Cantidad";quantity.setAttribute("aria-label","Cantidad");
+   const notes=document.createElement("textarea");notes.required=true;notes.placeholder="Observaciones de recepción";notes.setAttribute("aria-label","Observaciones");
+   const submit=document.createElement("button");submit.type="submit";submit.textContent="Solicitar entrada (pendiente de aprobación)";submit.className="g2";
+   form.append(item,location,quantity,notes,submit);
+   form.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(!window.CLNexusActions){status.textContent="Motor de operaciones no disponible";return}
+    const params={p_item_id:item.value.trim(),p_location_id:Number(location.value),p_cantidad:Number(quantity.value),p_observaciones:notes.value.trim()};
+    if(!params.p_observaciones){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Enviar solicitud de entrada para aprobación? Esto NO incrementa existencias automáticamente."))return;
+    submit.disabled=true;status.textContent="Enviando solicitud…";
+    try{
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("requestEntry",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Solicitud enviada al servidor, pendiente de revisión. ID: "+String(result);
+     form.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Solicitud no confirmada: "+e.message}
+    finally{submit.disabled=false}
+   };
+   clnHubDetail.append(form);
+   const renameForm=document.createElement("form");
+   const renameHeading=document.createElement("h4");renameHeading.textContent="Corregir nombre del artículo";
+   const renameSelect=document.createElement("select");renameSelect.required=true;renameSelect.setAttribute("aria-label","Artículo cuyo nombre se corregirá");
+   renameSelector=renameSelect;
+   const renameInput=document.createElement("input");renameInput.required=true;renameInput.minLength=2;renameInput.maxLength=200;renameInput.placeholder="Nombre correcto del artículo";renameInput.setAttribute("aria-label","Nombre nuevo");
+   const renameButton=document.createElement("button");renameButton.type="submit";renameButton.className="g2";renameButton.textContent="Guardar nombre corregido";
+   const renameHelp=document.createElement("p");renameHelp.textContent="El cambio queda registrado en auditoría. No modifica cantidades, movimientos ni la clave original del Excel.";
+   renameForm.append(renameHeading,renameSelect,renameInput,renameHelp,renameButton);
+   renameForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const id=renameSelect.value;
+    const selected=renameSelect.selectedOptions[0];
+    const previous=selected&&selected.dataset.expectedName;
+    const newName=renameInput.value.trim();
+    if(!id||!previous||newName.length<2||newName.length>200){status.textContent="Seleccioná el artículo y escribí el nombre correcto.";return}
+    if(!confirm("¿Corregir este nombre en CL Nexus? El servidor guardará el cambio en su auditoría."))return;
+    renameButton.disabled=true;status.textContent="Guardando nombre…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     await actions.execute("renameItem",{p_item_id:id,p_nombre:newName,p_nombre_esperado:previous});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     const current=++requestSequence;
+     renderRows(await nexusReader.list("inventory"),current);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Nombre corregido y confirmado por el servidor.";
+     renameInput.value="";
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Cambio de nombre no confirmado: "+e.message}
+    finally{renameButton.disabled=false}
+   };
+   clnHubDetail.append(renameForm);
+   const reviewForm=document.createElement("form");
+   const requestId=document.createElement("input");requestId.required=true;requestId.placeholder="ID de solicitud de entrada (UUID)";requestId.setAttribute("aria-label","ID de solicitud");
+   const approve=document.createElement("select");approve.setAttribute("aria-label","Decisión");
+   for(const [value,label] of [["true","Aprobar entrada"],["false","Rechazar entrada"]]){const option=document.createElement("option");option.value=value;option.textContent=label;approve.append(option)}
+   const reviewButton=document.createElement("button");reviewButton.type="submit";reviewButton.className="g2";reviewButton.textContent="Revisar solicitud";
+   reviewForm.append(requestId,approve,reviewButton);
+   reviewForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const accepted=approve.value==="true";
+    if(!confirm(accepted?"¿Aprobar esta entrada? El servidor decidirá si aumenta existencias.":"¿Rechazar esta solicitud de entrada?"))return;
+    reviewButton.disabled=true;status.textContent="Revisando solicitud…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("reviewEntry",{p_solicitud_id:requestId.value.trim(),p_aprobar:accepted});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Decisión confirmada por el servidor: "+String(result);
+     reviewForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Revisión no confirmada: "+e.message}
+    finally{reviewButton.disabled=false}
+   };
+   clnHubDetail.append(reviewForm);
+   const transferForm=document.createElement("form");
+   const transferHeading=document.createElement("h4");transferHeading.textContent="Trasladar entre bodegas";
+   const transferItem=document.createElement("select");transferItem.required=true;transferItem.setAttribute("aria-label","Artículo para traslado");
+   const transferPlaceholder=document.createElement("option");transferPlaceholder.value="";transferPlaceholder.textContent="Seleccionar artículo";transferItem.append(transferPlaceholder);
+   const transferArticles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const article of transferArticles){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre+(article.codigo?" · "+article.codigo:"");transferItem.append(option)}
+   const origin=document.createElement("select");origin.setAttribute("aria-label","Origen");
+   const destination=document.createElement("select");destination.setAttribute("aria-label","Destino");
+   for(const select of [origin,destination])for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option)}
+   destination.value="2";
+   const transferQty=document.createElement("input");transferQty.type="number";transferQty.min="1";transferQty.step="1";transferQty.required=true;transferQty.placeholder="Cantidad";transferQty.setAttribute("aria-label","Cantidad a trasladar");
+   const transferNotes=document.createElement("textarea");transferNotes.required=true;transferNotes.placeholder="Motivo del traslado";transferNotes.setAttribute("aria-label","Observaciones del traslado");
+   const transferButton=document.createElement("button");transferButton.type="submit";transferButton.className="g2";transferButton.textContent="Registrar traslado";
+   transferForm.append(transferHeading,transferItem,origin,destination,transferQty,transferNotes,transferButton);
+   let transferOp=null,transferPayload=null;
+   transferForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    if(origin.value===destination.value){status.textContent="Origen y destino deben ser distintos.";return}
+    const params={p_item_id:transferItem.value,p_tipo:"traslado",p_origen:Number(origin.value),p_destino:Number(destination.value),p_cantidad:Number(transferQty.value),p_vendedor:null,p_observaciones:transferNotes.value.trim()};
+    if(!params.p_observaciones){status.textContent="El motivo es obligatorio.";return}
+    const payload=JSON.stringify(params);
+    if(transferOp&&transferPayload!==payload){status.textContent="Hay un traslado sin confirmar. Verifica su resultado antes de cambiar los datos.";return}
+    if(!confirm("¿Trasladar mercadería? El servidor verificará las existencias."))return;
+    if(!transferOp){transferOp=crypto.randomUUID();transferPayload=payload}
+    transferButton.disabled=true;status.textContent="Registrando traslado…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("move",{...params,p_client_op_id:transferOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Traslado confirmado por el servidor: "+String(result);
+     transferOp=null;transferPayload=null;transferForm.reset();destination.value="2";
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Traslado no confirmado. Verifica la operación "+transferOp+" antes de reintentar: "+e.message}
+    finally{transferButton.disabled=false}
+   };
+   clnHubDetail.append(transferForm);
+   const voidForm=document.createElement("form");
+   const saleId=document.createElement("input");saleId.required=true;saleId.placeholder="ID de venta a anular (UUID)";saleId.setAttribute("aria-label","ID de venta");
+   const reason=document.createElement("textarea");reason.required=true;reason.placeholder="Motivo obligatorio de anulación";reason.setAttribute("aria-label","Motivo de anulación");
+   const voidButton=document.createElement("button");voidButton.type="submit";voidButton.className="g2";voidButton.textContent="Anular venta";
+   voidForm.append(saleId,reason,voidButton);
+   voidForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const motive=reason.value.trim();
+    if(!motive){status.textContent="Es obligatorio indicar el motivo.";return}
+    if(!confirm("¿Anular la venta? El servidor validará y restaurará existencias según las reglas de inventario."))return;
+    voidButton.disabled=true;status.textContent="Solicitando anulación…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("voidSale",{p_venta_id:saleId.value.trim(),p_motivo:motive});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Anulación confirmada por el servidor: "+String(result);
+     voidForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Anulación no confirmada: "+e.message}
+    finally{voidButton.disabled=false}
+   };
+   clnHubDetail.append(voidForm);
+   const saleForm=document.createElement("form");
+   const saleHeading=document.createElement("h4");saleHeading.textContent="Registrar venta";
+   const seller=document.createElement("select");seller.required=true;seller.setAttribute("aria-label","Vendedor");
+   const sellerPlaceholder=document.createElement("option");sellerPlaceholder.value="";sellerPlaceholder.textContent="Seleccionar vendedor";seller.append(sellerPlaceholder);
+   const sellers=await nexusReader.list("sellers");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   for(const entry of sellers){const option=document.createElement("option");option.value=entry.id;option.textContent=entry.nombre;seller.append(option)}
+   const mode=document.createElement("select");mode.setAttribute("aria-label","Modalidad");
+   for(const [value,label] of [["contado","Contado"],["credito","Crédito"]]){const option=document.createElement("option");option.value=value;option.textContent=label;mode.append(option)}
+   const lines=document.createElement("div");
+   const saleItems=[];
+   const addLine=document.createElement("button");addLine.type="button";addLine.className="g2";addLine.textContent="Añadir artículo";
+   const makeLine=()=>{
+    if(saleItems.length>=100)return;
+    const wrap=document.createElement("div");
+    const itemSelect=document.createElement("select");itemSelect.required=true;itemSelect.setAttribute("aria-label","Artículo de venta");
+    const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo";itemSelect.append(blank);
+    for(const entry of inventoryArticles){const option=document.createElement("option");option.value=entry.id;option.textContent=entry.nombre;itemSelect.append(option)}
+    const locationSelect=document.createElement("select");locationSelect.setAttribute("aria-label","Ubicación de venta");
+    for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;locationSelect.append(option)}
+    const qty=document.createElement("input");qty.type="number";qty.min="1";qty.step="1";qty.required=true;qty.placeholder="Cantidad";
+    const price=document.createElement("input");price.type="number";price.min="0";price.step="0.01";price.required=true;price.placeholder="Precio unitario";
+    const discount=document.createElement("input");discount.type="number";discount.min="0";discount.step="0.01";discount.value="0";discount.required=true;discount.placeholder="Descuento de línea";
+    const remove=document.createElement("button");remove.type="button";remove.textContent="Quitar";remove.className="g2";
+    const line={wrap,itemSelect,locationSelect,qty,price,discount};saleItems.push(line);
+    remove.onclick=()=>{if(saleItems.length<=1)return;const i=saleItems.indexOf(line);if(i>=0)saleItems.splice(i,1);wrap.remove()};
+    wrap.append(itemSelect,locationSelect,qty,price,discount,remove);lines.append(wrap);
+   };
+   const inventoryArticles=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   addLine.onclick=makeLine;makeLine();
+   const overallDiscount=document.createElement("input");overallDiscount.type="number";overallDiscount.min="0";overallDiscount.step="0.01";overallDiscount.value="0";overallDiscount.required=true;overallDiscount.placeholder="Descuento general";overallDiscount.setAttribute("aria-label","Descuento general");
+   const saleNotes=document.createElement("textarea");saleNotes.placeholder="Observaciones";saleNotes.setAttribute("aria-label","Observaciones de venta");
+   const saleButton=document.createElement("button");saleButton.type="submit";saleButton.className="g2";saleButton.textContent="Confirmar venta";
+   saleForm.append(saleHeading,seller,mode,lines,addLine,overallDiscount,saleNotes,saleButton);
+   let pendingSaleOp=null,pendingSalePayload=null;
+   saleForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const articles=saleItems.map(line=>({item_id:line.itemSelect.value,location_id:Number(line.locationSelect.value),cantidad:Number(line.qty.value),precio_unitario:Number(line.price.value),descuento:Number(line.discount.value)}));
+    if(articles.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||!Number.isFinite(line.precio_unitario)||line.precio_unitario<0||!Number.isFinite(line.descuento)||line.descuento<0)){status.textContent="Revisa cantidades, precios y descuentos.";return}
+    if(!confirm("¿Confirmar venta? El servidor descontará las existencias."))return;
+    const payload=JSON.stringify({seller:seller.value,mode:mode.value,articles,discount:Number(overallDiscount.value),notes:saleNotes.value.trim()});
+    if(pendingSaleOp&&pendingSalePayload!==payload){status.textContent="Hay una venta anterior sin confirmar. Verifica su resultado antes de cambiar artículos o cantidades.";return}
+    if(!pendingSaleOp){pendingSaleOp=crypto.randomUUID();pendingSalePayload=payload}
+    saleButton.disabled=true;status.textContent="Registrando venta. No cierres esta pantalla…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("sale",{p_vendedor_id:seller.value,p_modalidad:mode.value,p_articulos:articles,p_descuento:Number(overallDiscount.value),p_observaciones:saleNotes.value.trim(),p_client_op_id:pendingSaleOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Venta confirmada. ID: "+String(result);
+     pendingSaleOp=null;pendingSalePayload=null;saleForm.reset();lines.replaceChildren();saleItems.length=0;makeLine();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Venta no confirmada. Antes de reintentar comprueba si ya se registró. Operación: "+pendingSaleOp+". "+e.message}
+    finally{saleButton.disabled=false}
+   };
+   clnHubDetail.append(saleForm);
+  }
+  if(kind==="contracts"){
+   const sellerForm=document.createElement("form");
+   const sellerName=document.createElement("input");sellerName.required=true;sellerName.maxLength=120;sellerName.placeholder="Nombre del nuevo vendedor";sellerName.setAttribute("aria-label","Nombre del vendedor");
+   const sellerSubmit=document.createElement("button");sellerSubmit.type="submit";sellerSubmit.className="g2";sellerSubmit.textContent="Registrar vendedor";
+   sellerForm.append(sellerName,sellerSubmit);
+   sellerForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const name=sellerName.value.trim();
+    if(!name){status.textContent="Ingresa el nombre del vendedor.";return}
+    if(!confirm("¿Registrar al vendedor "+name+"?"))return;
+    sellerSubmit.disabled=true;status.textContent="Registrando vendedor…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createSeller",{p_nombre:name});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Vendedor registrado por el servidor. ID: "+String(result);
+     sellerForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
+    finally{sellerSubmit.disabled=false}
+   };
+   clnHubDetail.append(sellerForm);
+   const depositForm=document.createElement("form");
+   const contractId=document.createElement("input");contractId.required=true;contractId.placeholder="ID del contrato (UUID)";contractId.setAttribute("aria-label","ID del contrato");
+   const depositNotes=document.createElement("textarea");depositNotes.required=true;depositNotes.placeholder="Observaciones sobre la prima recibida";depositNotes.setAttribute("aria-label","Observaciones de prima");
+   const depositButton=document.createElement("button");depositButton.type="submit";depositButton.className="g2";depositButton.textContent="Marcar prima recibida";
+   depositForm.append(contractId,depositNotes,depositButton);
+   depositForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const notes=depositNotes.value.trim();
+    if(!notes){status.textContent="Las observaciones son obligatorias.";return}
+    if(!confirm("¿Confirmar que se recibió la prima de este contrato?"))return;
+    depositButton.disabled=true;status.textContent="Actualizando prima…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("markDeposit",{p_contrato_id:contractId.value.trim(),p_observaciones:notes});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent=result===true?"Prima recibida confirmada por el servidor.":"Respuesta del servidor: "+String(result);
+     if(result===true)depositForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Prima no confirmada: "+e.message}
+    finally{depositButton.disabled=false}
+   };
+   clnHubDetail.append(depositForm);
+   const customerForm=document.createElement("form");
+   const customerTitle=document.createElement("h4");customerTitle.textContent="Registrar cliente";
+   const fields=[
+    ["p_nombre","Nombre completo",true],["p_dui","DUI",true],
+    ["p_direccion","Dirección",false],["p_ubicacion","Ubicación",false],
+    ["p_telefono","Teléfono",false],["p_vivienda","Tipo de vivienda",false],
+    ["p_lugar_trabajo","Lugar de trabajo",false],["p_telefono_trabajo","Teléfono de trabajo",false]
+   ];
+   const inputs={};
+   for(const [key,label,required] of fields){
+    const input=document.createElement("input");input.placeholder=label;input.setAttribute("aria-label",label);input.required=required;input.maxLength=250;
+    inputs[key]=input;customerForm.append(input);
+   }
+   const customerButton=document.createElement("button");customerButton.type="submit";customerButton.className="g2";customerButton.textContent="Registrar cliente";
+   customerForm.prepend(customerTitle);customerForm.append(customerButton);
+   customerForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const params={p_referencias:[]};
+    for(const [key] of fields)params[key]=inputs[key].value.trim();
+    if(!params.p_nombre||!params.p_dui){status.textContent="Nombre y DUI son obligatorios.";return}
+    if(!confirm("¿Registrar este cliente?"))return;
+    customerButton.disabled=true;status.textContent="Registrando cliente…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createClient",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Cliente confirmado por el servidor. ID: "+String(result);
+     customerForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Registro no confirmado: "+e.message}
+    finally{customerButton.disabled=false}
+   };
+   clnHubDetail.append(customerForm);
+   const confirmForm=document.createElement("form");
+   const confirmHeading=document.createElement("h4");confirmHeading.textContent="Confirmar contrato borrador";
+   const draftId=document.createElement("input");draftId.required=true;draftId.placeholder="ID del contrato borrador (UUID)";draftId.setAttribute("aria-label","ID de contrato");
+   const allocation=document.createElement("textarea");allocation.required=true;allocation.placeholder='Ubicaciones JSON, ejemplo: [{"item_id":"UUID","location_id":1,"cantidad":1}]';allocation.setAttribute("aria-label","Asignaciones de inventario JSON");
+   const confirmButton=document.createElement("button");confirmButton.type="submit";confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
+   confirmForm.append(confirmHeading,draftId,allocation,confirmButton);
+   let pendingContractOp=null,pendingContractPayload=null;
+   confirmForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    let allocations;
+    try{allocations=JSON.parse(allocation.value)}catch{status.textContent="JSON de ubicaciones inválido.";return}
+    if(!Array.isArray(allocations)||!allocations.length||allocations.some(line=>!line||typeof line!=="object"||!line.item_id||![1,2].includes(Number(line.location_id))||!Number.isInteger(Number(line.cantidad))||Number(line.cantidad)<=0)){status.textContent="Cada línea requiere artículo, ubicación 1/2 y cantidad positiva.";return}
+    const payload=JSON.stringify({contract:draftId.value.trim(),allocations});
+    if(pendingContractOp&&pendingContractPayload!==payload){status.textContent="Existe una confirmación anterior sin verificar. Comprueba su resultado antes de cambiar datos.";return}
+    if(!confirm("¿Confirmar contrato? El servidor validará y descontará las existencias."))return;
+    if(!pendingContractOp){pendingContractOp=crypto.randomUUID();pendingContractPayload=payload}
+    confirmButton.disabled=true;status.textContent="Confirmando contrato…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("confirmContract",{p_contrato_id:draftId.value.trim(),p_ubicaciones:allocations,p_client_op_id:pendingContractOp});
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Contrato confirmado por el servidor: "+String(result);
+     pendingContractOp=null;pendingContractPayload=null;confirmForm.reset();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Confirmación incierta: verifica el contrato antes de reintentar. Operación "+pendingContractOp+". "+e.message}
+    finally{confirmButton.disabled=false}
+   };
+   clnHubDetail.append(confirmForm);
+   const draftForm=document.createElement("form");
+   const draftTitle=document.createElement("h4");draftTitle.textContent="Crear contrato borrador";
+   draftForm.append(draftTitle);
+   const field=(label,type="text",required=false)=>{
+    const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
+   };
+   const number=field("Número de contrato", "text",true);
+   const customer=document.createElement("select");customer.required=true;customer.setAttribute("aria-label","Cliente del contrato");draftForm.append(customer);
+   const vendor=document.createElement("select");vendor.required=true;vendor.setAttribute("aria-label","Vendedor del contrato");draftForm.append(vendor);
+   const fillSelect=(select,items,label)=>{
+    select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
+    for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=item.nombre;select.append(option)}
+   };
+   const customers=await nexusReader.list("contracts");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   fillSelect(customer,customers,"Seleccionar cliente");
+   const vendors=await nexusReader.list("sellers");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   fillSelect(vendor,vendors,"Seleccionar vendedor");
+   const date=field("Fecha de contrato","date",true);date.value=new Date().toISOString().slice(0,10);
+   const choose=(label,options)=>{
+    const el=document.createElement("select");el.setAttribute("aria-label",label);
+    for(const [value,title] of options){const option=document.createElement("option");option.value=value;option.textContent=title;el.append(option)}
+    draftForm.append(el);return el;
+   };
+   const modality=choose("Modalidad",[["credito","Crédito"],["contado","Contado"]]);
+   const frequency=choose("Frecuencia",[["semanal","Semanal"],["quincenal","Quincenal"],["mensual","Mensual"]]);
+   const plan=choose("Plan",[["normal","Normal"],["3_pagos","3 pagos"],["6_pagos","6 pagos"]]);
+   const installment=field("Cuota","number");installment.min="0";installment.step="0.01";
+   const initialBalance=field("Saldo inicial","number");initialBalance.min="0";initialBalance.step="0.01";
+   const planDate=field("Fecha inicial del plan","date");
+   const route=field("Ruta");
+   const collectionDay=field("Día de cobro");
+   const alternate=field("Receptor alterno");
+   const commission=field("Comisión total","number",true);commission.min="0";commission.step="0.01";commission.value="0";
+   const deposit=field("Prima","number",true);deposit.min="0";deposit.step="0.01";deposit.value="0";
+   const depositReceived=document.createElement("label");
+   const depositCheckbox=document.createElement("input");depositCheckbox.type="checkbox";depositReceived.append(depositCheckbox,document.createTextNode(" Prima recibida"));draftForm.append(depositReceived);
+   const detailsTitle=document.createElement("h5");detailsTitle.textContent="Artículos del contrato";draftForm.append(detailsTitle);
+   const details=document.createElement("div");draftForm.append(details);
+   const contractLines=[];
+   const inventory=await nexusReader.list("inventory");
+   if(token!==nexusViewEpoch||moduleHub.hidden)return;
+   const addDetail=document.createElement("button");addDetail.type="button";addDetail.className="g2";addDetail.textContent="Agregar artículo";
+   const newDetail=()=>{
+    if(contractLines.length>=100)return;
+    const wrap=document.createElement("div"),item=document.createElement("select");item.required=true;item.setAttribute("aria-label","Artículo de contrato");
+    fillSelect(item,inventory,"Seleccionar artículo");
+    const qty=document.createElement("input");qty.type="number";qty.required=true;qty.min="1";qty.step="1";qty.placeholder="Cantidad";
+    const price=document.createElement("input");price.type="number";price.required=true;price.min="0";price.step="0.01";price.placeholder="Precio a crédito";
+    const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea";
+    const remove=document.createElement("button");remove.type="button";remove.className="g2";remove.textContent="Quitar";
+    const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
+    remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
+    wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+   };
+   addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
+   const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
+   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Guardar contrato borrador";draftForm.append(draftButton);
+   draftForm.onsubmit=async event=>{
+    event.preventDefault();
+    if(token!==nexusViewEpoch||moduleHub.hidden)return;
+    const contractDetails=contractLines.map(line=>({item_id:line.item.value,cantidad:Number(line.qty.value),precio_credito_unitario:Number(line.price.value),comision_linea:Number(line.lineCommission.value)}));
+    if(contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){status.textContent="Revisa artículos, cantidades y precios.";return}
+    const params={p_numero:number.value.trim(),p_cliente_id:customer.value,p_vendedor_id:vendor.value,p_fecha:date.value,p_modalidad:modality.value,p_frecuencia:frequency.value,p_plan:plan.value,p_cuota:installment.value===""?null:Number(installment.value),p_saldo_inicial:initialBalance.value===""?null:Number(initialBalance.value),p_fecha_plan:planDate.value||null,p_ruta:route.value.trim(),p_dia_cobro:collectionDay.value.trim(),p_receptor_alterno:alternate.value.trim(),p_comision:Number(commission.value),p_prima:Number(deposit.value),p_prima_recibida:depositCheckbox.checked,p_detalles:contractDetails,p_observaciones:draftNotes.value.trim()};
+    if(!confirm("¿Crear contrato borrador? No se descontará inventario hasta su confirmación."))return;
+    draftButton.disabled=true;status.textContent="Guardando contrato borrador…";
+    try{
+     if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+     const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+     const result=await actions.execute("createContract",params);
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     status.textContent="Borrador creado en el servidor. ID: "+String(result)+". Confírmalo por separado para descontar existencias.";
+     draftForm.reset();details.replaceChildren();contractLines.length=0;newDetail();
+    }catch(e){if(token===nexusViewEpoch)status.textContent="Borrador no confirmado; verifica antes de reintentar: "+e.message}
+    finally{draftButton.disabled=false}
+   };
+   clnHubDetail.append(draftForm);
+   const search=document.createElement("input");
+   search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=100;
+   const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
+   const sellerButton=document.createElement("button");sellerButton.type="button";sellerButton.className="g2";sellerButton.textContent="Ver vendedores";
+   const doSearch=async()=>{
+    const query=search.value.trim();
+    const requestId=++requestSequence;
+    if(query.length<3||query.length>100){status.textContent="Escribe entre 3 y 100 caracteres para buscar clientes.";return}
+    searchButton.disabled=true;status.textContent="Buscando clientes…";
+    try{renderRows(await nexusReader.list("contracts",query),requestId)}
+    catch(e){if(token===nexusViewEpoch&&requestId===requestSequence)status.textContent="Consulta denegada: "+e.message}
+    finally{searchButton.disabled=false}
+   };
+   searchButton.onclick=doSearch;
+   search.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch()});
+   sellerButton.onclick=async()=>{
+    const requestId=++requestSequence;
+    sellerButton.disabled=true;status.textContent="Consultando vendedores…";
+    try{
+     const sellers=await nexusReader.list("sellers");
+     if(token!==nexusViewEpoch||requestId!==requestSequence||moduleHub.hidden)return;
+     results.replaceChildren();status.textContent=sellers.length+" vendedores (solo lectura).";
+     const list=document.createElement("ul");
+     for(const seller of sellers.slice(0,100)){const li=document.createElement("li");li.textContent=seller.nombre;list.append(li)}
+     results.append(list);
+    }catch(e){if(token===nexusViewEpoch&&requestId===requestSequence)status.textContent="Consulta denegada: "+e.message}
+    finally{sellerButton.disabled=false}
+   };
+   clnHubDetail.append(search,searchButton,sellerButton);
+  }
+  clnHubDetail.append(results);
+  if(kind==="inventory"){
+   renderRows(await nexusReader.list("inventory"),++requestSequence);
+  }else{
+   results.replaceChildren();
+   status.textContent="Busca clientes por nombre o DUI (mínimo 3 caracteres).";
+  }
+ }catch(e){
+  if(token!==nexusViewEpoch)return;
+  status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
+ }
+}
+for(const id of Object.keys(clnHubViews)){
+ document.getElementById(id).onclick=()=>openIndependentModule(id);
+}
+document.getElementById("debtUnlockButton").onclick=async()=>{
+ if(!debtController)return;
+ const input=document.getElementById("debtUnlockPassword"),button=document.getElementById("debtUnlockButton");
+ const password=input.value;input.value="";button.disabled=true;
+ try{await debtController.open(password)}catch(e){debtScreenVisible(true,e.message||"No se pudo autorizar Deudas")}
+ finally{button.disabled=false}
+};
+document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
+document.getElementById("debtUnlockBack").onclick=()=>{document.getElementById("debtUnlockPassword").value="";showModuleHub(true)};
+document.getElementById("debtUnlockLogout").onclick=()=>document.getElementById("logoutBtn").click();
+document.getElementById("debtLockButton").onclick=async()=>{
+ if(!DEBT_GATE_ENABLED||!debtController)return;
+ const button=document.getElementById("debtLockButton");button.disabled=true;
+ try{await debtController.lock()}catch(e){debtScreenVisible(true,"Bloqueo local aplicado; no se pudo confirmar revocación remota: "+e.message)}
+ finally{button.disabled=false}
+};
 async function startAuth(){
   try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
 }
@@ -698,18 +1511,45 @@ document.getElementById("authLogin").onclick=async()=>{const email=document.getE
 document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("authLogin").click()});
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
-  if(SY.pend&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
+  let cacheAudit=null;
+  try{cacheAudit=window.DebtCachePreflight?.inspectDebtCache(localStorage)||null}catch(_){cacheAudit=null}
+  const offlinePending=SY.pend||!cacheAudit||!cacheAudit.storageAccessible||cacheAudit.hasPendingChanges;
+  if(offlinePending&&!confirm("Hay cambios pendientes de sincronizar. Si cierras sesión ahora, se conservarán en este dispositivo, pero no se enviarán hasta que vuelvas a entrar. ¿Continuar?"))return;
+  // Revoke the additional Deudas server grant before signing out of Supabase.
+  // Continue normal sign-out even when remote revocation fails; the UI remains locked.
+  let debtRevokeFailed=false;
+  if(debtController){
+    try{await debtController.logout()}catch(_){debtRevokeFailed=true}
+    debtController=null;
+  }
+  nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
+  debtGate=null;showModuleHub(false);debtScreenVisible(false);
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
-  const pending=SY.pend;
+  const pending=offlinePending;
   hidePrivate();
   // Los datos sincronizados no deben permanecer accesibles sin autenticación.
   // Se conservan únicamente cambios pendientes para evitar pérdida de información.
-  if(!pending){["cp_v2","cp_v2_bak","cp_v2_corrupt","cp_prev","cp_items","cp_pend"].forEach(lsDel)}
+  // No borrar caché heredada: cp_pend=0 no demuestra que todos los abonos estén sincronizados.
+  // La eliminación requiere migración y confirmación de servidor independientes.
+  if(!pending&&cacheAudit?.safeToPurge===true){["cp_v2","cp_v2_bak","cp_v2_corrupt","cp_prev","cp_items","cp_pend"].forEach(lsDel)}
   document.getElementById("authPass").value="";
-  try{await SB.auth.signOut();sv("Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
+  try{await SB.auth.signOut();sv(debtRevokeFailed?"Sesión cerrada; no se pudo confirmar la revocación remota de Deudas":"Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){gate(true);hidePrivate()}else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){
+  // Includes remote sign-out / revoked session events: no stale module or pending RPC response may repaint private data.
+  authSessionGeneration++;
+  nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
+  if(debtController){debtController.cancel();debtController=null}
+  if(debtGate){debtGate.reset();debtGate=null}
+  SB_UID=null;SB_WID=null;SY.doc=null;clearTimeout(SY.timer);
+  if(SB_CH){const old=SB_CH;SB_CH=null;SB.removeChannel(old).catch(()=>{})}
+  document.getElementById("clnHubDetail").replaceChildren();
+  document.getElementById("clnHubStatus").textContent="";
+  document.getElementById("debtUnlockPassword").value="";
+  showModuleHub(false);debtScreenVisible(false);gate(true);hidePrivate();
+  // Do not delete cp_v2 / cp_pend: offline edits require the documented safe recovery process.
+ }else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
 startAuth();
 </script>
 
@@ -844,4 +1684,6 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
  if(er&&window.MutationObserver){var f=function(){/^Entrando/.test(er.textContent)?er.setAttribute("data-wait",""):er.removeAttribute("data-wait")};new MutationObserver(f).observe(er,{childList:true,characterData:true,subtree:true})}
 })();
 </script>
+
+
 </body></html>
