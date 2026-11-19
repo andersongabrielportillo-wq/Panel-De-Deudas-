@@ -1,0 +1,9 @@
+# CL Nexus staged distribution: never commit or publish automatically.
+/dist-cln-candidate/
+# Local or production backups contain sensitive business and Auth/Vault data.
+*.dump
+*.backup
+*.pgdump
+*.sql.gz
+CLN_Respaldo/
+CLN_Backup_Seguro/
