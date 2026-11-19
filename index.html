@@ -96,15 +96,49 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h13v4M3 7v11a2 2 0 002 2h15V9H5a2 2 0 01-2-2zM16 14h.01"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
 <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol><symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M9 7h6"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace"><div class="cln-workspace-content"><h2>CL Nexus</h2><p>Inventario, Garantías y Contratos usan el mismo inicio de sesión de la aplicación. Solo Deudas necesita su contraseña adicional.</p><div id="clnModuleChoices"><button class="g2" type="button" id="clnHubDebts">Deudas · desbloquear</button><button class="g2" type="button" id="clnHubInventory">Inventario</button><button class="g2" type="button" id="clnHubWarranties">Garantías</button><button class="g2" type="button" id="clnHubContracts">Contratos</button><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button></div><p id="clnHubStatus" role="status" aria-live="polite"></p><div id="clnHubDetail" aria-live="polite"></div><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace">
+<div class="cln-workspace-content">
+ <header class="cln-header">
+  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, garantías y contratos con una sola sesión.</p></div></div>
+  <span class="cln-session-chip">Sesión activa</span>
+ </header>
+ <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
+  <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
+  <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
+  <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas · acceso protegido</button>
+ </nav>
+ <main class="cln-content">
+  <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
+  <div id="clnHubDetail" aria-live="polite"></div>
+ </main>
+ <footer class="cln-footer"><span>Las existencias se registran después del conteo físico; no se toman del inventario histórico.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
+</div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}
-#clnModuleHub{min-height:80vh;padding:clamp(14px,3vw,36px);background:var(--bg)}
-#clnModuleHub .cln-workspace-content{max-width:1120px;margin:0 auto;padding:clamp(18px,3vw,30px);border:1px solid var(--rim);border-radius:24px;background:var(--card);box-shadow:var(--sh)}
-#clnModuleChoices{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
-#clnModuleChoices button{margin:0}
-#clnHubDetail{min-height:260px;overflow-wrap:anywhere}
-#clnHubLogout{margin-top:18px}
-@media(max-width:599px){#clnModuleHub{padding:10px}#clnModuleHub .cln-workspace-content{padding:16px;border-radius:20px}#clnModuleChoices button{flex:1 1 135px}}
+#clnModuleHub{min-height:100dvh;padding:clamp(12px,2.8vw,32px);background:var(--bg);color:var(--tx)}
+#clnModuleHub .cln-workspace-content{width:min(1200px,100%);margin:auto;border:1px solid var(--rim,var(--bd));border-radius:28px;background:var(--card);box-shadow:var(--sh);overflow:hidden}
+#clnModuleHub .cln-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:clamp(20px,3.5vw,34px);background:linear-gradient(112deg,color-mix(in srgb,var(--ac) 12%,var(--card)),color-mix(in srgb,var(--ac2) 7%,var(--card)));border-bottom:1px solid var(--rim,var(--bd))}
+#clnModuleHub .cln-header-brand{display:flex;align-items:center;gap:16px;min-width:0}
+#clnModuleHub .cln-logo{width:54px;height:54px;flex:none;display:grid;place-items:center;border-radius:18px;color:#fff;font-size:19px;font-weight:800;letter-spacing:-.07em;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 10px 24px rgba(24,88,180,.2)}
+#clnModuleHub .cln-kicker{margin:0 0 5px;font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--mut)}
+#clnModuleHub .cln-header h2{font-size:clamp(22px,3vw,32px);font-weight:750;line-height:1.1;margin:0;color:var(--tx)}
+#clnModuleHub .cln-subtitle{font-size:13px;line-height:1.5;color:var(--mut);margin:7px 0 0}
+#clnModuleHub .cln-session-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bd);border-radius:100px;padding:8px 12px;font-size:12px;color:var(--mut);background:var(--card);white-space:nowrap}
+#clnModuleHub .cln-session-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grn)}
+#clnModuleChoices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:16px clamp(20px,3.5vw,34px);border-bottom:1px solid var(--rim,var(--bd));background:color-mix(in srgb,var(--card) 92%,var(--ac))}
+#clnModuleChoices button.cln-tab{border-radius:13px;padding:11px 16px;margin:0;min-height:42px;font-weight:650;border:1px solid transparent;color:var(--mut);background:transparent;transition:background .18s,color .18s}
+#clnModuleChoices button.cln-tab:hover{background:color-mix(in srgb,var(--ac) 8%,transparent);color:var(--tx)}
+#clnModuleChoices button.cln-tab[aria-pressed="true"]{background:color-mix(in srgb,var(--ac) 15%,var(--card));border-color:color-mix(in srgb,var(--ac) 27%,var(--bd));color:var(--ac)}
+#clnModuleChoices button.cln-tab-protected{margin-left:auto;border-color:var(--bd);color:var(--tx)}
+#clnModuleHub .cln-content{padding:clamp(18px,3vw,32px);min-height:360px}
+#clnModuleHub .cln-section-status{font-size:12px;color:var(--mut);min-height:18px;margin:0 0 16px}
+#clnHubDetail{overflow-wrap:anywhere}
+#clnModuleHub .cln-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px clamp(20px,3.5vw,34px);border-top:1px solid var(--rim,var(--bd));color:var(--mut);font-size:12px}
+#clnModuleHub .cln-utilities{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#clnModuleHub .cln-utilities button{margin:0}
+@supports (backdrop-filter:blur(12px)){#clnModuleHub .cln-workspace-content{background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(22px) saturate(135%);-webkit-backdrop-filter:blur(22px) saturate(135%)}}
+@media(max-width:700px){#clnModuleHub{padding:9px}#clnModuleHub .cln-workspace-content{border-radius:20px}#clnModuleHub .cln-header{align-items:flex-start;padding:20px 16px}#clnModuleHub .cln-session-chip{display:none}#clnModuleHub .cln-logo{width:46px;height:46px;border-radius:14px}#clnModuleChoices{padding:12px;gap:6px}#clnModuleChoices button.cln-tab{flex:1 1 calc(50% - 8px);padding:11px 8px;text-align:center}#clnModuleChoices button.cln-tab-protected{margin-left:0}#clnModuleHub .cln-content{padding:16px}#clnModuleHub .cln-footer{flex-direction:column;align-items:stretch;padding:16px}#clnModuleHub .cln-utilities{justify-content:stretch}#clnModuleHub .cln-utilities button{flex:1 1 120px}}
+
 </style>
 <script src="./cl-nexus-reader.cjs"></script>
 <script src="./cl-nexus-actions.cjs"></script>
@@ -877,6 +911,8 @@ let nexusReader=null,nexusViewEpoch=0;
 async function openIndependentModule(id){
  const config=clnHubViews[id];
  if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
+ // Visual state only: authorization remains enforced by Supabase RPC and RLS.
+ for(const name of Object.keys(clnHubViews))document.getElementById(name).setAttribute("aria-pressed",String(name===id));
  const token=++nexusViewEpoch;
  clnHubDetail.replaceChildren();
  const title=document.createElement("h3");title.textContent=config.title;
