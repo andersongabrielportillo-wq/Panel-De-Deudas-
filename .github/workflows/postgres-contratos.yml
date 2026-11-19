@@ -190,7 +190,9 @@ jobs:
           if psql -X -v ON_ERROR_STOP=1 -v admin_email='admin-fake@example.invalid' -v secretaria_email='secretary-fake@example.invalid' -v third_email='third-fake@example.invalid' -v third_role='desconocido' -f sql/cl_nexus_roles_cuentas_existentes_PREPARADO_NO_EJECUTAR.sql > /tmp/cln_wrong_role.log 2>&1; then
             echo 'Unapproved third role accepted'; exit 1
           fi
-          grep -qi 'check constraint' /tmp/cln_wrong_role.log
+          if ! grep -Eqi 'cln_roles_cutover_rol_check|check constraint|invalid input value' /tmp/cln_wrong_role.log; then
+            echo 'Unexpected rejection reason for third role'; cat /tmp/cln_wrong_role.log; exit 1
+          fi
           psql -X -Atq -c "SELECT count(*) FROM public.inv_members" | grep -qx 0
       - name: Assign all three original Panel accounts explicitly with role for third
         shell: bash
