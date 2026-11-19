@@ -59,4 +59,28 @@ BEGIN
 END $body$;
 REVOKE ALL ON FUNCTION public.inv_corregir_nombre_articulo(uuid,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.inv_corregir_nombre_articulo(uuid,text,text) TO authenticated;
+-- Secure catalog includes stable MERCADERIA code and separates unregistered stock from zero.
+CREATE OR REPLACE FUNCTION public.inv_catalogo_articulos_admin()
+RETURNS TABLE(id uuid,nombre text,categoria text,codigo text,oficina integer,bodega integer)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $catalog$
+BEGIN
+ IF auth.uid() IS NULL OR NOT EXISTS(
+   SELECT 1 FROM public.inv_members m
+   WHERE m.user_id=auth.uid() AND m.rol='admin'
+ ) THEN RAISE EXCEPTION 'No autorizado'; END IF;
+ RETURN QUERY
+ SELECT i.id,i.nombre_original,i.categoria,i.legacy_key,
+        o.cantidad,b.cantidad
+ FROM public.inv_items i
+ LEFT JOIN public.inv_stock o ON o.item_id=i.id AND o.location_id=1
+ LEFT JOIN public.inv_stock b ON b.item_id=i.id AND b.location_id=2
+ WHERE i.estado='activo'
+ ORDER BY i.nombre_original,i.legacy_key,i.id
+ LIMIT 2000;
+END $catalog$;
+REVOKE ALL ON FUNCTION public.inv_catalogo_articulos_admin() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.inv_catalogo_articulos_admin() TO authenticated;
 COMMIT;
