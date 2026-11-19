@@ -69,6 +69,14 @@
 - El resultado de V3 determinará si la falla era específica del --use-list o si el problema está en el archivo/lector. Si V3 también falla, no iterar ciegamente: revisar versión y error de PostgreSQL con diagnóstico seguro o generar respaldo nuevo desde el original.
 - NO GO hasta restaurar en el proyecto temporal, validar descifrado Vault, integridad de Deudas, tres cuentas Auth y pruebas HTTP/RLS.
 
+## Comprobación directa del respaldo aceptada en Windows (19/11/2026)
+
+- El propietario ejecutó el comando local directo `pg_restore --data-only --schema=auth --table=users --file=NUL "$archivo"` desde PowerShell. Resultado comprobado en captura: `pg_restore (PostgreSQL) 18.7`, **código final 0**, sin importaciones ni conexión. Esto demuestra que el lector procesa la selección sin fallar cuando descarta la salida; **no demuestra que contenga tres filas**.
+- Los validadores V2/V3 que intentaron leer la salida mediante `.NET ProcessStartInfo` fallaron con exit 1. Ya no se deben repetir: su mecanismo de invocación/captura difiere del comando directo exitoso. No se ha probado que el dump esté corrupto.
+- Se preparó **un único comprobador local con invocación PowerShell directa**, `CLN_Conteo_7_Tablas_Comando_Directo_SOLO_LECTURA.ps1`, sin `-L`, sin `.NET ProcessStartInfo`, sin salida persistida, sin conexiones. Captura SQL nativo en RAM (sin imprimirlo), comprueba presencia y cierre de cada bloque COPY y los conteos esperados 3/3/1/1/3/1/0; descarta la salida a continuación. **Aún no se ha ejecutado en Windows.**
+- Proyecto temporal revisado tras ese diagnóstico: **0 usuarios Auth, 0 filas Vault**; original **ACTIVE_HEALTHY**; LAB **INACTIVE**. No iniciar importación hasta conseguir conteos y revisar dependencias del esquema.
+- Importante: `pg_restore -f NUL` confirma solamente que el proceso terminó sin error, no coteja contenido; todavía no equivale a recuperación integral de Auth/Vault ni a pruebas HTTP.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
