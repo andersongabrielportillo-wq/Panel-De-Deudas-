@@ -4,6 +4,8 @@
 
 ## 1. Respaldo íntegro y recuperación efectiva (P0 absoluto)
 
+**Evidencia posterior — 18/11/2026, respaldo manual realizado:** en equipo Windows del propietario, `pg_dump -Fc` sobre producción generó archivo `Panel_De_Deudas.dump` (441291 bytes). Se ejecutó `pg_restore --list` sin errores y SHA-256 local. Se restauraron aisladamente las 4 tablas comerciales en PostgreSQL local; conservaron 1 workspace, 3 members, 1 debt row, 0 transactions, hash MD5 del contenido de `debts` `cae1aed74556ce96dde7f673e33d4668`, idéntico a una lectura del origen de producción. El catálogo del dump muestra `TABLE DATA auth users`, `TABLE DATA vault secrets`, `TABLE DATA public debts` y políticas de `public.debts`. Es evidencia de **presencia en dump, NO de restauración operativa de Auth/Vault**. No se debe guardar el dump en GitHub ni enviarlo por chat. Todavía NO se ha demostrado restauración segura del conjunto Auth/RLS/Vault; no activar producción.
+
 Fuente: Supabase proyecto de producción `josdmjjbnrugiwlwgjky`. Al 18 de noviembre: 1 workspace, 3 integrantes, 1 fila compartida en `public.debts`, 0 filas en `public.transactions`. El checksum previo debe capturarse justo durante el corte, después de congelar cambios; un checksum histórico no reemplaza este paso.
 
 - **Confirmado por el propietario el 18/11/2026 (captura): producción está en el plan Free y Dashboard indica que NO incluye respaldos automáticos. No recomendar Upgrade como requisito obligatorio. La pestaña 'Restore to new project' no demuestra que exista un backup de este proyecto.**
