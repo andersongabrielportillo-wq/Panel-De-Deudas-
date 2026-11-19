@@ -14,7 +14,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v12-buscador-vendedores-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v13-sesion-unica-estable-20261119/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -26,7 +26,8 @@ assert.match(html,/actions\.execute\("renameItem"/);
 
 assert.match(html,/id="clnModuleHub"[^>]*class="cln-workspace"/);
 assert.doesNotMatch(html,/<h2>Panel de módulos<\/h2>/);
-assert.match(html,/function showModuleHub\(yes\)[^\n]*void openIndependentModule\("clnHubInventory"\)/);
+assert.match(html,/function showModuleHub\(yes\)\{/);
+assert.match(html,/void openIndependentModule\("clnHubInventory"\)/);
 assert.match(html,/document\.getElementById\("authLogin"\)\.onclick=async/);
 assert.match(html,/SB\.auth\.signInWithPassword\(\{email,password\}\)/);
 assert.match(html,/document\.getElementById\("debtUnlockButton"\)\.onclick=async/);
@@ -74,4 +75,43 @@ assert.match(html,/SB\.rpc\("inv_historial_vendedor"/);
 assert.match(html,/if\(clnHubDetail\.contains\(wrap\)\)clnEnhanceArticleSearch\(wrap\)/);
 assert.doesNotMatch(html,/Ubicaciones JSON/);
 assert.match(html,/cln-catalog-search/);
+
+/* Auth regression: no apparent second login while restoring an existing session. */
+assert.equal((html.match(/id="authLogin"/g)||[]).length,1,'Only one primary login');
+assert.equal((html.match(/id="authGate"/g)||[]).length,1,'Only one primary auth gate');
+for(const required of [
+ '<div id="authGate" hidden inert>',
+ '<div id="clnBoot" role="status"',
+ 'async function ensureAuthenticatedWorkspace(session)',
+ 'if(authConnection?.uid===uid)return authConnection.promise',
+ 'if(authConnectedUid===uid&&SB_WID&&debtController)',
+ 'showSessionRecovery(e)',
+ 'session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED"].includes(event)'
+])assert.ok(html.includes(required),'Auth regression: missing '+required);
+assert.ok(!html.includes('await SB.auth.signOut();gate(true,e.message'),'Never log out an authenticated user for a transient workspace load failure');
+const coordinatorStart=html.indexOf('let authConnection=null,authConnectedUid=null;');
+const coordinatorEnd=html.indexOf('// Manual encrypted backup',coordinatorStart);
+assert.ok(coordinatorStart>0&&coordinatorEnd>coordinatorStart,'Session coordinator missing');
+const coordinator=html.slice(coordinatorStart,coordinatorEnd);
+let connectionCalls=0;
+let finishConnection;
+const holdConnection=new Promise(resolve=>{finishConnection=resolve});
+const authSandbox={
+ SB_UID:null,SB_WID:null,debtController:null,authSessionGeneration:0,
+ connectCloud:async()=>{connectionCalls++;await holdConnection;authSandbox.SB_WID='ws-1';authSandbox.debtController={};},
+ gate:()=>{},document:{},moduleHub:{},debtScreen:{},hidePrivate:()=>{}
+};
+vm.runInNewContext(coordinator+'\nglobalThis.testEnsure=ensureAuthenticatedWorkspace;',authSandbox);
+const liveSession={user:{id:'user-1'}};
+const attemptA=authSandbox.testEnsure(liveSession);
+const attemptB=authSandbox.testEnsure(liveSession);
+assert.equal(connectionCalls,1,'Two auth events initiated two cloud connections');
+finishConnection();
+assert.equal(await attemptA,true);
+assert.equal(await attemptB,true);
+assert.equal(await authSandbox.testEnsure(liveSession),true);
+assert.equal(connectionCalls,1,'Returning to Inventory initialized another sign-in');
+assert.ok(html.includes('id="debtBackToNexus"'),'Missing Deudas to Inventario navigation');
+assert.ok(html.includes('const locked=await debtController.lock();'),'Must revoke Deudas before returning to Inventario');
+assert.ok(html.includes('if(locked)showModuleHub(true);'),'Return to Nexus must keep global login');
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');

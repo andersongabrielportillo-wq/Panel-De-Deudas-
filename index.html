@@ -1,7 +1,13 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 /* Supabase login */
 #authGate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:grid;place-items:center;padding:20px}
-#authGate[hidden]{display:none!important}.authCard{width:min(420px,100%);background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+#authGate[hidden]{display:none!important}
+#clnBoot{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;gap:12px;padding:22px;text-align:center;background:var(--bg);color:var(--tx);font-size:15px;font-weight:650}
+#clnBoot[hidden]{display:none!important}
+#clnBoot::before{content:"";width:34px;height:34px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:clnBootSpin .75s linear infinite}
+@keyframes clnBootSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#clnBoot::before{animation:none}}
+.authCard{width:min(420px,100%);background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:22px;box-shadow:var(--sh)}
 .authCard h2{margin:0 0 6px}.authCard p{color:var(--mut);margin:0 0 16px}.authCard input{width:100%;background:var(--in);border:1px solid var(--bd);border-radius:10px;padding:11px;margin:5px 0}.authCard .b{width:100%;margin-top:10px}.authErr{color:var(--red);min-height:20px;margin-top:8px;font-size:13px}
 #logoutBtn{display:none}
 </style>
@@ -15,7 +21,8 @@
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body><div id="lgIntro" aria-hidden="true"><div class="orb"></div></div>
-<div id="authGate"><div class="authCard"><h2>Panel de Deudas</h2><p>Inicia sesión para acceder a la base compartida.</p><input id="authEmail" type="email" autocomplete="username" placeholder="Correo"><input id="authPass" type="password" autocomplete="current-password" placeholder="Contraseña"><button class="b" id="authLogin">Iniciar sesión</button><div class="authErr" id="authErr"></div></div></div>
+<div id="clnBoot" role="status" aria-live="polite">Verificando tu sesión de CL Nexus…</div>
+<div id="authGate" hidden inert><div class="authCard"><h2>CL Nexus</h2><p>Inicia sesión una sola vez para Inventario, Ventas, Contratos y Garantías.</p><input id="authEmail" type="email" autocomplete="username" placeholder="Correo"><input id="authPass" type="password" autocomplete="current-password" placeholder="Contraseña"><button class="b" id="authLogin">Iniciar sesión</button><div class="authErr" id="authErr"></div></div></div>
 <title>Panel De Deudas</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -170,7 +177,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <script src="./debt-legacy-backup.cjs"></script>
 <script src="./debt-encrypted-backup.cjs"></script>
 <div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
-<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
+<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="debtBackToNexus" type="button" hidden>CL Nexus · Inventario</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
@@ -730,8 +737,8 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
-function hidePrivate(){APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function hidePrivate(){document.getElementById("debtBackToNexus").hidden=true;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
+function showPrivate(){document.getElementById("debtBackToNexus").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -744,7 +751,16 @@ const SUPABASE_KEY="sb_publishable_0CHw4JtE92-07OMNAnvESA_44sf9dk4";
 const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
 let SB_UID=null,SB_WID=null,SB_CH=null,authSessionGeneration=0;
-const gate=(show,msg="")=>{const g=document.getElementById("authGate");g.hidden=!show;if(show){document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true}document.getElementById("authErr").textContent=msg;document.getElementById("logoutBtn").style.display=show?"none":"inline-flex"};
+const gate=(show,msg="")=>{
+ const loading=document.getElementById("clnBoot");if(loading)loading.hidden=true;
+ const g=document.getElementById("authGate");g.hidden=!show;g.inert=!show;
+ if(show){
+  document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;
+  document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;
+ }
+ document.getElementById("authErr").textContent=msg;
+ document.getElementById("logoutBtn").style.display=show?"none":"inline-flex";
+};
 async function cloudSnapshot(){
  if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Acceso a Deudas no autorizado");
   const {data,error}=await SB.from("debts").select("data").eq("workspace_id",SB_WID).eq("id","__shared_state__").maybeSingle();
@@ -766,7 +782,15 @@ const DEBT_GATE_ENABLED=true;
 let debtController=null,debtGate=null;
 const debtScreen=document.getElementById("debtUnlockScreen");
 const moduleHub=document.getElementById("clnModuleHub");
-function showModuleHub(yes){if(yes){document.getElementById("clnHubDetail").replaceChildren();document.getElementById("clnHubStatus").textContent=""}moduleHub.hidden=!yes;moduleHub.inert=!yes;if(yes){hidePrivate();debtScreen.hidden=true;debtScreen.inert=true;gate(false);if(SB_UID&&SB_WID)void openIndependentModule("clnHubInventory")}}
+function showModuleHub(yes){
+ if(yes){document.getElementById("clnHubDetail").replaceChildren();document.getElementById("clnHubStatus").textContent=""}
+ moduleHub.hidden=!yes;moduleHub.inert=!yes;
+ if(yes){
+  hidePrivate();debtScreen.hidden=true;debtScreen.inert=true;gate(false);
+  for(const id of Object.keys(clnHubViews))document.getElementById(id).disabled=false;
+  if(SB_UID&&SB_WID)void openIndependentModule("clnHubInventory");
+ }
+}
 function debtScreenVisible(yes,msg=""){
  document.getElementById("debtLockButton").hidden=!DEBT_GATE_ENABLED||yes;
  debtScreen.hidden=!yes;debtScreen.inert=!yes;if(yes){moduleHub.hidden=true;moduleHub.inert=true}
@@ -835,6 +859,61 @@ async function connectCloud(){
   confirmPending:async()=>confirm("Hay cambios sin sincronizar. Se conservarán en este dispositivo. ¿Bloquear Deudas?")
  });
  showModuleHub(true);
+}
+// La sesión general autenticada es única. Un error temporal de red o de membresía
+// no es motivo para volver a solicitar contraseña ni para cerrar la sesión.
+let authConnection=null,authConnectedUid=null;
+function showSessionRecovery(error){
+ if(!SB_UID){gate(true,"No fue posible verificar la sesión.");return}
+ const status=document.getElementById("clnHubStatus");
+ const detail=document.getElementById("clnHubDetail");
+ hidePrivate();debtScreen.hidden=true;debtScreen.inert=true;
+ moduleHub.hidden=false;moduleHub.inert=false;gate(false);
+ for(const id of Object.keys(clnHubViews))document.getElementById(id).disabled=true;
+ status.textContent="No se pudo cargar CL Nexus. La sesión principal sigue activa.";
+ detail.replaceChildren();
+ const title=document.createElement("h3");title.textContent="No se pudo conectar con tu espacio de trabajo";
+ const explanation=document.createElement("p");
+ explanation.textContent="No hace falta iniciar sesión de nuevo. Revisa la conexión y vuelve a intentarlo. "+String(error?.message||"");
+ const retry=document.createElement("button");retry.type="button";retry.className="b";retry.textContent="Reintentar conexión";
+ retry.onclick=async()=>{
+  retry.disabled=true;
+  try{
+   const {data,error:sessionError}=await SB.auth.getSession();
+   if(sessionError||!data?.session?.user?.id){
+    SB_UID=null;SB_WID=null;authConnectedUid=null;
+    moduleHub.hidden=true;moduleHub.inert=true;
+    gate(true,"La sesión principal ya no está disponible. Inicia sesión para continuar.");
+    return;
+   }
+   await ensureAuthenticatedWorkspace(data.session);
+  }catch(e){showSessionRecovery(e)}
+ };
+ detail.append(title,explanation,retry);
+}
+async function ensureAuthenticatedWorkspace(session){
+ const uid=session?.user?.id;
+ if(!uid){if(!SB_UID)gate(true);return false}
+ // Nunca reinterpretar el cambio de cuenta como permiso para leer datos de otra sesión.
+ if(SB_UID&&SB_UID!==uid){gate(true,"La cuenta cambió. Vuelve a iniciar sesión para continuar.");return false}
+ if(authConnectedUid===uid&&SB_WID&&debtController){gate(false);return true}
+ if(authConnection?.uid===uid)return authConnection.promise;
+ const generation=authSessionGeneration;
+ SB_UID=uid;
+ const task=(async()=>{
+  try{
+   await connectCloud();
+   if(SB_UID!==uid||generation!==authSessionGeneration)return false;
+   authConnectedUid=uid;
+   return true;
+  }catch(e){
+   if(SB_UID===uid&&generation===authSessionGeneration)showSessionRecovery(e);
+   return false;
+  }
+ })();
+ authConnection={uid,promise:task};
+ try{return await task}
+ finally{if(authConnection?.promise===task)authConnection=null}
 }
 // Manual encrypted backup: available only after server-verified Deudas access.
 const debtBackupButton=document.createElement("button");
@@ -1908,6 +1987,16 @@ document.getElementById("debtUnlockButton").onclick=async()=>{
 document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
 document.getElementById("debtUnlockBack").onclick=()=>{document.getElementById("debtUnlockPassword").value="";showModuleHub(true)};
 document.getElementById("debtUnlockLogout").onclick=()=>document.getElementById("logoutBtn").click();
+// Volver al inventario reutiliza la sesión principal y solo revoca Deudas.
+document.getElementById("debtBackToNexus").onclick=async()=>{
+ if(!debtController||!SB_UID||!SB_WID)return;
+ const button=document.getElementById("debtBackToNexus");button.disabled=true;
+ try{
+  const locked=await debtController.lock();
+  if(locked)showModuleHub(true);
+ }catch(e){debtScreenVisible(true,"No se pudo confirmar el bloqueo de Deudas: "+String(e.message||e))}
+ finally{button.disabled=false}
+};
 document.getElementById("debtLockButton").onclick=async()=>{
  if(!DEBT_GATE_ENABLED||!debtController)return;
  const button=document.getElementById("debtLockButton");button.disabled=true;
@@ -1915,9 +2004,30 @@ document.getElementById("debtLockButton").onclick=async()=>{
  finally{button.disabled=false}
 };
 async function startAuth(){
-  try{const {data:{session}}=await SB.auth.getSession();if(session){SB_UID=session.user.id;await connectCloud()}else gate(true)}catch(e){gate(true,e.message||"No se pudo conectar con Supabase")}
+ try{
+  const {data,error}=await SB.auth.getSession();
+  if(error)throw error;
+  if(data?.session?.user?.id)await ensureAuthenticatedWorkspace(data.session);
+  else if(!SB_UID)gate(true);
+ }catch(e){
+  if(SB_UID)showSessionRecovery(e);
+  else gate(true,"No fue posible recuperar la sesión. Comprueba la conexión o inicia sesión.");
+ }
 }
-document.getElementById("authLogin").onclick=async()=>{const email=document.getElementById("authEmail").value.trim(),password=document.getElementById("authPass").value;document.getElementById("authErr").textContent="Entrando…";const {data,error}=await SB.auth.signInWithPassword({email,password});if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}SB_UID=data.user.id;try{await connectCloud()}catch(e){await SB.auth.signOut();gate(true,e.message||"Cuenta sin acceso")}};
+document.getElementById("authLogin").onclick=async()=>{
+ const button=document.getElementById("authLogin");
+ if(button.disabled)return;
+ const email=document.getElementById("authEmail").value.trim(),input=document.getElementById("authPass");
+ const password=input.value;button.disabled=true;
+ document.getElementById("authErr").textContent="Entrando…";
+ try{
+  const {data,error}=await SB.auth.signInWithPassword({email,password});
+  if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}
+  input.value="";
+  await ensureAuthenticatedWorkspace(data.session);
+ }catch(e){if(SB_UID)showSessionRecovery(e);else gate(true,"No se pudo iniciar sesión. Comprueba la conexión.")}
+ finally{button.disabled=false}
+};
 document.getElementById("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("authLogin").click()});
 document.getElementById("logoutBtn").onclick=async()=>{
   // Evita perder cambios locales aún no enviados a la nube.
@@ -1933,6 +2043,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
     debtController=null;
   }
   nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
+  authConnectedUid=null;authConnection=null;
   debtGate=null;showModuleHub(false);debtScreenVisible(false);
   gate(true);if(SB_CH){await SB.removeChannel(SB_CH);SB_CH=null}
   SY.doc=null;SB_UID=null;SB_WID=null;
@@ -1949,6 +2060,7 @@ document.getElementById("logoutBtn").onclick=async()=>{
 SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){
   // Includes remote sign-out / revoked session events: no stale module or pending RPC response may repaint private data.
   authSessionGeneration++;
+  authConnectedUid=null;authConnection=null;
   nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
   if(debtController){debtController.cancel();debtController=null}
   if(debtGate){debtGate.reset();debtGate=null}
@@ -1959,7 +2071,13 @@ SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){
   document.getElementById("debtUnlockPassword").value="";
   showModuleHub(false);debtScreenVisible(false);gate(true);hidePrivate();
   // Do not delete cp_v2 / cp_pend: offline edits require the documented safe recovery process.
- }else if(session&&!SB_UID){SB_UID=session.user.id;setTimeout(()=>connectCloud().catch(e=>gate(true,e.message)),0)}});
+ }else if(session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED"].includes(event)){
+  // Supabase emite eventos repetidos; el coordinador evita segundas conexiones.
+  // Se ejecuta fuera del callback de Auth para evitar bloqueo de la sesión.
+  setTimeout(()=>{void ensureAuthenticatedWorkspace(session)},0);
+ }else if(event==="INITIAL_SESSION"&&!session){
+  setTimeout(()=>{if(!SB_UID)gate(true)},0);
+ }});
 startAuth();
 </script>
 
