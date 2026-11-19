@@ -1810,12 +1810,64 @@ async function openIndependentModule(id){
       sellerList.append(empty);
      }else{
       const list=document.createElement("div");list.className="cln-seller-grid";
+      const report=document.createElement("section");report.className="cln-seller-report";
+      report.setAttribute("aria-live","polite");
+      const money=value=>new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(value)||0);
       for(const seller of sellers){
        const entry=document.createElement("div");entry.className="cln-seller-item";
        const name=document.createElement("strong");name.textContent=seller.nombre;
-       entry.append(name);list.append(entry);
+       const see=document.createElement("button");see.className="g2";see.type="button";see.textContent="Ver historial";
+       see.onclick=async()=>{
+        if(token!==nexusViewEpoch||moduleHub.hidden)return;
+        see.disabled=true;report.replaceChildren();
+        const loading=document.createElement("p");loading.textContent="Cargando historial de "+seller.nombre+"…";report.append(loading);
+        try{
+         const [summaryResult,historyResult]=await Promise.all([
+          SB.rpc("inv_resumen_vendedor",{p_vendedor_id:seller.id}),
+          SB.rpc("inv_historial_vendedor",{p_vendedor_id:seller.id})
+         ]);
+         if(token!==nexusViewEpoch||moduleHub.hidden)return;
+         if(summaryResult.error||historyResult.error)throw Error(summaryResult.error?.message||historyResult.error?.message||"No autorizado");
+         const sum=Array.isArray(summaryResult.data)?summaryResult.data[0]:null;
+         const rows=Array.isArray(historyResult.data)?historyResult.data:[];
+         report.replaceChildren();
+         const title=document.createElement("h4");title.textContent="Historial de "+seller.nombre;report.append(title);
+         if(sum){
+          const metrics=document.createElement("div");metrics.className="cln-metric-grid";
+          for(const [label,value] of [["Contratos",sum.contratos],["Confirmados",sum.contratos_confirmados],
+           ["Ventas brutas",money(sum.ventas_brutas)],["Comisiones",money(sum.comisiones_generadas)],
+           ["Primas recibidas",money(sum.primas_recibidas)]]){
+           const tile=document.createElement("div");tile.className="cln-metric";
+           const key=document.createElement("small");key.textContent=label;
+           const amount=document.createElement("strong");amount.textContent=String(value??"0");
+           tile.append(key,amount);metrics.append(tile);
+          }
+          report.append(metrics);
+         }
+         if(!rows.length){
+          const empty=document.createElement("p");empty.className="cln-empty";
+          empty.textContent="Este vendedor todavía no tiene contratos registrados.";report.append(empty);
+         }else{
+          const items=document.createElement("div");items.className="cln-history-list";
+          for(const row of rows){
+           const entry=document.createElement("article");entry.className="cln-item-card";
+           const title=document.createElement("strong");title.textContent="Contrato "+String(row.numero||"")+" · "+String(row.cliente_nombre||"Cliente");
+           const detail=document.createElement("small");
+           detail.textContent=String(row.fecha||"")+" · "+String(row.estado||"")+" · Venta: "+money(row.total_articulos)+" · Comisión: "+money(row.comision);
+           entry.append(title,detail);items.append(entry);
+          }
+          report.append(items);
+         }
+        }catch(e){
+         if(token===nexusViewEpoch&&!moduleHub.hidden){
+          report.replaceChildren();const p=document.createElement("p");p.className="cln-empty";
+          p.textContent="No se pudo obtener el historial: "+String(e.message||e);report.append(p);
+         }
+        }finally{see.disabled=false}
+       };
+       entry.append(name,see);list.append(entry);
       }
-      sellerList.append(list);
+      sellerList.append(list,report);
      }
      status.textContent="Vendedores actualizados.";
     }catch(e){
@@ -2111,6 +2163,16 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-allocation-row select{width:100%;max-width:100%;min-width:0}
 #clnHubDetail .cln-field-helper{flex:1 0 100%;color:var(--mut);font-size:11px}
 @media(max-width:650px){#clnHubDetail .cln-allocation-row{grid-template-columns:minmax(0,1fr) auto}#clnHubDetail .cln-allocation-row select{grid-column:1/-1}}
+
+#clnHubDetail .cln-seller-item{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+#clnHubDetail .cln-seller-item button{font-size:12px;padding:8px 13px;min-height:35px}
+#clnHubDetail .cln-seller-report{margin:18px 0;max-width:100%}
+#clnHubDetail .cln-seller-report h4{margin:0 0 12px;font-size:17px}
+#clnHubDetail .cln-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+#clnHubDetail .cln-metric{display:flex;flex-direction:column;gap:5px;padding:13px 14px;background:var(--card);border:1px solid var(--bd);border-radius:13px}
+#clnHubDetail .cln-metric small{color:var(--mut)}
+#clnHubDetail .cln-metric strong{font-size:16px}
+#clnHubDetail .cln-history-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
 </style>
 
 </body></html>
