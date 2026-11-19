@@ -1387,12 +1387,13 @@ async function openIndependentModule(id){
    };
    clnHubDetail.append(draftForm);
    const search=document.createElement("input");
-   search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=120;
+   search.type="search";search.placeholder="Buscar cliente por nombre o DUI";search.maxLength=100;
    const searchButton=document.createElement("button");searchButton.type="button";searchButton.className="g2";searchButton.textContent="Buscar";
    const sellerButton=document.createElement("button");sellerButton.type="button";sellerButton.className="g2";sellerButton.textContent="Ver vendedores";
    const doSearch=async()=>{
     const query=search.value.trim();
     const requestId=++requestSequence;
+    if(query.length<3||query.length>100){status.textContent="Escribe entre 3 y 100 caracteres para buscar clientes.";return}
     searchButton.disabled=true;status.textContent="Buscando clientes…";
     try{renderRows(await nexusReader.list("contracts",query),requestId)}
     catch(e){if(token===nexusViewEpoch&&requestId===requestSequence)status.textContent="Consulta denegada: "+e.message}
@@ -1416,7 +1417,12 @@ async function openIndependentModule(id){
    clnHubDetail.append(search,searchButton,sellerButton);
   }
   clnHubDetail.append(results);
-  renderRows(await nexusReader.list(kind),++requestSequence);
+  if(kind==="inventory"){
+   renderRows(await nexusReader.list("inventory"),++requestSequence);
+  }else{
+   results.replaceChildren();
+   status.textContent="Busca clientes por nombre o DUI (mínimo 3 caracteres).";
+  }
  }catch(e){
   if(token!==nexusViewEpoch)return;
   status.textContent="No se pudo consultar este módulo: "+(e.message||"Error de permisos");
