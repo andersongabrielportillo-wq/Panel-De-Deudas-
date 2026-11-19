@@ -12,6 +12,17 @@
 - Proyecto temporal de recuperación todavía **NO creado**; no se ha restaurado Auth/Vault ni extraído/copied ninguna clave raíz. NO-GO de publicación sigue vigente.
 - Al terminar el ensayo de restauración: antes de reactivar LAB puede ser necesario retirar el proyecto temporal creado; **no eliminar ningún proyecto** sin nueva autorización explícita del propietario.
 
+## Proyecto temporal creado con tarifa confirmada de USD 0 (19/11/2026)
+
+- **Organización autorizada por el propietario:** `Panel de Deudas` (`cnvcdmwswsomivlafpok`).
+- `get_organization` confirmó `plan=free`. `get_cost(type=project)` devolvió **amount=0, recurrence=monthly**. No se aceptó ningún cargo distinto de cero. El flujo de creación solicitó confirmación incluso para USD 0, que se obtuvo con `confirm_cost(0,monthly,project)`.
+- `create_project` creó **CL Nexus Recuperacion Auth Vault TEMPORAL** con ID `mwtvmmbmudlswblwcnyj` en `us-west-1` (región disponible de la herramienta). `get_project` verificó `ACTIVE_HEALTHY`, Postgres 17.12.
+- Comprobación de origen: `Panel de Deudas` `josdmjjbnrugiwlwgjky` está `ACTIVE_HEALTHY` (sin escrituras ni migraciones); `Comercial Lopez Pruebas` `dozcnytevqhoymzqlxah` permanece `INACTIVE` sin eliminarse.
+- Revisión inicial del clon temporal mediante `SELECT`: `auth.users=0`, existe esquema Vault, `public.debts` y `public.inv_items` todavía no existen. **NO SE HA RESTAURADO NINGÚN BACKUP NI TRANSFERIDO LA CLAVE RAÍZ DE VAULT; la recuperación aún NO está aprobada**.
+- Para preparar el traslado de clave sin enviarla a ChatGPT ni GitHub, se entregó al propietario el PowerShell local `CLN_Transferir_Clave_Vault_SOLO_TEMPORAL.ps1`. Su única operación modificadora es `PUT https://api.supabase.com/v1/projects/mwtvmmbmudlswblwcnyj/pgsodium` (GET desde producción, NUNCA escritura a producción), usando PAT solicitado de forma privada en Windows y sin imprimir ni guardar secretos. Requiere ejecución y validación por propietario; **no se ha ejecutado**.
+- **Cuidado al importar**: el anterior `Panel_De_Deudas.dump` se creó con `pg_dump -Fc` y contiene esquemas internos de Supabase; no aplicar `pg_restore` íntegro sobre un Supabase nuevo sin revisar conflictos de roles/Auth. La ruta soportada por el proveedor usa `supabase db dump` filtrado `roles.sql`, `schema.sql`, `data.sql` + `psql --single-transaction` y el procedimiento separado de la clave de Vault. Documentación: https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
+- Después de restaurar de verdad: ejecutar `sql/cln_auth_vault_recovery_check_SOLO_LECTURA.sql` **en el TEMPORAL** y exigir mismo hash de Deudas, 3 usuarios Auth y Vault descifrable; completar logins HTTP reales de las tres cuentas contra el TEMPORAL. NO reutilizar llaves API ni tokens de producción en la candidata.
+
 ## 1. Auth y Vault: evidencia verificada del proyecto original
 
 - Proyecto original: `josdmjjbnrugiwlwgjky`. Organización en Supabase **Free**; existen **2 proyectos activos**: Panel de Deudas y Comercial Lopez Pruebas.
