@@ -62,3 +62,23 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE cln_gate_prod_contract_ci"
           PGDATABASE=cln_gate_prod_contract_ci psql -X -v ON_ERROR_STOP=1 -f tests/debt-existing-production-rpc-cutover-ci.sql
+      - name: Prove missing or undecryptable Vault blocks cutover atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in missing undecryptable; do
+            psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE cln_gate_vault_${mode}_ci"
+            case "$mode" in
+              missing) flag=test_vault_missing ;;
+              undecryptable) flag=test_vault_undecryptable ;;
+            esac
+            if PGDATABASE="cln_gate_vault_${mode}_ci" psql -X -v ON_ERROR_STOP=1 -v "${flag}=1" -f tests/debt-existing-production-rpc-cutover-ci.sql > "/tmp/cln_vault_${mode}.log" 2>&1; then
+              echo "ERROR: gate migration must reject Vault ${mode}"; exit 1
+            fi
+            if [ "$mode" = "missing" ]; then
+              grep -q 'Expected exactly one configured Deudas secret' "/tmp/cln_vault_${mode}.log"
+            else
+              grep -q 'Deudas secret is not decryptable' "/tmp/cln_vault_${mode}.log"
+            fi
+            PGDATABASE="cln_gate_vault_${mode}_ci" psql -X -Atq -c "SELECT count(*) FROM pg_policies WHERE schemaname='public' AND policyname LIKE 'debt_unlock_required_%'" | grep -qx 0
+          done
