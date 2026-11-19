@@ -99,7 +99,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol></defs></svg><section id="clnModuleHub" hidden inert aria-label="CL Nexus" class="cln-workspace">
 <div class="cln-workspace-content">
  <header class="cln-header">
-  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, garantías y contratos con una sola sesión.</p></div></div>
+  <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, ventas y contratos en un solo lugar.</p></div></div>
   <span class="cln-session-chip">Sesión activa</span>
  </header>
  <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
@@ -1833,11 +1833,11 @@ async function openIndependentModule(id){
          const sum=Array.isArray(summaryResult.data)?summaryResult.data[0]:null;
          const rows=Array.isArray(historyResult.data)?historyResult.data:[];
          report.replaceChildren();
-         const title=document.createElement("h4");title.textContent="Historial de "+seller.nombre;report.append(title);
+         const title=document.createElement("h4");title.textContent="Historial de contratos de "+seller.nombre;report.append(title);
          if(sum){
           const metrics=document.createElement("div");metrics.className="cln-metric-grid";
           for(const [label,value] of [["Contratos",sum.contratos],["Confirmados",sum.contratos_confirmados],
-           ["Ventas brutas",money(sum.ventas_brutas)],["Comisiones",money(sum.comisiones_generadas)],
+           ["Total en contratos",money(sum.ventas_brutas)],["Comisiones",money(sum.comisiones_generadas)],
            ["Primas recibidas",money(sum.primas_recibidas)]]){
            const tile=document.createElement("div");tile.className="cln-metric";
            const key=document.createElement("small");key.textContent=label;
@@ -1863,7 +1863,7 @@ async function openIndependentModule(id){
         }catch(e){
          if(token===nexusViewEpoch&&!moduleHub.hidden){
           report.replaceChildren();const p=document.createElement("p");p.className="cln-empty";
-          p.textContent="No se pudo obtener el historial: "+String(e.message||e);report.append(p);
+          p.textContent="No se pudo obtener el historial de contratos: "+String(e.message||e);report.append(p);
          }
         }finally{see.disabled=false}
        };
