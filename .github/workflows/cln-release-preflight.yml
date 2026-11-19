@@ -1,7 +1,7 @@
 name: CL Nexus - validacion pre-publicacion
 on:
   push:
-    branches: [cln-lanzamiento-controlado-20261119]
+    branches: [cln-lanzamiento-controlado-20261119, cln-sesion-unica-20261119, main]
   workflow_dispatch:
 permissions:
   contents: read
