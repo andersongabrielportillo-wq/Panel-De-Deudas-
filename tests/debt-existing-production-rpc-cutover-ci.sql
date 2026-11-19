@@ -11,6 +11,13 @@ CREATE SCHEMA vault;
 CREATE TABLE vault.secrets(name text PRIMARY KEY);
 CREATE VIEW vault.decrypted_secrets AS SELECT name,'fixture-secret-not-real'::text AS decrypted_secret FROM vault.secrets;
 INSERT INTO vault.secrets(name) VALUES('deudas_access_password');
+\if :{?test_vault_missing}
+ DELETE FROM vault.secrets WHERE name='deudas_access_password';
+\endif
+\if :{?test_vault_undecryptable}
+ CREATE OR REPLACE VIEW vault.decrypted_secrets AS
+ SELECT name,NULL::text AS decrypted_secret FROM vault.secrets;
+\endif
 INSERT INTO auth.users(id) VALUES('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003');
 INSERT INTO auth.sessions(id,user_id) VALUES('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000002');
 
