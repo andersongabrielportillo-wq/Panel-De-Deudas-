@@ -1416,6 +1416,7 @@ async function openIndependentModule(id){
   let inventoryCache=[];
   let sectionLayout=null;
   let refreshSellerList=null;
+  let refreshEntryRequests=null;
   const renderRows=(rows,requestId)=>{
    if(requestId!==requestSequence)return;
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
@@ -1551,8 +1552,9 @@ async function openIndependentModule(id){
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
      const result=await actions.execute("requestEntry",params);
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Solicitud enviada al servidor, pendiente de revisión. ID: "+String(result);
+     status.textContent="Solicitud enviada correctamente; ya aparece en Pendientes para aprobar o rechazar.";
      form.reset();
+     void refreshEntryRequests();
     }catch(e){if(token===nexusViewEpoch)status.textContent="Solicitud no confirmada: "+e.message}
     finally{submit.disabled=false}
    };
@@ -1589,28 +1591,109 @@ async function openIndependentModule(id){
     finally{renameButton.disabled=false}
    };
    clnHubDetail.append(renameForm);
-   const reviewForm=document.createElement("form");
-   const requestId=document.createElement("input");requestId.required=true;requestId.placeholder="ID de solicitud de entrada (UUID)";requestId.setAttribute("aria-label","ID de solicitud");
-   const approve=document.createElement("select");approve.setAttribute("aria-label","Decisión");
-   for(const [value,label] of [["true","Aprobar entrada"],["false","Rechazar entrada"]]){const option=document.createElement("option");option.value=value;option.textContent=label;approve.append(option)}
-   const reviewButton=document.createElement("button");reviewButton.type="submit";reviewButton.className="g2";reviewButton.textContent="Revisar solicitud";
-   reviewForm.append(requestId,approve,reviewButton);
-   reviewForm.onsubmit=async event=>{
-    event.preventDefault();
-    if(token!==nexusViewEpoch||moduleHub.hidden)return;
-    const accepted=approve.value==="true";
-    if(!confirm(accepted?"¿Aprobar esta entrada? El servidor decidirá si aumenta existencias.":"¿Rechazar esta solicitud de entrada?"))return;
-    reviewButton.disabled=true;status.textContent="Revisando solicitud…";
+
+   // Aprobar/rechazar desde tarjetas, sin solicitar ni mostrar UUID al usuario.
+   const reviewForm=document.createElement("section");
+   reviewForm.className="cln-entry-review";
+   const reviewHeading=document.createElement("h4");reviewHeading.textContent="Solicitudes pendientes";
+   const pendingHelp=document.createElement("p");pendingHelp.className="cln-review-help";
+   pendingHelp.textContent="Revisá el artículo, la cantidad y la ubicación. Elegí Aprobar o Rechazar sin copiar identificadores.";
+   const pendingToolbar=document.createElement("div");pendingToolbar.className="cln-review-toolbar";
+   const refreshButton=document.createElement("button");refreshButton.type="button";
+   refreshButton.className="g2";refreshButton.textContent="Actualizar solicitudes";
+   const pendingStatus=document.createElement("p");pendingStatus.className="cln-review-status";
+   pendingStatus.setAttribute("role","status");pendingStatus.textContent="Consultando solicitudes…";
+   pendingToolbar.append(refreshButton,pendingStatus);
+   const pendingList=document.createElement("div");pendingList.className="cln-pending-entry-list";
+   reviewForm.append(reviewHeading,pendingHelp,pendingToolbar,pendingList);
+   let pendingFetchVersion=0;
+   let reviewingRequest=false;
+   const pendingDate=new Intl.DateTimeFormat("es-SV",{
+    timeZone:"America/El_Salvador",dateStyle:"medium",timeStyle:"short"
+   });
+   async function reviewPendingEntry(request,accepted,approveButton,rejectButton){
+    if(token!==nexusViewEpoch||moduleHub.hidden||reviewingRequest||!SB_UID||!SB_WID)return;
+    const action=accepted?"aprobar":"rechazar";
+    const confirmMessage="¿"+(accepted?"Aprobar":"Rechazar")+" la entrada de "+request.cantidad+
+     " unidad(es) de "+request.nombre+" para "+request.ubicacion+"?"+
+     (accepted?" El servidor incrementará las existencias después de validar la solicitud.":" No se modificarán existencias.");
+    if(!confirm(confirmMessage))return;
+    reviewingRequest=true;
+    approveButton.disabled=true;rejectButton.disabled=true;refreshButton.disabled=true;
+    pendingStatus.textContent="Procesando solicitud…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
-     const result=await actions.execute("reviewEntry",{p_solicitud_id:requestId.value.trim(),p_aprobar:accepted});
+     const result=await actions.execute("reviewEntry",{p_solicitud_id:request.id,p_aprobar:accepted});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     status.textContent="Decisión confirmada por el servidor: "+String(result);
-     reviewForm.reset();
-    }catch(e){if(token===nexusViewEpoch)status.textContent="Revisión no confirmada: "+e.message}
-    finally{reviewButton.disabled=false}
+     status.textContent=String(result);
+     pendingStatus.textContent=accepted?"Entrada aprobada y existencias actualizadas.":"Solicitud rechazada sin modificar existencias.";
+     await refreshEntryRequests();
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     try{
+      const snapshot=await nexusReader.list("inventory");
+      if(token===nexusViewEpoch&&!moduleHub.hidden)renderRows(snapshot,++requestSequence);
+     }catch(_){/* La aprobación ya fue confirmada; el inventario se consultará al volver a Existencias. */}
+    }catch(error){
+     if(token!==nexusViewEpoch||moduleHub.hidden)return;
+     pendingStatus.textContent="No se pudo confirmar "+action+": "+String(error.message||error)+
+      ". Actualizá las solicitudes antes de volver a intentarlo.";
+     await refreshEntryRequests();
+    }finally{
+     reviewingRequest=false;
+     approveButton.disabled=false;rejectButton.disabled=false;refreshButton.disabled=false;
+    }
+   }
+   refreshEntryRequests=async function(){
+    const generation=++pendingFetchVersion;
+    if(token!==nexusViewEpoch||moduleHub.hidden||!SB_UID||!SB_WID)return;
+    refreshButton.disabled=true;
+    pendingStatus.textContent="Consultando solicitudes pendientes…";
+    try{
+     const rows=await nexusReader.list("entryRequests");
+     if(token!==nexusViewEpoch||moduleHub.hidden||generation!==pendingFetchVersion)return;
+     pendingList.replaceChildren();
+     pendingStatus.textContent=rows.length+" solicitud"+(rows.length===1?"":"es")+" pendiente"+(rows.length===1?"":"s")+
+      (rows.length===500?" (mostrando las primeras 500)":"")+".";
+     if(!rows.length){
+      const empty=document.createElement("p");empty.className="cln-empty";
+      empty.textContent="No hay entradas pendientes de aprobación.";
+      pendingList.append(empty);return;
+     }
+     for(const request of rows){
+      const card=document.createElement("article");card.className="cln-pending-entry-card";
+      const name=document.createElement("strong");name.textContent=request.nombre;
+      const metadata=document.createElement("div");metadata.className="cln-pending-entry-meta";
+      const quantity=document.createElement("span");quantity.textContent="Cantidad: "+request.cantidad;
+      const location=document.createElement("span");location.textContent="Destino: "+request.ubicacion;
+      const date=document.createElement("time");date.dateTime=request.creado_en;
+      const parsedDate=new Date(request.creado_en);
+      date.textContent="Solicitada: "+(Number.isNaN(parsedDate.getTime())?"Fecha no disponible":pendingDate.format(parsedDate));
+      metadata.append(quantity,location,date);
+      card.append(name,metadata);
+      if(request.observaciones){
+       const note=document.createElement("p");note.className="cln-pending-entry-note";
+       note.textContent="Observaciones: "+request.observaciones;card.append(note);
+      }
+      const actions=document.createElement("div");actions.className="cln-pending-entry-actions";
+      const approveButton=document.createElement("button");approveButton.type="button";
+      approveButton.className="g2 cln-approve-entry";approveButton.textContent="Aprobar";
+      const rejectButton=document.createElement("button");rejectButton.type="button";
+      rejectButton.className="g2 cln-reject-entry";rejectButton.textContent="Rechazar";
+      approveButton.onclick=()=>void reviewPendingEntry(request,true,approveButton,rejectButton);
+      rejectButton.onclick=()=>void reviewPendingEntry(request,false,approveButton,rejectButton);
+      actions.append(approveButton,rejectButton);card.append(actions);
+      pendingList.append(card);
+     }
+    }catch(error){
+     if(token===nexusViewEpoch&&generation===pendingFetchVersion&&!moduleHub.hidden){
+      pendingStatus.textContent="No se pudieron consultar las solicitudes: "+String(error.message||error);
+     }
+    }finally{
+     if(generation===pendingFetchVersion)refreshButton.disabled=false;
+    }
    };
+   refreshButton.onclick=()=>void refreshEntryRequests();
    clnHubDetail.append(reviewForm);
    const transferForm=document.createElement("form");
    const transferHeading=document.createElement("h4");transferHeading.textContent="Trasladar entre bodegas";
@@ -2392,6 +2475,7 @@ async function openIndependentModule(id){
   // Construir la navegación antes de cualquier solicitud opcional de vendedores:
   // si la consulta falla, no deben quedar todos los formularios amontonados.
   arrangeNexusSections(sectionLayout,token,id==="clnHubSales"?"Ventas":id==="clnHubSellers"?"Vendedores":kind==="contracts"?"Contratos":"Existencias");
+  if(kind==="inventory"&&refreshEntryRequests)void refreshEntryRequests();
   if(id==="clnHubSellers"&&refreshSellerList)await refreshSellerList();
  }catch(e){
   if(token!==nexusViewEpoch)return;
@@ -2781,6 +2865,24 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-stock-current{flex:1 0 100%;font-size:13px;font-weight:700;margin:0;padding:12px 14px;border:1px solid var(--bd);border-radius:12px;color:var(--ac)}
 #clnHubDetail .cln-stock-feedback{flex:1 0 100%;font-size:12px;margin:0;color:var(--mut);line-height:1.4}
 @media(max-width:650px){#clnHubDetail .cln-stock-controls{grid-template-columns:minmax(0,1fr)}}
+
+/* Revisar entradas sin UUID: lista de tarjetas de aprobación, móvil primero. */
+#clnHubDetail .cln-entry-review{width:100%;max-width:100%;min-width:0;margin:17px 0 0}
+#clnHubDetail .cln-entry-review>h4{font-size:17px;font-weight:750;margin:0 0 9px;color:var(--tx)}
+#clnHubDetail .cln-review-help{color:var(--mut);font-size:12px;line-height:1.5;margin:0 0 13px}
+#clnHubDetail .cln-review-toolbar{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+#clnHubDetail .cln-review-toolbar button{font-weight:700;font-size:13px;min-height:42px;border-radius:12px}
+#clnHubDetail .cln-review-status{font-size:12px;line-height:1.45;color:var(--mut);margin:0;flex:1 1 180px}
+#clnHubDetail .cln-pending-entry-list{display:grid;gap:11px;width:100%;min-width:0}
+#clnHubDetail .cln-pending-entry-card{min-width:0;padding:16px;border:1px solid color-mix(in srgb,var(--ac) 17%,var(--bd));border-radius:16px;background:color-mix(in srgb,var(--ac) 4%,var(--card));box-shadow:0 3px 14px rgba(0,0,0,.03)}
+#clnHubDetail .cln-pending-entry-card>strong{font-size:15px;line-height:1.5;display:block;margin-bottom:9px;overflow-wrap:anywhere}
+#clnHubDetail .cln-pending-entry-meta{display:flex;flex-wrap:wrap;gap:7px 15px;color:var(--mut);font-size:12px;line-height:1.45}
+#clnHubDetail .cln-pending-entry-note{margin:10px 0 2px;color:var(--tx);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+#clnHubDetail .cln-pending-entry-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+#clnHubDetail .cln-pending-entry-actions button{min-height:43px;min-width:105px;flex:1 1 120px;border-radius:12px;font-size:13px;font-weight:750}
+#clnHubDetail .cln-approve-entry{background:color-mix(in srgb,var(--ac) 20%,var(--card));color:var(--ac);border:1px solid color-mix(in srgb,var(--ac) 35%,var(--bd))}
+#clnHubDetail .cln-reject-entry{color:var(--mut);background:var(--card);border:1px solid var(--bd)}
+#clnHubDetail .cln-pending-entry-actions button:disabled{opacity:.55}
 </style>
 
 </body></html>
