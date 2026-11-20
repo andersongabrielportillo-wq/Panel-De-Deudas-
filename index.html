@@ -1412,6 +1412,8 @@ async function openIndependentModule(id){
   let requestSequence=0;
   let inventorySelector=null;
   let renameSelector=null;
+  let editSelector=null,editStockForm=null;
+  let inventoryCache=[];
   let sectionLayout=null;
   let refreshSellerList=null;
   const renderRows=(rows,requestId)=>{
@@ -1419,6 +1421,7 @@ async function openIndependentModule(id){
    if(token!==nexusViewEpoch||!SB_UID||moduleHub.hidden)return;
    results.replaceChildren();
    if(kind==="inventory"){
+    inventoryCache=rows;
     status.textContent=rows.length+" artículos disponibles. Las existencias se confirman al aprobar entradas; sin registrar no significa cero.";
     const search=document.createElement("input");search.type="search";
     search.className="cln-catalog-search";search.maxLength=120;search.autocomplete="off";
@@ -1515,6 +1518,14 @@ async function openIndependentModule(id){
     const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar artículo para corregir nombre";renameSelector.append(blank);
     for(const article of rows){const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;option.dataset.expectedName=article.nombre;renameSelector.append(option)}
     renameSelector.clnPickerRefresh?.();
+   }
+   if(kind==="inventory"&&editSelector){
+    editSelector.replaceChildren();
+    const blank=document.createElement("option");blank.value="";blank.textContent="Seleccioná el artículo";editSelector.append(blank);
+    for(const article of rows){
+     const option=document.createElement("option");option.value=article.id;option.textContent=article.nombre;editSelector.append(option);
+    }
+    editSelector.clnPickerRefresh?.();
    }
   };
   if(kind==="inventory"){
@@ -1720,7 +1731,108 @@ async function openIndependentModule(id){
     finally{saleButton.disabled=false}
    };
    clnHubDetail.append(saleForm);
+
    sectionLayout=[["Existencias",[results]],["Entradas",[form,reviewForm]],["Traslados",[transferForm]],["Ventas",[saleForm,voidForm]],["Artículos",[renameForm]]];
+   if(id==="clnHubInventory"){
+    editStockForm=document.createElement("form");
+    editStockForm.className="cln-stock-adjust-form";
+    const intro=document.createElement("p");intro.className="cln-stock-notice";
+    intro.textContent="Editá directamente la cantidad en Oficina o Bodega. No se registrará una entrada de proveedor. El cambio queda guardado con fecha, hora y cantidad anterior.";
+    const itemLabel=document.createElement("label");itemLabel.textContent="Artículo";
+    const editItem=document.createElement("select");editItem.required=true;
+    editItem.setAttribute("aria-label","Artículo para editar inventario");
+    editSelector=editItem;
+    const placeLabel=document.createElement("label");placeLabel.textContent="Ubicación";
+    const editLocation=document.createElement("select");editLocation.required=true;editLocation.setAttribute("aria-label","Ubicación a editar");
+    for(const [value,label] of [["1","Oficina"],["2","Bodega"]]){
+     const option=document.createElement("option");option.value=value;option.textContent=label;editLocation.append(option);
+    }
+    const current=document.createElement("p");current.className="cln-stock-current";current.setAttribute("aria-live","polite");
+    const amountLabel=document.createElement("label");amountLabel.textContent="Nueva cantidad";
+    const editAmount=document.createElement("input");editAmount.type="number";editAmount.required=true;
+    editAmount.min="0";editAmount.max="100000000";editAmount.step="1";editAmount.inputMode="numeric";
+    editAmount.setAttribute("aria-label","Cantidad nueva en la ubicación");
+    editAmount.placeholder="Cantidad final, por ejemplo 1";
+    const reasonLabel=document.createElement("label");reasonLabel.textContent="Motivo";
+    const reason=document.createElement("select");reason.setAttribute("aria-label","Motivo del ajuste");
+    for(const text of ["Ingreso puntual sin proveedor","Conteo físico de existencias","Corrección manual de inventario"]){
+     const option=document.createElement("option");option.value=text;option.textContent=text;reason.append(option);
+    }
+    const feedback=document.createElement("p");feedback.className="cln-stock-feedback";feedback.setAttribute("role","status");
+    const save=document.createElement("button");save.type="submit";save.className="g2";save.textContent="Guardar cantidad";
+    const line=document.createElement("div");line.className="cln-stock-controls";
+    const itemBox=document.createElement("div");itemBox.append(itemLabel,editItem);
+    const placeBox=document.createElement("div");placeBox.append(placeLabel,editLocation);
+    const amountBox=document.createElement("div");amountBox.append(amountLabel,editAmount);
+    const reasonBox=document.createElement("div");reasonBox.append(reasonLabel,reason);
+    line.append(itemBox,placeBox,amountBox,reasonBox);
+    editStockForm.append(intro,line,current,save,feedback);
+    const refreshPreview=()=>{
+     const article=inventoryCache.find(row=>row.id===editItem.value);
+     const field=editLocation.value==="1"?"oficina":"bodega";
+     const old=article?String(article[field]??"").trim():"";
+     current.textContent=!article?"Elegí un artículo para consultar su cantidad.":"Existencia actual: "+(old===""?"Sin registrar":old)+" · "+(field==="oficina"?"Oficina":"Bodega");
+     editAmount.value=article&&old!==""?old:"";
+     feedback.textContent="";
+    };
+    editItem.addEventListener("change",refreshPreview);
+    editLocation.addEventListener("change",refreshPreview);
+    let pendingAdjustmentId=null,pendingAdjustmentPayload=null;
+    editStockForm.onsubmit=async event=>{
+     event.preventDefault();
+     if(token!==nexusViewEpoch||moduleHub.hidden||!SB_UID||!SB_WID||save.disabled)return;
+     const article=inventoryCache.find(row=>row.id===editItem.value);
+     const locationId=Number(editLocation.value);
+     const property=locationId===1?"oficina":"bodega";
+     const original=article?String(article[property]??"").trim():"";
+     const oldQuantity=original===""?null:Number(original);
+     const newQuantity=Number(editAmount.value);
+     if(!article||![1,2].includes(locationId)||original!==""&&(!Number.isSafeInteger(oldQuantity)||oldQuantity<0)){
+      feedback.textContent="Elegí un artículo y ubicación válidos.";return;
+     }
+     if(!editAmount.value.trim()||!Number.isSafeInteger(newQuantity)||newQuantity<0||newQuantity>100000000){
+      feedback.textContent="La cantidad debe ser un entero entre 0 y 100 millones.";return;
+     }
+     if(oldQuantity!==null&&oldQuantity===newQuantity){feedback.textContent="La cantidad es igual a la actual; no hay cambio.";return;}
+     const params={
+      p_item_id:article.id,p_location_id:locationId,p_nueva:newQuantity,
+      p_esperado:oldQuantity,p_motivo:reason.value,p_client_op_id:pendingAdjustmentId
+     };
+     const fingerprint=JSON.stringify({...params,p_client_op_id:null});
+     if(pendingAdjustmentId&&fingerprint!==pendingAdjustmentPayload){
+      feedback.textContent="Hay una operación pendiente de verificar. Volvé a intentar la misma o consultá Existencias antes de cambiar los datos.";
+      return;
+     }
+     const previous=oldQuantity===null?"Sin registrar":String(oldQuantity);
+     if(!confirm("¿Cambiar "+article.nombre+" en "+(locationId===1?"Oficina":"Bodega")+" de "+previous+" a "+newQuantity+"? El ajuste quedará registrado en el historial."))return;
+     if(!pendingAdjustmentId){pendingAdjustmentId=crypto.randomUUID();pendingAdjustmentPayload=fingerprint;}
+     params.p_client_op_id=pendingAdjustmentId;
+     save.disabled=true;feedback.textContent="Guardando ajuste autorizado…";
+     try{
+      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
+      const actions=window.CLNexusActions.createNexusActions({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+      await actions.execute("adjustStock",params);
+      if(token!==nexusViewEpoch||moduleHub.hidden)return;
+      pendingAdjustmentId=null;pendingAdjustmentPayload=null;
+      feedback.textContent="Cantidad actualizada correctamente. Ajuste guardado en Consultar historial.";
+      const fresh=await nexusReader.list("inventory");
+      if(token!==nexusViewEpoch||moduleHub.hidden)return;
+      renderRows(fresh,++requestSequence);
+      refreshPreview();
+      feedback.textContent="Cantidad actualizada correctamente. El historial conserva el valor anterior y el nuevo.";
+     }catch(error){
+      if(token!==nexusViewEpoch)return;
+      feedback.textContent="No se confirmó el ajuste: "+String(error.message||error)+"; si se perdió la conexión, verificá la cantidad antes de repetir.";
+      if(/cantidad cambió|ya es igual/i.test(String(error.message||error))){
+       pendingAdjustmentId=null;pendingAdjustmentPayload=null;
+       try{renderRows(await nexusReader.list("inventory"),++requestSequence)}catch(_){}
+      }
+     }finally{save.disabled=false}
+    };
+    clnHubDetail.append(editStockForm);
+    sectionLayout.splice(1,0,["Editar inventario",[editStockForm]]);
+   }
+
   }
   if(kind==="contracts"){
    const sellerForm=document.createElement("form");
@@ -2658,6 +2770,17 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnModuleHistoryDialog .cln-history-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:9px;margin-top:16px}
 #clnModuleHistoryDialog .cln-history-actions button{padding:8px 13px;min-height:40px;border-radius:10px}
 #clnModuleHistoryDialog .cln-history-actions [hidden]{display:none!important}
+
+/* Ajuste manual de inventario — secciones simples y táctiles, auditadas en el servidor. */
+#clnHubDetail .cln-stock-adjust-form{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px}
+#clnHubDetail .cln-stock-notice{flex:1 0 100%;color:var(--mut);font-size:12px;line-height:1.55;margin:0 0 5px}
+#clnHubDetail .cln-stock-controls{flex:1 0 100%;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:12px;width:100%}
+#clnHubDetail .cln-stock-controls>div{display:flex!important;flex-direction:column;gap:6px;min-width:0;border:0!important;padding:0!important}
+#clnHubDetail .cln-stock-controls label{font-size:12px;color:var(--mut);font-weight:700}
+#clnHubDetail .cln-stock-controls input,#clnHubDetail .cln-stock-controls select{width:100%;min-width:0}
+#clnHubDetail .cln-stock-current{flex:1 0 100%;font-size:13px;font-weight:700;margin:0;padding:12px 14px;border:1px solid var(--bd);border-radius:12px;color:var(--ac)}
+#clnHubDetail .cln-stock-feedback{flex:1 0 100%;font-size:12px;margin:0;color:var(--mut);line-height:1.4}
+@media(max-width:650px){#clnHubDetail .cln-stock-controls{grid-template-columns:minmax(0,1fr)}}
 </style>
 
 </body></html>
