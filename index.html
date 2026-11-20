@@ -752,6 +752,7 @@ const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
 let SB_UID=null,SB_WID=null,SB_CH=null,authSessionGeneration=0;
 const gate=(show,msg="")=>{
+ if(show)document.getElementById("clnPrintableInventory")?.remove();
  const loading=document.getElementById("clnBoot");if(loading)loading.hidden=true;
  const g=document.getElementById("authGate");g.hidden=!show;g.inert=!show;
  if(show){
@@ -999,6 +1000,7 @@ document.getElementById("clnHubHttpAudit").onclick=async()=>{
 };
 document.getElementById("clnHubDebts").onclick=()=>debtScreenVisible(true);
 document.getElementById("clnHubLogout").onclick=()=>document.getElementById("debtUnlockLogout").click();
+window.addEventListener("afterprint",()=>document.getElementById("clnPrintableInventory")?.remove());
 // CL Nexus stays independent from Deudas. A separate authenticated view
 // is shown without mounting or reading the private Deudas application.
 const clnHubViews=Object.freeze({
@@ -1152,6 +1154,7 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
  activate(initialIndex<0?0:initialIndex);
 }
 async function openIndependentModule(id){
+ document.getElementById("clnPrintableInventory")?.remove();
  const config=clnHubViews[id];
  if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
  // Visual state only: authorization remains enforced by Supabase RPC and RLS.
@@ -1352,6 +1355,56 @@ async function openIndependentModule(id){
      if(!slice.length){const empty=document.createElement("p");empty.className="cln-empty";empty.textContent="No encontramos artículos con ese nombre.";cards.append(empty)}
     };
     search.addEventListener("input",()=>{inventoryFindTerm=search.value;paint();});
+    if(id==="clnHubInventory"){
+     const printButton=document.createElement("button");
+     printButton.type="button";printButton.className="g2 cln-inventory-print";
+     printButton.textContent="Imprimir inventario";
+     printButton.setAttribute("aria-label","Imprimir inventario completo o guardar como PDF");
+     printButton.onclick=()=>{
+      if(token!==nexusViewEpoch||moduleHub.hidden||!SB_UID||!SB_WID)return;
+      // Se imprime el catálogo completo de la última consulta autorizada, no las
+      // 30 tarjetas visibles ni solo el resultado del filtro de búsqueda.
+      document.getElementById("clnPrintableInventory")?.remove();
+      const report=document.createElement("section");report.id="clnPrintableInventory";
+      report.setAttribute("aria-label","Inventario completo para impresión");
+      const heading=document.createElement("h1");heading.textContent="INVENTARIO GENERAL";
+      const company=document.createElement("p");company.className="cln-print-company";
+      company.textContent="COMERCIAL LÓPEZ · CL Nexus";
+      const date=document.createElement("p");date.className="cln-print-meta";
+      date.textContent="Generado: "+new Date().toLocaleString("es-SV",{dateStyle:"medium",timeStyle:"short"})+" · Artículos: "+rows.length;
+      const note=document.createElement("p");note.className="cln-print-note";
+      note.textContent="Sin registrar significa que no se ha confirmado la existencia; no equivale a cero. Total confirmado solo cuando ambas ubicaciones tienen existencias registradas.";
+      const table=document.createElement("table");table.className="cln-print-table";
+      const thead=document.createElement("thead"),headRow=document.createElement("tr");
+      for(const caption of ["N.º","Artículo","Oficina","Bodega","Total confirmado"]){
+       const cell=document.createElement("th");cell.textContent=caption;headRow.append(cell);
+      }
+      thead.append(headRow);
+      const tbody=document.createElement("tbody");
+      const stock=value=>String(value??"").trim()===""?"Sin registrar":String(value).trim();
+      const number=value=>{
+       const valueString=String(value??"").trim();
+       return valueString!==""&&/^[0-9]+$/.test(valueString)?Number(valueString):null;
+      };
+      rows.forEach((article,index)=>{
+       const office=number(article.oficina),warehouse=number(article.bodega);
+       const total=office!==null&&warehouse!==null?(office+warehouse).toLocaleString("es-SV"):"—";
+       const cells=[String(index+1),String(article.nombre||""),stock(article.oficina),stock(article.bodega),total];
+       const line=document.createElement("tr");
+       for(const value of cells){const cell=document.createElement("td");cell.textContent=value;line.append(cell)}
+       tbody.append(line);
+      });
+      table.append(thead,tbody);report.append(company,heading,date,note,table);
+      document.body.append(report);
+      // Android/Chrome PWA y PC usan el diálogo nativo para imprimir o guardar PDF.
+      try{window.print()}catch(error){
+       report.remove();
+       status.textContent="El dispositivo no pudo abrir la impresión: "+String(error?.message||error);
+      }
+     };
+     const tools=document.createElement("div");tools.className="cln-inventory-tools";
+     tools.append(printButton);results.append(tools);
+    }
     results.append(search,count,cards);paint();
    }else{
     status.textContent=rows.length+" clientes encontrados.";
@@ -2468,6 +2521,33 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-subpanel form>h5{flex:1 0 100%;font-size:15px;font-weight:750;letter-spacing:-.01em;color:var(--tx);margin:15px 0 0}
 #clnHubDetail .cln-contract-identity{font-size:13px;color:var(--tx);line-height:1.6;background:color-mix(in srgb,var(--ac) 9%,var(--card));padding:12px 14px;border:1px solid color-mix(in srgb,var(--ac) 22%,var(--bd));border-radius:13px}
 #clnHubDetail .cln-field-helper{line-height:1.5;margin-top:-3px;color:var(--mut)}
+
+/* Impresión de inventario: no afecta el tema visual ni la navegación en pantalla. */
+#clnHubDetail .cln-inventory-tools{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:0 0 13px;flex-wrap:wrap}
+#clnHubDetail .cln-inventory-print{font-weight:700;min-height:44px;padding:10px 16px;border-radius:12px;border-color:color-mix(in srgb,var(--ac) 40%,var(--bd));color:var(--ac)}
+#clnPrintableInventory{display:none!important}
+@media print{
+ @page{size:A4 portrait;margin:12mm}
+ html,body{margin:0!important;padding:0!important;width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important;color:#111!important}
+ body::before,body::after{display:none!important}
+ body>*:not(#clnPrintableInventory){display:none!important}
+ #clnPrintableInventory{display:block!important;position:static!important;margin:0!important;padding:0!important;width:100%!important;max-width:none!important;background:#fff!important;color:#111!important;font:10pt/1.45 Arial,Helvetica,sans-serif!important}
+ #clnPrintableInventory .cln-print-company{font-size:9pt;font-weight:700;color:#536177;margin:0 0 8pt}
+ #clnPrintableInventory h1{font:bold 19pt/1.2 Arial,Helvetica,sans-serif;margin:0 0 8pt;color:#112747}
+ #clnPrintableInventory .cln-print-meta{font-size:9pt;margin:0 0 8pt;color:#333}
+ #clnPrintableInventory .cln-print-note{padding:7pt 9pt;border:1px solid #bbb;font-size:8.5pt;margin:0 0 12pt;color:#333}
+ #clnPrintableInventory .cln-print-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.8pt}
+ #clnPrintableInventory .cln-print-table thead{display:table-header-group}
+ #clnPrintableInventory .cln-print-table tr{break-inside:avoid;page-break-inside:avoid}
+ #clnPrintableInventory .cln-print-table th,#clnPrintableInventory .cln-print-table td{padding:5pt 6pt;border-bottom:1px solid #d9dee5;vertical-align:top;overflow-wrap:anywhere}
+ #clnPrintableInventory .cln-print-table th{background:#eaf0f8;color:#112747;text-align:left;font-weight:700;border-bottom:2px solid #adbbcc}
+ #clnPrintableInventory .cln-print-table th:nth-child(1),#clnPrintableInventory .cln-print-table td:nth-child(1){width:7%;text-align:center}
+ #clnPrintableInventory .cln-print-table th:nth-child(2),#clnPrintableInventory .cln-print-table td:nth-child(2){width:45%}
+ #clnPrintableInventory .cln-print-table th:nth-child(3),#clnPrintableInventory .cln-print-table td:nth-child(3){width:15%;text-align:center}
+ #clnPrintableInventory .cln-print-table th:nth-child(4),#clnPrintableInventory .cln-print-table td:nth-child(4){width:15%;text-align:center}
+ #clnPrintableInventory .cln-print-table th:nth-child(5),#clnPrintableInventory .cln-print-table td:nth-child(5){width:18%;text-align:center}
+ #clnPrintableInventory .cln-print-table tbody tr:nth-child(even){background:#f6f8fb}
+}
 </style>
 
 </body></html>
