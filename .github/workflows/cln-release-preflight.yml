@@ -1,7 +1,7 @@
 name: CL Nexus - validacion pre-publicacion
 on:
   push:
-    branches: [cln-lanzamiento-controlado-20261119, cln-sesion-unica-20261119, cln-redisenio-liquidglass-20261119, cln-mejoras-ui-busqueda-20261119, cln-un-solo-login-reparacion-20261119, cln-contratos-cliente-dui-vendedor-20261119, fix-seller-panel-scope-20261119, cln-inventario-imprimir-20261120, cln-ajustes-auditoria-modulos-20261120, main]
+    branches: [cln-lanzamiento-controlado-20261119, cln-sesion-unica-20261119, cln-redisenio-liquidglass-20261119, cln-mejoras-ui-busqueda-20261119, cln-un-solo-login-reparacion-20261119, cln-contratos-cliente-dui-vendedor-20261119, fix-seller-panel-scope-20261119, cln-inventario-imprimir-20261120, cln-ajustes-auditoria-modulos-20261120, fix-cln-historial-rol-ambiguo-20261120, main]
   workflow_dispatch:
 permissions:
   contents: read
