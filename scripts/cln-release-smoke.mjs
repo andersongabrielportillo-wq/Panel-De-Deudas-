@@ -415,7 +415,7 @@ let testRequests=[
 const reviewInvocations=[];
 const approvalScope={
  document:{createElement:tag=>new FakeEntryNode(tag)},
- Intl,Date,SB_UID:'authorized',SB_WID:'workspace',token:1,nexusViewEpoch:1,
+ Intl,Date,SB:{rpc:async()=>({data:null,error:null})},SB_UID:'authorized',SB_WID:'workspace',token:1,nexusViewEpoch:1,
  moduleHub:{hidden:false},status:{textContent:''},requestSequence:0,
  clnHubDetail:{append:()=>{}},refreshEntryRequests:null,
  nexusReader:{list:async kind=>kind==='entryRequests'?testRequests:[{nombre:'Cafetera',oficina:'1',bodega:''}]},
