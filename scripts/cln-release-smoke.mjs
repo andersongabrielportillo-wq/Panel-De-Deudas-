@@ -326,4 +326,12 @@ await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_nueva:-1}),/
 await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_location_id:4}),/Solo Oficina o Bodega|Cantidad o ubicación inválida/);
 await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_esperado:-1}),/Existencia anterior inválida/);
 await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_motivo:'No'}),/Motivo inválido/);
+
+/* SQL regression: qualify membership "rol" distinct from RETURNS TABLE output "rol". */
+const roleFixMigration=read('db/migrations/20261120_fix_cln_historial_rol_ambiguo.sql');
+assert.match(roleFixMigration,/m\.rol IN \('admin','secretaria'\)/);
+assert.match(roleFixMigration,/COALESCE\(m\.rol,'cuenta autorizada'\)/);
+assert.doesNotMatch(roleFixMigration,/WHERE user_id=v_user AND rol IN/);
+assert.match(roleFixMigration,/public\.has_debts_unlock\(\)/);
+assert.match(roleFixMigration,/REVOKE ALL ON FUNCTION public\.cln_historial_modulo/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
