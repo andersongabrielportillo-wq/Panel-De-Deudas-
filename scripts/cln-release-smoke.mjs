@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v15-vendedores-scope-20261119/);
+assert.match(sw,/panel-de-deudas-shell-v16-inventario-impresion-20261120/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -200,4 +200,64 @@ assert.match(sellerBranch,/sellerButton\.onclick=refreshSellerList/);
 assert.match(sellerBranch,/const sellers=await nexusReader\.list\("contractSellers"\)/);
 assert.match(moduleCode,/sectionLayout=\[\["Contratos",/);
 assert.match(moduleCode,/\["Vendedores",\[sellerForm,sellerButton,sellerList\]\]/);
+
+/* Inventario completo: botón visible únicamente en Inventario, con impresión real sin filtrar la lista. */
+assert.match(html,/if\(id==="clnHubInventory"\)\{\s*const printButton=document\.createElement\("button"\)/);
+assert.match(html,/printButton\.textContent="Imprimir inventario"/);
+assert.match(html,/window\.print\(\)/);
+assert.match(html,/window\.addEventListener\("afterprint"/);
+assert.match(html,/body>\*:not\(#clnPrintableInventory\)/);
+assert.match(html,/thead\{display:table-header-group\}/);
+assert.match(html,/Sin registrar significa que no se ha confirmado la existencia/);
+const printStart=html.indexOf('printButton.onclick=()=>{');
+const printEnd=html.indexOf('     const tools=document.createElement("div");',printStart);
+assert.ok(printStart>=0&&printEnd>printStart,'Missing Inventory print handler');
+const printSource=html.slice(printStart,printEnd);
+assert.match(printSource,/rows\.forEach\(\(article,index\)=>/,'Must print full inventory, not visible slice');
+assert.ok(!printSource.includes('rows.slice('),'Print must not truncate catalog');
+class PrintElement {
+ constructor(tag){this.tagName=tag;this.children=[];this.textContent='';this.id='';this.parentNode=null;this.attrs={}}
+ setAttribute(name,value){this.attrs[name]=value}
+ append(...elements){for(const element of elements){element.parentNode=this;this.children.push(element)}}
+ remove(){if(this.parentNode){this.parentNode.children=this.parentNode.children.filter(x=>x!==this)}}
+}
+const printBody=new PrintElement('body');
+const printDocument={
+ body:printBody,
+ createElement:tag=>new PrintElement(tag),
+ getElementById:id=>printBody.children.find(el=>el.id===id)||null
+};
+const printButton={onclick:null};
+const testInventory=Array.from({length:190},(_,index)=>({
+ nombre:'Producto '+String(index+1),
+ oficina:index===0?'':(index===1?'0':'3'),
+ bodega:index===0?'4':(index===1?'0':'2'),
+ codigo:'CELDA_XL_NO_IMPRIMIR'
+}));
+let printInvocations=0;
+const printScope={
+ printButton,document:printDocument,window:{print:()=>printInvocations++},
+ rows:testInventory,token:1,nexusViewEpoch:1,moduleHub:{hidden:false},
+ SB_UID:'authorized-user',SB_WID:'authorized-workspace',
+ status:{textContent:''}
+};
+vm.runInNewContext(printSource,printScope);
+assert.equal(typeof printButton.onclick,'function');
+printButton.onclick();
+assert.equal(printInvocations,1,'Expected native print dialog');
+const printSheet=printDocument.getElementById('clnPrintableInventory');
+assert.ok(printSheet,'Report not generated');
+const table=printSheet.children.find(el=>el.tagName==='table');
+const bodyRows=table.children.find(el=>el.tagName==='tbody').children;
+assert.equal(bodyRows.length,190,'Print must include all 190 catalog items');
+assert.equal(bodyRows[0].children[1].textContent,'Producto 1');
+assert.equal(bodyRows[0].children[2].textContent,'Sin registrar');
+assert.equal(bodyRows[0].children[4].textContent,'—','Unregistered Oficina is not numeric zero');
+assert.equal(bodyRows[1].children[2].textContent,'0');
+assert.equal(bodyRows[1].children[4].textContent,'0','Confirmed zero stays zero');
+assert.equal(bodyRows[189].children[4].textContent,'5');
+assert.ok(!JSON.stringify(printSheet).includes('CELDA_XL_NO_IMPRIMIR'),'Excel provenance must never appear in printable report');
+printScope.moduleHub.hidden=true;
+printButton.onclick();
+assert.equal(printInvocations,1,'Hidden module cannot initiate printing');
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
