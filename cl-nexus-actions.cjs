@@ -5,6 +5,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const specs=Object.freeze({
  move:{rpc:'inv_registrar_movimiento',required:['p_item_id','p_tipo','p_cantidad','p_observaciones','p_client_op_id'],optional:['p_origen','p_destino','p_vendedor']},
  renameItem:{rpc:'inv_corregir_nombre_articulo',required:['p_item_id','p_nombre','p_nombre_esperado'],optional:[]},
+ adjustStock:{rpc:'inv_ajustar_existencia',required:['p_item_id','p_location_id','p_nueva','p_esperado','p_motivo','p_client_op_id'],optional:[]},
  sale:{rpc:'inv_registrar_venta',required:['p_vendedor_id','p_modalidad','p_articulos','p_descuento','p_observaciones','p_client_op_id'],optional:[]},
  voidSale:{rpc:'inv_anular_venta',required:['p_venta_id','p_motivo'],optional:[]},
  warrantyRelease:{rpc:'inv_liberar_garantia',required:['p_item_id','p_destino','p_cantidad','p_observaciones'],optional:[]},
@@ -37,12 +38,17 @@ function createNexusActions({client,authorized}={}){
    const nullableContract=action==='createContract'&&['p_cuota','p_saldo_inicial','p_fecha_plan'].includes(key);
    const blankCustomer=action==='createClient'&&key!=='p_nombre'&&key!=='p_dui';
    const blankContract=action==='createContract'&&['p_ruta','p_dia_cobro','p_receptor_alterno','p_observaciones'].includes(key);
-   if(!(key in params)||params[key]===undefined||(params[key]===null&&!nullableContract&&!blankCustomer)||(typeof params[key]==='string'&&!params[key].trim()&&!blankCustomer&&!blankContract))throw Error('Falta '+key);
+   const nullableStock=action==='adjustStock'&&key==='p_esperado';
+   if(!(key in params)||params[key]===undefined||(params[key]===null&&!nullableContract&&!blankCustomer&&!nullableStock)||(typeof params[key]==='string'&&!params[key].trim()&&!blankCustomer&&!blankContract))throw Error('Falta '+key);
   }
   for(const [key,value] of Object.entries(params)){
    if(key.endsWith('_id')&&key!=='p_location_id'&&value!==null&&!uuid.test(String(value)))throw Error('ID inválido');
    if((key==='p_cantidad'||key==='p_location_id')&&(!Number.isInteger(value)||value<=0))throw Error('Cantidad o ubicación inválida');
    if(key==='p_client_op_id'&&!uuid.test(String(value)))throw Error('Identificador de operación inválido');
+   if(action==='adjustStock'&&key==='p_nueva'&&(!Number.isInteger(value)||value<0||value>100000000))throw Error('Cantidad inválida');
+   if(action==='adjustStock'&&key==='p_esperado'&&value!==null&&(!Number.isInteger(value)||value<0||value>100000000))throw Error('Existencia anterior inválida');
+   if(action==='adjustStock'&&key==='p_location_id'&&![1,2].includes(value))throw Error('Solo Oficina o Bodega');
+   if(action==='adjustStock'&&key==='p_motivo'&&(typeof value!=='string'||value.trim().length<5||value.trim().length>500))throw Error('Motivo inválido');
   }
   const at=generation;
   const {data,error}=await client.rpc(spec.rpc,params);
