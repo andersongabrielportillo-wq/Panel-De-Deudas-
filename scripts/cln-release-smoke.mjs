@@ -393,4 +393,64 @@ assert.equal(readerMockCalls.at(-1).args.p_aprobar,true);
 await reviewActions.execute('reviewEntry',{p_solicitud_id:pendingId,p_aprobar:false});
 assert.equal(readerMockCalls.at(-1).args.p_aprobar,false);
 await assert.rejects(reviewActions.execute('reviewEntry',{p_solicitud_id:'not-uuid',p_aprobar:true}),/ID inválido/);
+
+/* Ejecución simulada del UI: tarjetas y botones sin IDs visibles; nunca escriben stock directamente. */
+const reviewStart=html.indexOf('   const reviewForm=document.createElement("section");');
+const reviewEnd=html.indexOf('   clnHubDetail.append(reviewForm);',reviewStart);
+assert.ok(reviewStart>0&&reviewEnd>reviewStart,'Pending entry UI code missing');
+const reviewSource=html.slice(reviewStart,reviewEnd+'   clnHubDetail.append(reviewForm);'.length);
+class FakeEntryNode{
+ constructor(tag){
+  this.tagName=tag;this.children=[];this.className='';this.textContent='';
+  this.disabled=false;this.hidden=false;this.attrs={};this.onclick=null;
+ }
+ setAttribute(k,v){this.attrs[k]=String(v)}
+ append(...nodes){this.children.push(...nodes)}
+ replaceChildren(...nodes){this.children=[...nodes]}
+}
+let testRequests=[
+ {id:pendingId,nombre:'Cafetera',cantidad:'1',ubicacion:'Oficina',creado_en:'2026-11-20T16:15:00Z',observaciones:'Pedido confirmado'},
+ {id:'66666666-6666-4666-8666-666666666666',nombre:'Licuadora',cantidad:'2',ubicacion:'Bodega',creado_en:'2026-11-20T18:15:00Z',observaciones:''}
+];
+const reviewInvocations=[];
+const approvalScope={
+ document:{createElement:tag=>new FakeEntryNode(tag)},
+ Intl,Date,SB_UID:'authorized',SB_WID:'workspace',token:1,nexusViewEpoch:1,
+ moduleHub:{hidden:false},status:{textContent:''},requestSequence:0,
+ clnHubDetail:{append:()=>{}},refreshEntryRequests:null,
+ nexusReader:{list:async kind=>kind==='entryRequests'?testRequests:[{nombre:'Cafetera',oficina:'1',bodega:''}]},
+ window:{CLNexusActions:{createNexusActions:()=>({execute:async(action,args)=>{
+   assert.equal(action,'reviewEntry');
+   reviewInvocations.push(args);
+   testRequests=testRequests.filter(x=>x.id!==args.p_solicitud_id);
+   return args.p_aprobar?'Entrada aprobada correctamente':'Entrada rechazada correctamente';
+ }})}},
+ confirm:()=>true,renderRows:()=>{}
+};
+vm.runInNewContext(reviewSource+'\nglobalThis.__entriesRefresh=refreshEntryRequests;globalThis.__entryView=reviewForm;',approvalScope);
+await approvalScope.__entriesRefresh();
+const entryList=approvalScope.__entryView.children.find(x=>x.className==='cln-pending-entry-list');
+assert.ok(entryList,'Entry list is not rendered');
+assert.equal(entryList.children.length,2,'Two pending requests must produce two cards');
+const entryText=node=>node.textContent+' '+node.children.map(entryText).join(' ');
+assert.ok(entryText(entryList).includes('Cafetera'));
+assert.ok(entryText(entryList).includes('Cantidad: 1'));
+assert.ok(entryText(entryList).includes('Destino: Oficina'));
+assert.ok(!entryText(entryList).includes(pendingId),'Request UUID must not appear in cards');
+const firstButtons=entryList.children[0].children.find(x=>x.className==='cln-pending-entry-actions').children;
+assert.equal(firstButtons[0].textContent,'Aprobar');
+assert.equal(firstButtons[1].textContent,'Rechazar');
+firstButtons[0].onclick();
+await new Promise(resolve=>setTimeout(resolve,30));
+assert.equal(reviewInvocations.length,1);
+assert.equal(reviewInvocations[0].p_solicitud_id,pendingId);
+assert.equal(reviewInvocations[0].p_aprobar,true);
+assert.equal(entryList.children.length,1,'Approved card should disappear on refreshed list');
+const lastButtons=entryList.children[0].children.find(x=>x.className==='cln-pending-entry-actions').children;
+lastButtons[1].onclick();
+await new Promise(resolve=>setTimeout(resolve,30));
+assert.equal(reviewInvocations.length,2);
+assert.equal(reviewInvocations[1].p_aprobar,false);
+assert.equal(entryList.children.length,1,'Empty list must show an explanatory message');
+assert.ok(entryText(entryList).includes('No hay entradas pendientes'));
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
