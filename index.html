@@ -1384,7 +1384,7 @@ async function openIndependentModule(id){
       const stock=value=>String(value??"").trim()===""?"Sin registrar":String(value).trim();
       const number=value=>{
        const valueString=String(value??"").trim();
-       return valueString!==""&&/^\\d+$/.test(valueString)?Number(valueString):null;
+       return valueString!==""&&/^[0-9]+$/.test(valueString)?Number(valueString):null;
       };
       rows.forEach((article,index)=>{
        const office=number(article.oficina),warehouse=number(article.bodega);
