@@ -256,7 +256,8 @@ assert.equal(bodyRows[0].children[4].textContent,'—','Unregistered Oficina is 
 assert.equal(bodyRows[1].children[2].textContent,'0');
 assert.equal(bodyRows[1].children[4].textContent,'0','Confirmed zero stays zero');
 assert.equal(bodyRows[189].children[4].textContent,'5');
-assert.ok(!JSON.stringify(printSheet).includes('CELDA_XL_NO_IMPRIMIR'),'Excel provenance must never appear in printable report');
+const printableText=node=>[node.textContent,...node.children.flatMap(child=>[printableText(child)])].join(' ');
+assert.ok(!printableText(printSheet).includes('CELDA_XL_NO_IMPRIMIR'),'Excel provenance must never appear in printable report');
 printScope.moduleHub.hidden=true;
 printButton.onclick();
 assert.equal(printInvocations,1,'Hidden module cannot initiate printing');
