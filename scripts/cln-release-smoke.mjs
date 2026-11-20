@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v17-ajustes-historial-20261120/);
+assert.match(sw,/panel-de-deudas-shell-v18-entradas-sin-uuid-20261120/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -334,4 +334,63 @@ assert.match(roleFixMigration,/COALESCE\(m\.rol,'cuenta autorizada'\)/);
 assert.doesNotMatch(roleFixMigration,/WHERE user_id=v_user AND rol IN/);
 assert.match(roleFixMigration,/public\.has_debts_unlock\(\)/);
 assert.match(roleFixMigration,/REVOKE ALL ON FUNCTION public\.cln_historial_modulo/);
+
+/* Entrada sin UUID: RPC de lectura segura, tarjetas con acciones y fecha en El Salvador. */
+const pendingMigration=read('db/migrations/20261120_inv_solicitudes_entrada_pendientes.sql');
+for(const mandatory of [
+ 'CREATE OR REPLACE FUNCTION public.inv_solicitudes_entrada_pendientes()',
+ "m.rol IN ('admin','secretaria')",
+ "WHERE r.estado = 'pendiente'",
+ 'ORDER BY r.creado_en ASC, r.id ASC',
+ 'REVOKE ALL ON FUNCTION public.inv_solicitudes_entrada_pendientes() FROM PUBLIC, anon',
+ 'GRANT EXECUTE ON FUNCTION public.inv_solicitudes_entrada_pendientes() TO authenticated'
+])assert.ok(pendingMigration.includes(mandatory),'Pending list RPC missing security statement: '+mandatory);
+assert.match(html,/const reviewForm=document\.createElement\("section"\)/);
+assert.match(html,/reviewHeading\.textContent="Solicitudes pendientes"/);
+assert.match(html,/refreshButton\.textContent="Actualizar solicitudes"/);
+assert.match(html,/pendingStatus\.textContent="No se pudieron consultar las solicitudes:/);
+assert.match(html,/refreshEntryRequests=async function\(\)/);
+assert.match(html,/nexusReader\.list\("entryRequests"\)/);
+assert.match(html,/await actions\.execute\("reviewEntry",\{p_solicitud_id:request\.id,p_aprobar:accepted\}\)/);
+assert.match(html,/const approveButton=document\.createElement\("button"\)/);
+assert.match(html,/approveButton\.textContent="Aprobar"/);
+assert.match(html,/rejectButton\.textContent="Rechazar"/);
+assert.match(html,/timeZone:"America\/El_Salvador"/);
+assert.match(html,/No hay entradas pendientes de aprobación/);
+assert.match(html,/void refreshEntryRequests\(\)/);
+assert.doesNotMatch(html,/requestId\.placeholder="ID de solicitud de entrada \(UUID\)"/);
+assert.doesNotMatch(html,/status\.textContent="Solicitud enviada al servidor, pendiente de revisión\. ID:/);
+
+const readerMockCalls=[];
+const pendingId='55555555-5555-4555-8555-555555555555';
+const pendingClient={
+ rpc:async(name,args)=>{
+  readerMockCalls.push({name,args});
+  if(name==='inv_solicitudes_entrada_pendientes')return {
+   data:[{id:pendingId,nombre:'Cafetera',cantidad:1,ubicacion:'Oficina',
+    creado_en:'2026-11-20T16:15:00+00:00',observaciones:'Pedido confirmado'}],error:null
+  };
+  if(name==='inv_revisar_entrada')return{data:'Entrada aprobada correctamente',error:null};
+  return {data:[],error:null};
+ }
+};
+const securedReader=testRequire('../cl-nexus-reader.cjs').createNexusReader({client:pendingClient,authorized:()=>true});
+const requests=await securedReader.list('entryRequests');
+assert.equal(readerMockCalls.at(-1).name,'inv_solicitudes_entrada_pendientes');
+assert.equal(requests.length,1);
+assert.equal(requests[0].nombre,'Cafetera');
+assert.equal(requests[0].cantidad,'1');
+assert.equal(requests[0].id,pendingId);
+await assert.rejects(
+ testRequire('../cl-nexus-reader.cjs').createNexusReader({client:pendingClient,authorized:()=>false}).list('entryRequests'),
+ /Sesión no autorizada/
+);
+const reviewActions=testRequire('../cl-nexus-actions.cjs').createNexusActions({client:pendingClient,authorized:()=>true});
+await reviewActions.execute('reviewEntry',{p_solicitud_id:pendingId,p_aprobar:true});
+assert.equal(readerMockCalls.at(-1).name,'inv_revisar_entrada');
+assert.equal(readerMockCalls.at(-1).args.p_solicitud_id,pendingId);
+assert.equal(readerMockCalls.at(-1).args.p_aprobar,true);
+await reviewActions.execute('reviewEntry',{p_solicitud_id:pendingId,p_aprobar:false});
+assert.equal(readerMockCalls.at(-1).args.p_aprobar,false);
+await assert.rejects(reviewActions.execute('reviewEntry',{p_solicitud_id:'not-uuid',p_aprobar:true}),/ID inválido/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
