@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v16-inventario-impresion-20261120/);
+assert.match(sw,/panel-de-deudas-shell-v17-ajustes-historial-20261120/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -261,4 +261,69 @@ assert.ok(!printableText(printSheet).includes('CELDA_XL_NO_IMPRIMIR'),'Excel pro
 printScope.moduleHub.hidden=true;
 printButton.onclick();
 assert.equal(printInvocations,1,'Hidden module cannot initiate printing');
+
+/* Edición de cantidades: guarda cantidad final, no finge una entrada de proveedor. */
+const auditMigration=read('db/migrations/20261120_cln_ajustes_historial_modulos.sql');
+for(const fragment of [
+ 'CREATE TABLE IF NOT EXISTS public.inv_stock_adjustments',
+ 'CREATE TABLE IF NOT EXISTS public.cln_module_use',
+ 'CREATE OR REPLACE FUNCTION public.inv_ajustar_existencia(',
+ 'CREATE OR REPLACE FUNCTION public.cln_historial_modulo(',
+ 'CREATE OR REPLACE FUNCTION public.cln_registrar_uso_modulo(',
+ 'public.has_debts_unlock()',
+ "rol IN ('admin','secretaria')",
+ 'IF (CASE WHEN v_exists THEN v_actual ELSE NULL END) IS DISTINCT FROM p_esperado',
+ 'pg_catalog.pg_advisory_xact_lock',
+ 'REVOKE ALL ON TABLE public.inv_stock_adjustments FROM PUBLIC, anon, authenticated',
+ 'REVOKE ALL ON TABLE public.cln_module_use FROM PUBLIC, anon, authenticated'
+])assert.ok(auditMigration.includes(fragment),'Missing audit/security migration: '+fragment);
+assert.match(html,/sectionLayout\.splice\(1,0,\["Editar inventario",\[editStockForm\]\]\)/);
+assert.match(html,/editStockForm\.onsubmit=async event=>/);
+assert.match(html,/p_esperado:oldQuantity/);
+assert.match(html,/p_motivo:reason\.value/);
+assert.match(html,/p_client_op_id:pendingAdjustmentId/);
+assert.match(html,/await actions\.execute\("adjustStock",params\)/);
+assert.match(html,/pendingAdjustmentId=crypto\.randomUUID\(\)/);
+assert.match(html,/const fresh=await nexusReader\.list\("inventory"\)/);
+assert.match(html,/reason\.value/);
+assert.match(html,/cln-stock-current/);
+assert.match(html,/if\(id==="clnHubInventory"\)\{\s*editStockForm=document\.createElement\("form"\)/);
+assert.doesNotMatch(html,/\.from\(["']inv_stock["']\)\.update/);
+assert.doesNotMatch(html,/\.from\(["']cln_module_use["']\)\.insert/);
+
+/* Historial: botones solo de consulta en cada módulo, claves protegidas para Deudas. */
+assert.match(html,/clnModuleByButton=Object\.freeze/);
+assert.match(html,/async function clnRecordModuleUse\(modulo\)/);
+assert.match(html,/SB\.rpc\("cln_registrar_uso_modulo",\{p_modulo:modulo\}\)/);
+assert.match(html,/async function clnShowModuleHistory\(modulo\)/);
+assert.match(html,/SB\.rpc\("cln_historial_modulo",\{p_modulo:modulo,p_antes_id:cursor\}\)/);
+assert.match(html,/timeZone:"America\/El_Salvador"/);
+assert.match(html,/if\(modulo==="deudas"&&\(!debtController\|\|!await debtController\.verify\(\)\)\)return/);
+assert.match(html,/await debtController\.open\(password\);\s*void clnRecordModuleUse\("deudas"\)/);
+assert.match(html,/id="debtHistoryBtn"/);
+assert.match(html,/document\.getElementById\("debtHistoryBtn"\)\.onclick/);
+assert.match(html,/historyButton\.textContent="Consultar historial"/);
+assert.match(html,/clnHubDetail\.append\(title,subtitle,status,historyToolbar\)/);
+assert.match(html,/clnHubDetail\.insertBefore\(tabs,clnHubDetail\.children\[4\]/);
+assert.doesNotMatch(html,/DB\.from\(["']cln_module_use/);
+assert.match(html,/cln-history-modal/);
+const editTests=requireCreateActions();
+function requireCreateActions(){return testRequire('../cl-nexus-actions.cjs').createNexusActions({
+ client:testClient,authorized:()=>true
+})}
+const goodEdit={
+ p_item_id:'33333333-3333-4333-8333-333333333333',
+ p_location_id:1,p_nueva:1,p_esperado:null,p_motivo:'Ingreso puntual sin proveedor',
+ p_client_op_id:'44444444-4444-4444-8444-444444444444'
+};
+await editTests.execute('adjustStock',goodEdit);
+assert.equal(rpcCalls.at(-1).name,'inv_ajustar_existencia');
+assert.equal(rpcCalls.at(-1).args.p_nueva,1);
+assert.equal(rpcCalls.at(-1).args.p_esperado,null);
+await editTests.execute('adjustStock',{...goodEdit,p_nueva:0,p_esperado:1});
+assert.equal(rpcCalls.at(-1).args.p_nueva,0,'Confirmed zero must be valid');
+await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_nueva:-1}),/Cantidad inválida/);
+await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_location_id:4}),/Solo Oficina o Bodega|Cantidad o ubicación inválida/);
+await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_esperado:-1}),/Existencia anterior inválida/);
+await assert.rejects(editTests.execute('adjustStock',{...goodEdit,p_motivo:'No'}),/Motivo inválido/);
 console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
