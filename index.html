@@ -177,7 +177,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <script src="./debt-legacy-backup.cjs"></script>
 <script src="./debt-encrypted-backup.cjs"></script>
 <div class="app" id="privateApp" hidden inert><aside class="side"><div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg></span>Panel De Deudas</div><nav id="nav" aria-label="Secciones" style="display:flex;flex-direction:column;gap:2px"></nav></aside>
-<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="debtBackToNexus" type="button" hidden>CL Nexus · Inventario</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
+<div class="wrap"><header class="top"><h1 id="ttl">Inicio</h1><span id="sv" role="status"></span><div class="sbox"><svg class="i"><use href="#i-search"/></svg><input id="gq" type="search" placeholder="Buscar deuda, contacto o teléfono" aria-label="Buscar deudas"></div><button class="b" data-act="newdebt"><svg class="i"><use href="#i-plus"/></svg>Nueva deuda</button><button class="g2 ib" id="th" aria-label="Cambiar entre modo claro y oscuro" title="Modo claro / oscuro"><svg class="i"><use href="#i-moon"/></svg></button><button class="g2" id="debtLockButton" type="button" hidden>Bloquear Deudas</button><button class="g2" id="debtBackToNexus" type="button" hidden>CL Nexus · Inventario</button><button class="g2" id="debtHistoryBtn" type="button" hidden>Consultar historial</button><button class="g2" id="logoutBtn" type="button">Salir</button></header>
 <div id="alert"></div><main id="main"></main></div></div><nav class="bnav" id="bnav" aria-label="Navegación" hidden inert></nav><div id="toasts" aria-live="polite"></div><dialog id="dlg"></dialog>
 <script>
 // Versión pública segura: no contiene deudas, contactos, teléfonos ni saldos precargados.
@@ -737,8 +737,8 @@ try{const th=localStorage.getItem("cp_theme");if(th)document.documentElement.dat
 S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
-function hidePrivate(){document.getElementById("debtBackToNexus").hidden=true;APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
-function showPrivate(){document.getElementById("debtBackToNexus").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function hidePrivate(){document.getElementById("debtBackToNexus").hidden=true;document.getElementById("debtHistoryBtn").hidden=true;document.getElementById("clnModuleHistoryDialog")?.close();APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=false;clearTimeout(SY.timer)}
+function showPrivate(){document.getElementById("debtBackToNexus").hidden=false;document.getElementById("debtHistoryBtn").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -752,7 +752,7 @@ const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 window.CLNexusRuntime=Object.freeze({client:SB,origin:SUPABASE_URL});
 let SB_UID=null,SB_WID=null,SB_CH=null,authSessionGeneration=0;
 const gate=(show,msg="")=>{
- if(show)document.getElementById("clnPrintableInventory")?.remove();
+ if(show){document.getElementById("clnPrintableInventory")?.remove();document.getElementById("clnModuleHistoryDialog")?.close();}
  const loading=document.getElementById("clnBoot");if(loading)loading.hidden=true;
  const g=document.getElementById("authGate");g.hidden=!show;g.inert=!show;
  if(show){
@@ -1106,6 +1106,88 @@ function clnEnhanceArticleSearch(container){
  }
 }
 
+
+const clnModuleByButton=Object.freeze({
+ clnHubInventory:"inventario",clnHubSales:"ventas",clnHubContracts:"contratos",
+ clnHubSellers:"vendedores",clnHubWarranties:"garantias"
+});
+const clnModuleDisplay=Object.freeze({
+ inventario:"Inventario",ventas:"Ventas",contratos:"Contratos",
+ vendedores:"Vendedores",garantias:"Garantías",deudas:"Deudas"
+});
+const clnHistoryDateTime=new Intl.DateTimeFormat("es-SV",{
+ timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit",
+ hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true
+});
+async function clnRecordModuleUse(modulo){
+ if(!SB_UID||!SB_WID)return;
+ try{
+  const {error}=await SB.rpc("cln_registrar_uso_modulo",{p_modulo:modulo});
+  if(error)console.warn("No se pudo registrar acceso al módulo:",modulo);
+ }catch(_){/* El historial no debe bloquear el uso del módulo. */}
+}
+const clnModuleHistoryDialog=document.createElement("dialog");
+clnModuleHistoryDialog.id="clnModuleHistoryDialog";
+clnModuleHistoryDialog.className="cln-history-modal";
+document.body.append(clnModuleHistoryDialog);
+async function clnShowModuleHistory(modulo){
+ if(!SB_UID||!SB_WID||!Object.hasOwn(clnModuleDisplay,modulo))return;
+ if(modulo==="deudas"&&(!debtController||!await debtController.verify()))return;
+ const loggedUid=SB_UID,generation=authSessionGeneration;
+ const dialog=clnModuleHistoryDialog;
+ dialog.replaceChildren();
+ const title=document.createElement("h3");title.textContent="Historial · "+clnModuleDisplay[modulo];
+ const note=document.createElement("p");note.className="cln-history-explainer";
+ note.textContent="Fecha y hora (El Salvador). Se registran los accesos desde esta actualización y los ajustes manuales de inventario.";
+ const list=document.createElement("div");list.className="cln-history-entries";
+ const more=document.createElement("button");more.type="button";more.className="g2";more.textContent="Ver registros anteriores";
+ const close=document.createElement("button");close.type="button";close.className="g2";close.textContent="Cerrar";
+ close.onclick=()=>dialog.close();
+ const footer=document.createElement("div");footer.className="cln-history-actions";footer.append(more,close);
+ dialog.append(title,note,list,footer);
+ if(dialog.open)dialog.close();
+ dialog.showModal();
+ let cursor=null,loading=false;
+ const stillAllowed=()=>dialog.open&&SB_UID===loggedUid&&authSessionGeneration===generation;
+ const load=async()=>{
+  if(loading||!stillAllowed())return;
+  loading=true;more.disabled=true;
+  const loadingText=document.createElement("p");loadingText.className="cln-history-muted";
+  loadingText.textContent="Consultando historial…";list.append(loadingText);
+  try{
+   if(modulo==="deudas"&&(!debtController||!await debtController.verify()))throw Error("Deudas necesita desbloqueo.");
+   const {data,error}=await SB.rpc("cln_historial_modulo",{p_modulo:modulo,p_antes_id:cursor});
+   if(!stillAllowed())return;
+   if(error)throw Error(error.message||"No autorizado");
+   loadingText.remove();
+   if(!Array.isArray(data))throw Error("Respuesta de historial inválida");
+   if(!data.length&&!cursor){
+    const empty=document.createElement("p");empty.className="cln-history-muted";
+    empty.textContent="Todavía no hay registros de este módulo.";list.append(empty);
+   }
+   for(const entry of data){
+    const row=document.createElement("article");row.className="cln-history-entry";
+    const date=document.createElement("time");date.dateTime=entry.fecha_hora;
+    date.textContent=clnHistoryDateTime.format(new Date(entry.fecha_hora));
+    const what=document.createElement("strong");
+    what.textContent=entry.evento==="ajuste"?"Ajuste manual de inventario":"Acceso al módulo";
+    const role=document.createElement("small");role.textContent="Cuenta: "+String(entry.rol||"autorizada");
+    row.append(date,what,role);
+    if(entry.detalle){const description=document.createElement("p");description.textContent=entry.detalle;row.append(description)}
+    list.append(row);
+   }
+   cursor=data.length?data[data.length-1].id:cursor;
+   more.hidden=data.length<80;
+  }catch(err){
+   loadingText.textContent="No se pudo consultar historial: "+String(err.message||err);
+   more.hidden=true;
+  }finally{loading=false;more.disabled=false}
+ };
+ more.onclick=load;
+ await load();
+}
+document.getElementById("debtHistoryBtn").onclick=()=>void clnShowModuleHistory("deudas");
+
 // Navegación secundaria visual: mover nodos no altera RPC, listeners, formularios ni permisos.
 function arrangeNexusSections(groups,epoch,initialLabel=""){
  if(epoch!==nexusViewEpoch||moduleHub.hidden)return;
@@ -1147,7 +1229,7 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
    event.preventDefault();activate(next);buttons[next].focus();
   };
  });
- clnHubDetail.insertBefore(tabs,clnHubDetail.children[3]||null);
+ clnHubDetail.insertBefore(tabs,clnHubDetail.children[4]||null);
  clnHubDetail.append(...panels);
  clnEnhanceArticleSearch(clnHubDetail);
  const initialIndex=groups.findIndex(group=>group[0]===initialLabel);
@@ -1155,6 +1237,7 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
 }
 async function openIndependentModule(id){
  document.getElementById("clnPrintableInventory")?.remove();
+ if(clnModuleHistoryDialog.open)clnModuleHistoryDialog.close();
  const config=clnHubViews[id];
  if(!config||!SB_UID||!SB_WID||!DEBT_GATE_ENABLED)return;
  // Visual state only: authorization remains enforced by Supabase RPC and RLS.
@@ -1164,11 +1247,17 @@ async function openIndependentModule(id){
  const title=document.createElement("h3");title.textContent=config.title;title.className="cln-view-title";
  const subtitle=document.createElement("p");subtitle.className="cln-view-intro";subtitle.textContent=config.description;
  const status=document.createElement("p");status.className="cln-status";status.setAttribute("role","status");status.textContent="Consultando datos autorizados…";
- clnHubDetail.append(title,subtitle,status);
+ const historyToolbar=document.createElement("div");historyToolbar.className="cln-history-toolbar";
+ const historyButton=document.createElement("button");historyButton.type="button";historyButton.className="g2";
+ historyButton.textContent="Consultar historial";
+ historyButton.onclick=()=>void clnShowModuleHistory(clnModuleByButton[id]);
+ historyToolbar.append(historyButton);
+ clnHubDetail.append(title,subtitle,status,historyToolbar);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
+  void clnRecordModuleUse(clnModuleByButton[id]);
   if(id==="clnHubWarranties"){
    status.textContent="Liberación de garantía: requiere autorización del servidor.";
    if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
@@ -2204,7 +2293,10 @@ document.getElementById("debtUnlockButton").onclick=async()=>{
  if(!debtController)return;
  const input=document.getElementById("debtUnlockPassword"),button=document.getElementById("debtUnlockButton");
  const password=input.value;input.value="";button.disabled=true;
- try{await debtController.open(password)}catch(e){debtScreenVisible(true,e.message||"No se pudo autorizar Deudas")}
+ try{
+  await debtController.open(password);
+  void clnRecordModuleUse("deudas");
+ }catch(e){debtScreenVisible(true,e.message||"No se pudo autorizar Deudas")}
  finally{button.disabled=false}
 };
 document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
@@ -2548,6 +2640,24 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
  #clnPrintableInventory .cln-print-table th:nth-child(5),#clnPrintableInventory .cln-print-table td:nth-child(5){width:18%;text-align:center}
  #clnPrintableInventory .cln-print-table tbody tr:nth-child(even){background:#f6f8fb}
 }
+
+/* Historial compacto por módulo, con fecha y hora registradas por el servidor. */
+#clnHubDetail .cln-history-toolbar{display:flex;justify-content:flex-end;margin:0 0 13px}
+#clnHubDetail .cln-history-toolbar .g2{padding:10px 16px;min-height:42px;border-radius:12px;font-weight:700}
+#clnModuleHistoryDialog.cln-history-modal{position:fixed;inset:auto;max-height:min(82dvh,800px);width:min(92vw,650px);max-width:650px;box-sizing:border-box;border:1px solid var(--bd);border-radius:19px;padding:22px;background:var(--card);color:var(--tx);box-shadow:0 32px 100px rgba(0,0,0,.35);overflow:auto}
+#clnModuleHistoryDialog.cln-history-modal::backdrop{background:rgba(0,10,28,.72);backdrop-filter:blur(5px)}
+#clnModuleHistoryDialog h3{margin:0 0 7px;font-size:21px;letter-spacing:-.035em}
+#clnModuleHistoryDialog .cln-history-explainer{font-size:12px;line-height:1.5;color:var(--mut);margin:0 0 18px}
+#clnModuleHistoryDialog .cln-history-entries{display:grid;gap:9px;max-height:55dvh;overflow-y:auto}
+#clnModuleHistoryDialog .cln-history-entry{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--ac) 5%,var(--card))}
+#clnModuleHistoryDialog .cln-history-entry time{font-weight:700;font-size:12px;color:var(--ac)}
+#clnModuleHistoryDialog .cln-history-entry strong{font-size:12px}
+#clnModuleHistoryDialog .cln-history-entry small{font-size:11px;color:var(--mut)}
+#clnModuleHistoryDialog .cln-history-entry p{flex:1 0 100%;font-size:12px;line-height:1.4;margin:1px 0 0}
+#clnModuleHistoryDialog .cln-history-muted{font-size:13px;color:var(--mut);margin:9px 2px}
+#clnModuleHistoryDialog .cln-history-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:9px;margin-top:16px}
+#clnModuleHistoryDialog .cln-history-actions button{padding:8px 13px;min-height:40px;border-radius:10px}
+#clnModuleHistoryDialog .cln-history-actions [hidden]{display:none!important}
 </style>
 
 </body></html>
