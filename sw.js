@@ -1,5 +1,5 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v18-entradas-sin-uuid-20261120';
+const CACHE = 'panel-de-deudas-shell-v19-sesion-persistente-20261123';
 const CORE = ['./index.html', './manifest.webmanifest', './cl-nexus-reader.cjs', './cl-nexus-actions.cjs', './cln-http-auth-probe.cjs', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
