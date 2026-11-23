@@ -466,34 +466,34 @@ assert.match(html,/if\(clnUserRequestedSignOut\)\{gate\(true\);return\}/);
 assert.match(html,/SB\.auth\.getSession\(\)/);
 assert.match(html,/authSessionGeneration\+\+/);
 assert.match(html,/hidePrivate\(\)/);
-const moduleHandlerStart=html.indexOf('async function openIndependentModule(id){');
-const moduleHandlerEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',moduleHandlerStart);
-assert.ok(moduleHandlerStart>0 && moduleHandlerEnd>moduleHandlerStart);
-assert.doesNotMatch(html.slice(moduleHandlerStart,moduleHandlerEnd),/SB\.auth\.signInWithPassword|gate\(true/);
-const eventsStart=html.indexOf('let clnAuthEventVersion=0;');
-const eventsEnd=html.indexOf('startAuth();',eventsStart);
-assert.ok(eventsStart>0&&eventsEnd>eventsStart,'Missing updated Auth event coordinator');
-const authSource=html.slice(eventsStart,eventsEnd);
-const authElements=new Map();
-function authElement(id){
- if(!authElements.has(id))authElements.set(id,{
+const sessionModuleStart=html.indexOf('async function openIndependentModule(id){');
+const sessionModuleEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',sessionModuleStart);
+assert.ok(sessionModuleStart>0 && sessionModuleEnd>sessionModuleStart);
+assert.doesNotMatch(html.slice(sessionModuleStart,sessionModuleEnd),/SB\.auth\.signInWithPassword|gate\(true/);
+const sessionEventsStart=html.indexOf('let clnAuthEventVersion=0;');
+const sessionEventsEnd=html.indexOf('startAuth();',sessionEventsStart);
+assert.ok(sessionEventsStart>0&&sessionEventsEnd>sessionEventsStart,'Missing updated Auth event coordinator');
+const sessionAuthSource=html.slice(sessionEventsStart,sessionEventsEnd);
+const sessionAuthElements=new Map();
+function sessionAuthElement(id){
+ if(!sessionAuthElements.has(id))sessionAuthElements.set(id,{
   hidden:true,inert:true,value:'',textContent:'',replaceChildren:()=>{}
  });
- return authElements.get(id);
+ return sessionAuthElements.get(id);
 }
-const gates=[];
-const authSandbox={
+const sessionGates=[];
+const sessionAuthSandbox={
  setTimeout,clearTimeout,
  currentSession:{user:{id:'user-verified'}},
  listener:null,visibilityCallback:null,
  document:{
-  getElementById:authElement,visibilityState:'visible',
-  addEventListener:(name,handler)=>{if(name==='visibilitychange')authSandbox.visibilityCallback=handler}
+  getElementById:sessionAuthElement,visibilityState:'visible',
+  addEventListener:(name,handler)=>{if(name==='visibilitychange')sessionAuthSandbox.visibilityCallback=handler}
  },
  SB:{auth:{
-  getSession:async()=>({data:{session:authSandbox.currentSession},error:null}),
-  onAuthStateChange:handler=>{authSandbox.listener=handler}
+  getSession:async()=>({data:{session:sessionAuthSandbox.currentSession},error:null}),
+  onAuthStateChange:handler=>{sessionAuthSandbox.listener=handler}
  }},
- testGates:gates,showCalls:[],hidePrivateCalls:0
+ testGates:sessionGates,showCalls:[],hidePrivateCalls:0
 };
-const setup=String.rawconsole.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
+const sessionSetup=String.rawconsole.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
