@@ -87,7 +87,7 @@ for(const required of [
  'if(authConnection?.uid===uid)return authConnection.promise',
  'if(authConnectedUid===uid&&SB_WID&&debtController)',
  'showSessionRecovery(e)',
- 'session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED"].includes(event)'
+ 'session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED","USER_UPDATED"].includes(event)'
 ])assert.ok(html.includes(required),'Auth regression: missing '+required);
 assert.ok(!html.includes('await SB.auth.signOut();gate(true,e.message'),'Never log out an authenticated user for a transient workspace load failure');
 const coordinatorStart=html.indexOf('let authConnection=null,authConnectedUid=null;');
