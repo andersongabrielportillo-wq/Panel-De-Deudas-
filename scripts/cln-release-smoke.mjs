@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v18-entradas-sin-uuid-20261120/);
+assert.match(sw,/panel-de-deudas-shell-v19-sesion-persistente-20261123/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -453,4 +453,47 @@ assert.equal(reviewInvocations.length,2);
 assert.equal(reviewInvocations[1].p_aprobar,false);
 assert.equal(entryList.children.length,1,'Empty list must show an explanatory message');
 assert.ok(entryText(entryList).includes('No hay entradas pendientes'));
-console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
+
+/* Sesión persistente: eventos Auth atrasados no deben producir otro login. */
+assert.equal((html.match(/id="authGate"/g)||[]).length,1);
+assert.equal((html.match(/id="authLogin"/g)||[]).length,1);
+assert.ok(html.includes('if(moduleHub.hidden)showModuleHub(true);'),'Rehydrated session should reopen Inventario');
+assert.match(html,/async function clnVerifyLoginPrompt\(version\)/);
+assert.match(html,/function clnLockSignedOut\(\)/);
+assert.match(html,/version!==clnAuthEventVersion/);
+assert.match(html,/document\.addEventListener\("visibilitychange"/);
+assert.match(html,/if\(clnUserRequestedSignOut\)\{gate\(true\);return\}/);
+assert.match(html,/SB\.auth\.getSession\(\)/);
+assert.match(html,/authSessionGeneration\+\+/);
+assert.match(html,/hidePrivate\(\)/);
+const moduleHandlerStart=html.indexOf('async function openIndependentModule(id){');
+const moduleHandlerEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',moduleHandlerStart);
+assert.ok(moduleHandlerStart>0 && moduleHandlerEnd>moduleHandlerStart);
+assert.doesNotMatch(html.slice(moduleHandlerStart,moduleHandlerEnd),/SB\.auth\.signInWithPassword|gate\(true/);
+const eventsStart=html.indexOf('let clnAuthEventVersion=0;');
+const eventsEnd=html.indexOf('startAuth();',eventsStart);
+assert.ok(eventsStart>0&&eventsEnd>eventsStart,'Missing updated Auth event coordinator');
+const authSource=html.slice(eventsStart,eventsEnd);
+const authElements=new Map();
+function authElement(id){
+ if(!authElements.has(id))authElements.set(id,{
+  hidden:true,inert:true,value:'',textContent:'',replaceChildren:()=>{}
+ });
+ return authElements.get(id);
+}
+const gates=[];
+const authSandbox={
+ setTimeout,clearTimeout,
+ currentSession:{user:{id:'user-verified'}},
+ listener:null,visibilityCallback:null,
+ document:{
+  getElementById:authElement,visibilityState:'visible',
+  addEventListener:(name,handler)=>{if(name==='visibilitychange')authSandbox.visibilityCallback=handler}
+ },
+ SB:{auth:{
+  getSession:async()=>({data:{session:authSandbox.currentSession},error:null}),
+  onAuthStateChange:handler=>{authSandbox.listener=handler}
+ }},
+ testGates:gates,showCalls:[],hidePrivateCalls:0
+};
+const setup=String.rawconsole.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
