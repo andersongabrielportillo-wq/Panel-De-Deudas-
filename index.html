@@ -897,7 +897,13 @@ async function ensureAuthenticatedWorkspace(session){
  if(!uid){if(!SB_UID)gate(true);return false}
  // Nunca reinterpretar el cambio de cuenta como permiso para leer datos de otra sesión.
  if(SB_UID&&SB_UID!==uid){gate(true,"La cuenta cambió. Vuelve a iniciar sesión para continuar.");return false}
- if(authConnectedUid===uid&&SB_WID&&debtController){gate(false);return true}
+ if(authConnectedUid===uid&&SB_WID&&debtController){
+  // Si una notificación antigua ocultó la pantalla, restaura Inventario sin
+  // volver a pedir credenciales mientras Supabase conserve la sesión válida.
+  if(moduleHub.hidden)showModuleHub(true);
+  else gate(false);
+  return true;
+ }
  if(authConnection?.uid===uid)return authConnection.promise;
  const generation=authSessionGeneration;
  SB_UID=uid;
@@ -2531,6 +2537,7 @@ document.getElementById("authLogin").onclick=async()=>{
  const email=document.getElementById("authEmail").value.trim(),input=document.getElementById("authPass");
  const password=input.value;button.disabled=true;
  document.getElementById("authErr").textContent="Entrando…";
+ clnUserRequestedSignOut=false;
  try{
   const {data,error}=await SB.auth.signInWithPassword({email,password});
   if(error){gate(true,"No se pudo iniciar sesión: "+error.message);return}
@@ -2566,29 +2573,73 @@ document.getElementById("logoutBtn").onclick=async()=>{
   // La eliminación requiere migración y confirmación de servidor independientes.
   if(!pending&&cacheAudit?.safeToPurge===true){["cp_v2","cp_v2_bak","cp_v2_corrupt","cp_prev","cp_items","cp_pend"].forEach(lsDel)}
   document.getElementById("authPass").value="";
+  clnUserRequestedSignOut=true;
   try{await SB.auth.signOut();sv(debtRevokeFailed?"Sesión cerrada; no se pudo confirmar la revocación remota de Deudas":"Sesión cerrada")}catch(e){gate(true,"No se pudo cerrar sesión correctamente. Comprueba tu conexión.")}
 };
-SB.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){
-  // Includes remote sign-out / revoked session events: no stale module or pending RPC response may repaint private data.
-  authSessionGeneration++;
-  authConnectedUid=null;authConnection=null;
-  nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
-  if(debtController){debtController.cancel();debtController=null}
-  if(debtGate){debtGate.reset();debtGate=null}
-  SB_UID=null;SB_WID=null;SY.doc=null;clearTimeout(SY.timer);
-  if(SB_CH){const old=SB_CH;SB_CH=null;SB.removeChannel(old).catch(()=>{})}
-  document.getElementById("clnHubDetail").replaceChildren();
-  document.getElementById("clnHubStatus").textContent="";
-  document.getElementById("debtUnlockPassword").value="";
-  showModuleHub(false);debtScreenVisible(false);gate(true);hidePrivate();
-  // Do not delete cp_v2 / cp_pend: offline edits require the documented safe recovery process.
- }else if(session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED"].includes(event)){
-  // Supabase emite eventos repetidos; el coordinador evita segundas conexiones.
-  // Se ejecuta fuera del callback de Auth para evitar bloqueo de la sesión.
-  setTimeout(()=>{void ensureAuthenticatedWorkspace(session)},0);
+// Evita que INITIAL_SESSION y SIGNED_OUT atrasados repinten un segundo login
+// cuando ya se ha recibido una sesión nueva. No se conservan datos privados
+// visibles mientras Supabase verifica si queda una sesión autenticada.
+let clnAuthEventVersion=0;
+let clnUserRequestedSignOut=false;
+async function clnVerifyLoginPrompt(version){
+ try{
+  const {data,error}=await SB.auth.getSession();
+  if(version!==clnAuthEventVersion)return;
+  if(!error&&data?.session?.user?.id){
+   await ensureAuthenticatedWorkspace(data.session);
+   return;
+  }
+ }catch(_){/* La sesión sigue sin confirmarse: mostrar login principal. */}
+ if(version!==clnAuthEventVersion)return;
+ if(SB_UID)return;
+ gate(true,"La sesión no está disponible o caducó. Iniciá sesión para continuar.");
+}
+function clnLockSignedOut(){
+ // Revoca toda la interfaz inmediatamente. Nunca confundir recuperación de
+ // token con permiso para mantener visible Inventario o Deudas.
+ authSessionGeneration++;
+ authConnectedUid=null;authConnection=null;
+ nexusViewEpoch++;if(nexusReader)nexusReader.reset();nexusReader=null;
+ if(debtController){debtController.cancel();debtController=null}
+ if(debtGate){debtGate.reset();debtGate=null}
+ SB_UID=null;SB_WID=null;SY.doc=null;clearTimeout(SY.timer);
+ if(SB_CH){const old=SB_CH;SB_CH=null;SB.removeChannel(old).catch(()=>{})}
+ document.getElementById("clnHubDetail").replaceChildren();
+ document.getElementById("clnHubStatus").textContent="";
+ document.getElementById("debtUnlockPassword").value="";
+ showModuleHub(false);debtScreenVisible(false);hidePrivate();
+ // Conservar cp_v2 y cp_pend: podrían incluir pagos sin sincronizar.
+ gate(false);
+ document.getElementById("clnBoot").textContent="Verificando tu sesión de CL Nexus…";
+ document.getElementById("clnBoot").hidden=false;
+}
+SB.auth.onAuthStateChange((event,session)=>{
+ const version=++clnAuthEventVersion;
+ if(event==="SIGNED_OUT"){
+  clnLockSignedOut();
+  // El logout solicitado por la persona sí debe llevar directamente al login.
+  if(clnUserRequestedSignOut){gate(true);return}
+  // El SDK puede emitir un SIGNED_OUT anterior a un SIGNED_IN reciente cuando
+  // se reemplaza un token inválido. Revisa la sesión real antes de pedir clave.
+  // La verificación ocurre fuera del callback para no bloquear Supabase Auth.
+  setTimeout(()=>{void clnVerifyLoginPrompt(version)},0);
+ }else if(session&&["INITIAL_SESSION","SIGNED_IN","TOKEN_REFRESHED","USER_UPDATED"].includes(event)){
+  // La conexión y los módulos usan exactamente este mismo cliente Supabase.
+  setTimeout(()=>{
+   if(version!==clnAuthEventVersion)return;
+   void ensureAuthenticatedWorkspace(session);
+  },0);
  }else if(event==="INITIAL_SESSION"&&!session){
-  setTimeout(()=>{if(!SB_UID)gate(true)},0);
- }});
+  setTimeout(()=>{void clnVerifyLoginPrompt(version)},0);
+ }
+});
+document.addEventListener("visibilitychange",()=>{
+ // Chrome/PWA en Android puede suspender y restaurar el documento.
+ // Si muestra login por un evento viejo, comprobar la sesión antes de pedirla.
+ if(document.visibilityState!=="visible"||document.getElementById("authGate").hidden)return;
+ const version=clnAuthEventVersion;
+ setTimeout(()=>{void clnVerifyLoginPrompt(version)},0);
+});
 startAuth();
 </script>
 
