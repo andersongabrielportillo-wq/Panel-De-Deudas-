@@ -454,38 +454,35 @@ assert.equal(reviewInvocations[1].p_aprobar,false);
 assert.equal(entryList.children.length,1,'Empty list must show an explanatory message');
 assert.ok(entryText(entryList).includes('No hay entradas pendientes'));
 
-/* Sesión persistente: eventos Auth atrasados no deben producir otro login. */
+
+/* Autenticación: la renovación de sesión no puede generar un segundo login. */
 assert.equal((html.match(/id="authGate"/g)||[]).length,1);
 assert.equal((html.match(/id="authLogin"/g)||[]).length,1);
-assert.ok(html.includes('if(moduleHub.hidden)showModuleHub(true);'),'Rehydrated session should reopen Inventario');
+assert.ok(html.includes('if(moduleHub.hidden)showModuleHub(true);'));
 assert.match(html,/async function clnVerifyLoginPrompt\(version\)/);
 assert.match(html,/function clnLockSignedOut\(\)/);
 assert.match(html,/version!==clnAuthEventVersion/);
 assert.match(html,/document\.addEventListener\("visibilitychange"/);
 assert.match(html,/if\(clnUserRequestedSignOut\)\{gate\(true\);return\}/);
-assert.match(html,/SB\.auth\.getSession\(\)/);
-assert.match(html,/authSessionGeneration\+\+/);
-assert.match(html,/hidePrivate\(\)/);
-const sessionModuleStart=html.indexOf('async function openIndependentModule(id){');
-const sessionModuleEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',sessionModuleStart);
-assert.ok(sessionModuleStart>0 && sessionModuleEnd>sessionModuleStart);
-assert.doesNotMatch(html.slice(sessionModuleStart,sessionModuleEnd),/SB\.auth\.signInWithPassword|gate\(true/);
-const sessionEventsStart=html.indexOf('let clnAuthEventVersion=0;');
-const sessionEventsEnd=html.indexOf('startAuth();',sessionEventsStart);
-assert.ok(sessionEventsStart>0&&sessionEventsEnd>sessionEventsStart,'Missing updated Auth event coordinator');
-const sessionAuthSource=html.slice(sessionEventsStart,sessionEventsEnd);
+const singleModuleStart=html.indexOf('async function openIndependentModule(id){');
+const singleModuleEnd=html.indexOf('for(const id of Object.keys(clnHubViews))',singleModuleStart);
+assert.ok(singleModuleStart>0&&singleModuleEnd>singleModuleStart);
+assert.doesNotMatch(html.slice(singleModuleStart,singleModuleEnd),/SB\.auth\.signInWithPassword|gate\(true/);
+const sessionAuthStart=html.indexOf('let clnAuthEventVersion=0;');
+const sessionAuthEnd=html.indexOf('startAuth();',sessionAuthStart);
+assert.ok(sessionAuthStart>0&&sessionAuthEnd>sessionAuthStart);
+const sessionAuthSource=html.slice(sessionAuthStart,sessionAuthEnd);
 const sessionAuthElements=new Map();
-function sessionAuthElement(id){
+const sessionAuthElement=id=>{
  if(!sessionAuthElements.has(id))sessionAuthElements.set(id,{
   hidden:true,inert:true,value:'',textContent:'',replaceChildren:()=>{}
  });
  return sessionAuthElements.get(id);
-}
-const sessionGates=[];
+};
+const sessionAuthGates=[];
 const sessionAuthSandbox={
  setTimeout,clearTimeout,
- currentSession:{user:{id:'user-verified'}},
- listener:null,visibilityCallback:null,
+ currentSession:{user:{id:'verified-user'}},listener:null,visibilityCallback:null,
  document:{
   getElementById:sessionAuthElement,visibilityState:'visible',
   addEventListener:(name,handler)=>{if(name==='visibilitychange')sessionAuthSandbox.visibilityCallback=handler}
@@ -494,6 +491,46 @@ const sessionAuthSandbox={
   getSession:async()=>({data:{session:sessionAuthSandbox.currentSession},error:null}),
   onAuthStateChange:handler=>{sessionAuthSandbox.listener=handler}
  }},
- testGates:sessionGates,showCalls:[],hidePrivateCalls:0
+ testGates:sessionAuthGates,showCalls:[],hidePrivateCalls:0
 };
-const sessionSetup=String.rawconsole.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
+const sessionPrelude=[
+ "let authSessionGeneration=0,authConnectedUid=null,authConnection=null,nexusViewEpoch=0,",
+ " nexusReader=null,debtController=null,debtGate=null,SB_UID='verified-user',",
+ " SB_WID='workspace',SB_CH=null,SY={doc:null,timer:null};",
+ "function gate(show){testGates.push(show)}",
+ "function showModuleHub(yes){showCalls.push(yes)}",
+ "function debtScreenVisible(){}",
+ "function hidePrivate(){hidePrivateCalls++}",
+ "async function ensureAuthenticatedWorkspace(session){",
+ " SB_UID=session.user.id;SB_WID='workspace';showModuleHub(true);return true;",
+ "}"
+].join('\n');
+const sessionAuthContext=vm.createContext(sessionAuthSandbox);
+vm.runInContext(sessionPrelude+'\n'+sessionAuthSource,sessionAuthContext,{filename:'session-auth-race.js'});
+assert.equal(typeof sessionAuthSandbox.listener,'function');
+const settleAuth=()=>new Promise(resolve=>setTimeout(resolve,35));
+// Al recibir un logout atrasado con sesión válida, volver al Inventario.
+sessionAuthSandbox.listener('SIGNED_OUT',null);
+await settleAuth();
+assert.ok(sessionAuthSandbox.showCalls.includes(true));
+assert.equal(sessionAuthGates.filter(Boolean).length,0);
+// INITIAL_SESSION vacío después de SIGNED_IN no puede abrir una segunda pantalla.
+sessionAuthSandbox.showCalls.length=0;sessionAuthGates.length=0;
+sessionAuthSandbox.listener('SIGNED_IN',{user:{id:'verified-user'}});
+sessionAuthSandbox.listener('INITIAL_SESSION',null);
+await settleAuth();
+assert.ok(sessionAuthSandbox.showCalls.includes(true));
+assert.equal(sessionAuthGates.filter(Boolean).length,0);
+// Si realmente no queda una sesión, exigir credenciales.
+sessionAuthSandbox.currentSession=null;sessionAuthGates.length=0;
+sessionAuthSandbox.listener('SIGNED_OUT',null);
+await settleAuth();
+assert.equal(sessionAuthGates.filter(Boolean).length,1);
+// Cerrar sesión expresamente siempre solicita un nuevo inicio.
+sessionAuthSandbox.currentSession={user:{id:'verified-user'}};
+sessionAuthGates.length=0;
+vm.runInContext('clnUserRequestedSignOut=true',sessionAuthContext);
+sessionAuthSandbox.listener('SIGNED_OUT',null);
+await settleAuth();
+assert.equal(sessionAuthGates.filter(Boolean).length,1);
+console.log('PASS: original visual tokens, accessible CL Nexus nested tabs and parsed inline JS, one login, protected Deudas. No deployment performed.');
