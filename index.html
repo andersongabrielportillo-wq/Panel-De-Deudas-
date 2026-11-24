@@ -122,7 +122,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
   <div id="clnHubDetail" aria-live="polite"></div>
  </main>
  <footer class="cln-footer"><span>Las existencias se registran después del conteo físico; no se toman del inventario histórico.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
-</div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
+</div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtSessionRenew" hidden>Renovar inicio de sesión general</button><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}
 #clnModuleHub{min-height:100dvh;padding:clamp(12px,2.8vw,32px);background:var(--bg);color:var(--tx)}
 #clnModuleHub .cln-workspace-content{width:min(1200px,100%);margin:auto;border:1px solid var(--rim,var(--bd));border-radius:28px;background:var(--card);box-shadow:var(--sh);overflow:hidden}
@@ -796,6 +796,7 @@ function debtScreenVisible(yes,msg=""){
  document.getElementById("debtLockButton").hidden=!DEBT_GATE_ENABLED||yes;
  debtScreen.hidden=!yes;debtScreen.inert=!yes;if(yes){moduleHub.hidden=true;moduleHub.inert=true}
  document.getElementById("debtUnlockError").textContent=msg;
+ document.getElementById("debtSessionRenew").hidden=!yes||!/sesi[oó]n no activa/i.test(msg);
  if(yes){hidePrivate();gate(false)}
 }
 async function disconnectDebtChannel(){
@@ -1449,7 +1450,22 @@ async function openIndependentModule(id){
       const name=document.createElement("strong");name.textContent=item.nombre;
       const numbers=document.createElement("small");
       numbers.textContent="Oficina: "+(item.oficina===""?"Sin registrar":item.oficina)+"    Bodega: "+(item.bodega===""?"Sin registrar":item.bodega);
-      card.append(name,numbers);cards.append(card);
+      card.append(name,numbers);
+      if(id==="clnHubInventory"){
+       const editButton=document.createElement("button");editButton.type="button";
+       editButton.className="g2";editButton.textContent="Editar cantidad";
+       editButton.setAttribute("aria-label","Editar cantidad de "+item.nombre);
+       editButton.onclick=()=>{
+        if(!editSelector||!editStockForm)return;
+        const tab=Array.from(clnHubDetail.querySelectorAll('[role="tab"]')).find(node=>node.textContent.trim()==="Editar inventario");
+        if(tab)tab.click();
+        editSelector.value=item.id;editSelector.clnPickerRefresh?.();
+        editSelector.dispatchEvent(new Event("change",{bubbles:true}));
+        editStockForm.querySelector('input[aria-label="Cantidad nueva en la ubicación"]')?.focus();
+       };
+       card.append(editButton);
+      }
+      cards.append(card);
      }
      if(!slice.length){const empty=document.createElement("p");empty.className="cln-empty";empty.textContent="No encontramos artículos con ese nombre.";cards.append(empty)}
     };
@@ -1924,6 +1940,60 @@ async function openIndependentModule(id){
 
   }
   if(kind==="contracts"){
+   // IDs reales ocultos en pantalla: solo se elige el contrato por nombre, DUI o número.
+   function makeContractLookup(mode,onPick){
+    const wrapper=document.createElement("div");wrapper.className="cln-contract-picker";
+    const label=document.createElement("label");label.textContent=mode==="borrador"?"Buscar contrato borrador":"Buscar contrato para registrar prima";
+    const field=document.createElement("input");field.type="search";field.maxLength=100;field.autocomplete="off";
+    field.placeholder="Nombre, DUI o número de contrato";field.setAttribute("aria-label",label.textContent);
+    const find=document.createElement("button");find.type="button";find.className="g2";find.textContent="Buscar contratos";
+    const choices=document.createElement("select");choices.hidden=true;
+    choices.setAttribute("aria-label","Elegir contrato encontrado");
+    const hint=document.createElement("p");hint.className="cln-field-helper";
+    hint.textContent="Escribí al menos 3 caracteres y elegí el contrato correcto.";
+    wrapper.append(label,field,find,choices,hint);
+    let epoch=0,timer=null,found=[];
+    const resetResults=()=>{epoch++;found=[];choices.replaceChildren();choices.hidden=true;onPick(null)};
+    async function searchContracts(){
+     const term=field.value.trim(),sequence=++epoch;
+     found=[];choices.replaceChildren();choices.hidden=true;onPick(null);
+     if(term.length<3||term.length>100){hint.textContent="Escribí entre 3 y 100 caracteres para buscar.";return}
+     find.disabled=true;hint.textContent="Buscando contratos…";
+     try{
+      const response=await SB.rpc("inv_buscar_contratos",{p_busqueda:term});
+      if(sequence!==epoch||token!==nexusViewEpoch||moduleHub.hidden)return;
+      if(response.error)throw Error(response.error.message||"Consulta denegada");
+      const rows=Array.isArray(response.data)?response.data:[];
+      found=rows.filter(row=>mode==="borrador"?row.estado==="borrador":
+       row.estado!=="anulado"&&row.prima_estado==="pendiente");
+      const blank=document.createElement("option");blank.value="";blank.textContent="Elegí el contrato";choices.append(blank);
+      for(const row of found){
+       const opt=document.createElement("option");opt.value=row.id;
+       opt.textContent="N.º "+String(row.numero||"")+" · "+String(row.cliente_nombre||"Cliente")+
+        " · DUI "+String(row.dui_mostrado||"")+" · "+String(row.fecha||"")+" · "+String(row.estado||"")+
+        (mode==="prima"?" · Prima $"+Number(row.prima_monto||0).toFixed(2):"");
+       choices.append(opt);
+      }
+      choices.hidden=!found.length;
+      hint.textContent=found.length?found.length+" contrato(s) encontrados. Elegí el correcto.":
+       "No hay contratos "+(mode==="borrador"?"en borrador":"con prima pendiente")+" para esta búsqueda.";
+     }catch(error){
+      if(sequence===epoch&&token===nexusViewEpoch)hint.textContent="No se pudieron buscar contratos: "+String(error.message||error);
+     }finally{find.disabled=false}
+    }
+    field.addEventListener("input",()=>{
+     if(timer)clearTimeout(timer);resetResults();
+     if(field.value.trim().length>=3)timer=setTimeout(()=>void searchContracts(),350);
+    });
+    field.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();if(timer)clearTimeout(timer);void searchContracts()}});
+    find.onclick=()=>{if(timer)clearTimeout(timer);void searchContracts()};
+    choices.onchange=()=>{
+     const row=found.find(item=>item.id===choices.value)||null;onPick(row);
+     if(row)hint.textContent="Seleccionado: contrato N.º "+String(row.numero||"")+" · "+String(row.cliente_nombre||"");
+    };
+    return {element:wrapper,reset:()=>{if(timer)clearTimeout(timer);field.value="";resetResults();hint.textContent="Escribí al menos 3 caracteres y elegí el contrato correcto."}};
+   }
+
    const sellerForm=document.createElement("form");
    const sellerName=document.createElement("input");sellerName.required=true;sellerName.maxLength=120;sellerName.placeholder="Nombre del nuevo vendedor";sellerName.setAttribute("aria-label","Nombre del vendedor");
    const sellerSubmit=document.createElement("button");sellerSubmit.type="submit";sellerSubmit.className="g2";sellerSubmit.textContent="Registrar vendedor";
@@ -1950,14 +2020,16 @@ async function openIndependentModule(id){
    const sellerList=document.createElement("div");sellerList.className="cln-seller-list";
    sellerList.textContent="Consultando vendedores…";
    const depositForm=document.createElement("form");
-   const contractId=document.createElement("input");contractId.required=true;contractId.placeholder="ID del contrato (UUID)";contractId.setAttribute("aria-label","ID del contrato");
+   const contractId=document.createElement("input");contractId.type="hidden";
+   const depositLookup=makeContractLookup("prima",row=>{contractId.value=row?.id||""});
    const depositNotes=document.createElement("textarea");depositNotes.required=true;depositNotes.placeholder="Observaciones sobre la prima recibida";depositNotes.setAttribute("aria-label","Observaciones de prima");
    const depositButton=document.createElement("button");depositButton.type="submit";depositButton.className="g2";depositButton.textContent="Marcar prima recibida";
-   depositForm.append(contractId,depositNotes,depositButton);
+   depositForm.append(depositLookup.element,contractId,depositNotes,depositButton);
    depositForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden)return;
     const notes=depositNotes.value.trim();
+    if(!contractId.value){status.textContent="Buscá y seleccioná un contrato por nombre o DUI.";return}
     if(!notes){status.textContent="Las observaciones son obligatorias.";return}
     if(!confirm("¿Confirmar que se recibió la prima de este contrato?"))return;
     depositButton.disabled=true;status.textContent="Actualizando prima…";
@@ -1967,7 +2039,7 @@ async function openIndependentModule(id){
      const result=await actions.execute("markDeposit",{p_contrato_id:contractId.value.trim(),p_observaciones:notes});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      status.textContent=result===true?"Prima recibida confirmada por el servidor.":"Respuesta del servidor: "+String(result);
-     if(result===true)depositForm.reset();
+     if(result===true){depositForm.reset();depositLookup.reset()}
     }catch(e){if(token===nexusViewEpoch)status.textContent="Prima no confirmada: "+e.message}
     finally{depositButton.disabled=false}
    };
@@ -2009,14 +2081,13 @@ async function openIndependentModule(id){
    clnHubDetail.append(customerForm);
    const confirmForm=document.createElement("form");
    const confirmHeading=document.createElement("h4");confirmHeading.textContent="Confirmar contrato borrador";
-   const draftId=document.createElement("input");draftId.required=true;
-   draftId.placeholder="ID del contrato borrador (se completa solo al crearlo)";
-   draftId.setAttribute("aria-label","Identificador del contrato borrador");
+   const draftId=document.createElement("input");draftId.type="hidden";
+   draftId.setAttribute("aria-label","Identificador interno del contrato borrador");
    const loadDraft=document.createElement("button");loadDraft.type="button";loadDraft.className="g2";
    loadDraft.textContent="Cargar artículos del contrato";
    const allocation=document.createElement("div");allocation.className="cln-allocations";
    const initialHelp=document.createElement("p");initialHelp.className="cln-empty";
-   initialHelp.textContent="Creá un borrador o ingresá su ID para cargar sus artículos. Después elegí Oficina o Bodega para cada uno.";
+   initialHelp.textContent="Creá un borrador o buscá el contrato por nombre o DUI. Después elegí Oficina o Bodega para cada artículo.";
    allocation.append(initialHelp);
    const confirmButton=document.createElement("button");confirmButton.type="submit";
    confirmButton.className="g2";confirmButton.textContent="Confirmar contrato y descontar inventario";
@@ -2031,13 +2102,17 @@ async function openIndependentModule(id){
     prompt.textContent="Cargá los artículos del contrato para elegir dónde se entregarán.";
     allocation.append(prompt);
    };
+   const draftLookup=makeContractLookup("borrador",row=>{
+    draftId.value=row?.id||"";clearLoaded();
+   });
+   confirmForm.insertBefore(draftLookup.element,draftId);
    draftId.addEventListener("input",()=>{
     if(draftId.value.trim()!==loadedDraftId)clearLoaded();
    });
    async function loadDraftDetails(){
     const requested=draftId.value.trim();
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requested)){
-     status.textContent="Ingresá un ID válido del contrato borrador.";return;
+     status.textContent="Buscá y elegí un contrato borrador por nombre o DUI.";return;
     }
     loadDraft.disabled=true;status.textContent="Cargando artículos del borrador…";
     try{
@@ -2498,7 +2573,22 @@ document.getElementById("debtUnlockButton").onclick=async()=>{
  try{
   await debtController.open(password);
   void clnRecordModuleUse("deudas");
- }catch(e){debtScreenVisible(true,e.message||"No se pudo autorizar Deudas")}
+ }catch(e){
+  const detail=String(e.message||"No se pudo autorizar Deudas");
+  debtScreenVisible(true,/sesi[oó]n no activa/i.test(detail)?
+   "La sesión principal guardada ya no está activa en el servidor. Renovala para entrar a Deudas; no es un problema de la contraseña adicional.":detail);
+  if(/sesi[oó]n no activa/i.test(detail))document.getElementById("debtSessionRenew").hidden=false;
+ }
+ finally{button.disabled=false}
+};
+document.getElementById("debtSessionRenew").onclick=async()=>{
+ const button=document.getElementById("debtSessionRenew");button.disabled=true;
+ try{
+  // Cierre local: conserva la caché y los cambios de Deudas sin sincronizar.
+  const {error}=await SB.auth.signOut({scope:"local"});
+  if(error)throw Error(error.message||"No se pudo renovar la sesión");
+  gate(true,"Ingresá tu correo y contraseña general para crear una sesión nueva y después desbloquear Deudas.");
+ }catch(error){debtScreenVisible(true,"No se pudo renovar: "+String(error.message||error));button.hidden=false}
  finally{button.disabled=false}
 };
 document.getElementById("debtUnlockPassword").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("debtUnlockButton").click()});
@@ -2917,6 +3007,10 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-stock-feedback{flex:1 0 100%;font-size:12px;margin:0;color:var(--mut);line-height:1.4}
 @media(max-width:650px){#clnHubDetail .cln-stock-controls{grid-template-columns:minmax(0,1fr)}}
 
+#clnHubDetail .cln-contract-picker{display:grid;gap:9px;padding:13px;border:1px solid var(--bd);border-radius:12px;background:var(--in);margin:8px 0 16px}
+#clnHubDetail .cln-contract-picker input,#clnHubDetail .cln-contract-picker select{width:100%;min-width:0}
+#clnHubDetail .cln-contract-picker select{white-space:normal;min-height:40px}
+#clnHubDetail .cln-item-card button{align-self:flex-start;margin-top:8px}
 /* Revisar entradas sin UUID: lista de tarjetas de aprobación, móvil primero. */
 #clnHubDetail .cln-entry-review{width:100%;max-width:100%;min-width:0;margin:17px 0 0}
 #clnHubDetail .cln-entry-review>h4{font-size:17px;font-weight:750;margin:0 0 9px;color:var(--tx)}

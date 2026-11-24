@@ -15,7 +15,7 @@ const core=[...coreSection.matchAll(/'(\.\/[^']+)'/g)].map(x=>x[1]);
 const scripts=[...html.matchAll(/<script\b[^>]*\bsrc=["'](\.\/[^"']+)["']/g)].map(x=>x[1]);
 for(const script of scripts)assert.ok(core.includes(script)&&fs.existsSync(script),'Missing script or cache entry: '+script);
 for(const asset of core)if(asset!=='./')assert.ok(fs.existsSync(asset),'Missing core asset '+asset);
-assert.match(sw,/panel-de-deudas-shell-v19-sesion-persistente-20261123/);
+assert.match(sw,/panel-de-deudas-shell-v20-contratos-20261123/);
 assert.match(sw,/if \(url\.origin !== self\.location\.origin\) return/);
 for(const needed of ['./cl-nexus-reader.cjs','./cl-nexus-actions.cjs','./debt-gate-client.cjs','./debt-module-controller.cjs','./cln-http-auth-probe.cjs'])assert.ok(core.includes(needed));
 assert.equal(manifest.start_url,'./');
@@ -76,6 +76,12 @@ assert.match(html,/SB\.rpc\("inv_historial_vendedor"/);
 assert.match(html,/if\(clnHubDetail\.contains\(wrap\)\)clnEnhanceArticleSearch\(wrap\)/);
 assert.doesNotMatch(html,/Ubicaciones JSON/);
 assert.match(html,/cln-catalog-search/);
+assert.match(html,/SB\.rpc\("inv_buscar_contratos",\{p_busqueda:term\}\)/);
+assert.match(html,/const depositLookup=makeContractLookup\("prima"/);
+assert.match(html,/const draftLookup=makeContractLookup\("borrador"/);
+assert.match(html,/editButton\.textContent="Editar cantidad"/);
+assert.match(html,/id="debtSessionRenew"/);
+assert.doesNotMatch(html,/ID del contrato \(UUID\)/);
 
 /* Auth regression: no apparent second login while restoring an existing session. */
 assert.equal((html.match(/id="authLogin"/g)||[]).length,1,'Only one primary login');
