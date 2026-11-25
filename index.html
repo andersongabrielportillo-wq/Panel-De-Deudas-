@@ -1287,20 +1287,53 @@ function clnOpenAdministrativeProjection(id,token,status){
  let selection=0,pendingPayment=null;
  async function showPayroll(row){
   const seq=++selection;detailPanel.replaceChildren();
+  const range={from:activeRange.from,to:activeRange.to};
+  const valid=()=>active()&&seq===selection;
   const title=document.createElement("h4");title.textContent="Planilla · "+row.vendedor;detailPanel.append(title);
+  const period=document.createElement("p");period.textContent="Período: "+range.from+" a "+range.to;detailPanel.append(period);
+  const contribution=document.createElement("p");contribution.textContent="Ventas confirmadas: "+(row.ventas_confirmadas==null?"—":money.format(Number(row.ventas_confirmadas)))+" · Comisión registrada: "+(row.comision_registrada==null?"—":money.format(Number(row.comision_registrada)));detailPanel.append(contribution);
   const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
-  const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
-  if(!active()||seq!==selection)return;
-  if(error){message.textContent="No se pudo consultar la planilla: "+error.message;return;}
-  message.textContent="Formato individual sin valores históricos. Edición y fórmulas pendientes.";
-  for(const template of data||[]){
-   const heading=document.createElement("h5");heading.textContent=template.source_key;detailPanel.append(heading);
-   for(const field of Array.isArray(template.campos)?template.campos:[]){
-    const label=document.createElement("label");label.className="cln-adm-pay-field";label.textContent=String(field.etiqueta||"Campo");
-    const input=document.createElement("input");input.type="text";input.readOnly=true;input.value="";label.append(input);detailPanel.append(label);
+  try{
+   const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
+   if(!valid())return;
+   if(error)throw Error(error.message);
+   message.textContent="Los campos manuales vacíos permanecen vacíos. Las ventas y comisiones se consultan desde los contratos; la liquidación automática requiere validar las fórmulas de cada formato.";
+   if(!data?.length){message.textContent="No hay formatos asignados a esta persona.";return;}
+   for(const template of data){
+    const result=await SB.from("cln_payroll_periods").select("valores,revision").eq("plantilla_id",template.id).eq("desde",range.from).eq("hasta",range.to).maybeSingle();
+    if(!valid())return;
+    if(result.error)throw Error(result.error.message);
+    let revision=result.data?.revision??0;
+    const values=result.data?.valores??{};
+    const edit=document.createElement("form");edit.className="cln-adm-payroll-form";
+    const heading=document.createElement("h5");heading.textContent=template.source_key;edit.append(heading);
+    const inputs=[];
+    for(const [i,field] of (Array.isArray(template.campos)?template.campos:[]).entries()){
+     const label=document.createElement("label");label.className="cln-adm-pay-field";label.textContent=String(field.etiqueta||"Campo");
+     const input=document.createElement("input");input.type="number";input.step="0.01";input.value=values[i]==null?"":String(values[i]);
+     const editable=(field.tipo||"manual")==="manual";input.readOnly=!editable;
+     if(editable)inputs.push([String(i),input]);
+     label.append(input);edit.append(label);
+    }
+    const save=document.createElement("button");save.type="submit";save.className="g2";save.textContent="Guardar planilla";
+    const feedback=document.createElement("p");feedback.setAttribute("role","status");edit.append(save,feedback);
+    edit.onsubmit=async e=>{
+     e.preventDefault();if(!valid()||save.disabled)return;
+     const payload=Object.create(null);
+     for(const [key,input] of inputs){if(input.value!==""){const val=Number(input.value);if(!Number.isFinite(val)){feedback.textContent="Revisá los importes.";return;}payload[key]=val;}}
+     if(!confirm("¿Guardar los valores manuales de esta planilla?"))return;
+     save.disabled=true;
+     try{
+      const response=await SB.rpc("cln_guardar_planilla",{p_plantilla:template.id,p_desde:range.from,p_hasta:range.to,p_valores:payload,p_revision:revision});
+      if(!valid())return;
+      if(response.error||!Number.isInteger(response.data))throw Error(response.error?.message||"Resultado no verificado");
+      revision=response.data;feedback.textContent="Planilla guardada.";
+     }catch(e){if(valid())feedback.textContent="No se pudo guardar: "+String(e.message||e);}
+     finally{save.disabled=false;}
+    };
+    detailPanel.append(edit);
    }
-  }
-  if(!data?.length)message.textContent="No hay formatos asignados a esta persona.";
+  }catch(e){if(valid())message.textContent="No se pudo consultar la planilla: "+String(e.message||e);}
  }
  function showPayments(row){
   if(pendingPayment){status.textContent="Hay un abono pendiente de verificar; reintentá la misma operación antes de cambiar de contrato.";return;}
@@ -1350,7 +1383,7 @@ function clnOpenAdministrativeProjection(id,token,status){
   }catch(e){if(active()){list.replaceChildren();status.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
   finally{busy=false;if(active()){refresh.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
  }
- form.onsubmit=e=>{e.preventDefault();if(busy)return;if(from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>366){status.textContent="Elegí un período válido de hasta 366 días.";return;}activeRange={from:from.value,to:to.value};page=0;void load();};
+ form.onsubmit=e=>{e.preventDefault();if(busy)return;if(from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>366){status.textContent="Elegí un período válido de hasta 366 días.";return;}if(pendingPayment){status.textContent="Verificá el abono pendiente antes de cambiar el período.";return;}selection++;detailPanel.replaceChildren();activeRange={from:from.value,to:to.value};page=0;void load();};
  prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};
  next.onclick=()=>{if(!busy&&more){page++;void load();}};
  void load();
