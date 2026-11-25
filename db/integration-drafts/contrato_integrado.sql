@@ -17,6 +17,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $$
 DECLARE
  v_id uuid; v_venta uuid; v_detail jsonb; v_alloc jsonb;
+ v_seller uuid; v_name text; v_person uuid;
  v_actor uuid:=auth.uid(); v_fingerprint text; v_result jsonb; v_previous cln_admin_internal.contract_operations%ROWTYPE;
 BEGIN
  IF v_actor IS NULL OR NOT EXISTS(SELECT 1 FROM public.inv_members m WHERE m.user_id=v_actor AND m.rol IN ('admin','secretaria')) THEN RAISE EXCEPTION 'No autorizado'; END IF;
@@ -46,6 +47,18 @@ BEGIN
  FROM jsonb_array_elements(v_detail->'articulos') AS x(d);
  -- Confirmation failure rolls back the draft and all stock/sale changes.
  v_venta:=public.inv_confirmar_contrato(v_id,v_alloc,p_client_op_id);
+ -- Match only a unique normalized full name; never merge abbreviations.
+ v_seller:=(p_contrato->>'p_vendedor_id')::uuid;
+ SELECT upper(regexp_replace(trim(nombre),'[[:space:]]+',' ','g')) INTO v_name FROM public.inv_vendedores WHERE id=v_seller;
+ IF v_name IS NOT NULL THEN
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_name,4));
+  IF (SELECT count(*) FROM public.inv_vendedores WHERE upper(regexp_replace(trim(nombre),'[[:space:]]+',' ','g'))=v_name)=1
+   AND (SELECT count(*) FROM public.cln_payroll_people WHERE upper(regexp_replace(trim(nombre),'[[:space:]]+',' ','g'))=v_name)=1
+   AND NOT EXISTS(SELECT 1 FROM public.cln_payroll_people WHERE vendedor_id=v_seller) THEN
+   SELECT id INTO v_person FROM public.cln_payroll_people WHERE upper(regexp_replace(trim(nombre),'[[:space:]]+',' ','g'))=v_name AND vendedor_id IS NULL FOR UPDATE;
+   IF FOUND THEN UPDATE public.cln_payroll_people SET vendedor_id=v_seller WHERE id=v_person AND vendedor_id IS NULL; END IF;
+  END IF;
+ END IF;
  v_result:=jsonb_build_object('contrato_id',v_id,'venta_id',v_venta);
  INSERT INTO cln_admin_internal.contract_operations(op_id,actor,fingerprint,result) VALUES(p_client_op_id,v_actor,v_fingerprint,v_result);
  RETURN v_result;
