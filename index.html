@@ -2469,6 +2469,7 @@ async function openIndependentModule(id){
    const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Registrar contrato y actualizar inventario";draftForm.append(draftButton);
 
    // El contrato enlaza IDs verificados: nunca guarda un nombre suelto de vendedor o cliente.
+   let integratedPending=null;
    draftForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden||draftButton.disabled)return;
@@ -2584,9 +2585,13 @@ async function openIndependentModule(id){
       paintContractSellerSuggestions();
      }
      status.textContent="Guardando contrato de "+fullName+"…";
-     const {data:result,error:saveError}=await SB.rpc("inv_registrar_contrato_integrado",{p_contrato:params,p_ubicaciones:locationsByItem,p_client_op_id:crypto.randomUUID()});
+     const integratedPayload=JSON.stringify({p_contrato:params,p_ubicaciones:locationsByItem});
+     if(integratedPending&&integratedPending.payload!==integratedPayload)throw Error("Hay una operación anterior no verificada. Consultá el contrato antes de cambiar sus datos.");
+     if(!integratedPending)integratedPending={payload:integratedPayload,op:crypto.randomUUID()};
+     const {data:result,error:saveError}=await SB.rpc("inv_registrar_contrato_integrado",{p_contrato:params,p_ubicaciones:locationsByItem,p_client_op_id:integratedPending.op});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
      if(saveError||!result?.contrato_id||!result?.venta_id)throw Error(saveError?.message||"Resultado no verificado");
+     integratedPending=null;
      status.textContent="Contrato "+params.p_numero+" confirmado. Venta registrada e inventario actualizado.";
      confirmForm.reset();clearLoaded();
      draftForm.reset();date.value=new Date().toISOString().slice(0,10);details.replaceChildren();contractLines.length=0;newDetail();
