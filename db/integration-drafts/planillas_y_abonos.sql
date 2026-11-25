@@ -81,4 +81,43 @@ REVOKE ALL ON FUNCTION public.cln_registrar_abono(uuid,uuid,numeric,date,text) F
 GRANT EXECUTE ON FUNCTION public.cln_registrar_abono(uuid,uuid,numeric,date,text) TO authenticated;
 -- Before deployment: test payment vs. prime receipt and sale cancellation concurrency,
 -- add controlled reversals and historical imports; connect route projection to actual payments.
+
+-- Save manual payroll values only; sales/commissions remain derived from contracts.
+ALTER TABLE public.cln_payroll_periods ADD COLUMN IF NOT EXISTS revision integer NOT NULL DEFAULT 0;
+CREATE OR REPLACE FUNCTION cln_admin_internal.guardar_planilla(
+ p_plantilla uuid,p_desde date,p_hasta date,p_valores jsonb,p_revision integer
+) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $
+DECLARE v_revision integer; v_fields jsonb;
+BEGIN
+ IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.inv_members m WHERE m.user_id=auth.uid() AND m.rol='admin') THEN RAISE EXCEPTION 'No autorizado'; END IF;
+ IF p_plantilla IS NULL OR p_desde IS NULL OR p_hasta IS NULL OR p_hasta<p_desde OR p_hasta-p_desde>366 OR p_revision IS NULL OR p_revision<0 OR jsonb_typeof(p_valores) IS DISTINCT FROM 'object' OR octet_length(p_valores::text)>100000 THEN RAISE EXCEPTION 'Planilla inválida'; END IF;
+ SELECT campos INTO v_fields FROM public.cln_payroll_templates WHERE id=p_plantilla;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Formato no encontrado'; END IF;
+ IF EXISTS(
+ SELECT 1 FROM jsonb_each(p_valores) AS x(k,v)
+ WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_fields) WITH ORDINALITY AS f(c,n) WHERE x.k=(f.n-1)::text AND coalesce(f.c->>'tipo','manual')='manual')
+ OR jsonb_typeof(x.v) NOT IN ('number','null')
+ OR CASE WHEN jsonb_typeof(x.v)='number' THEN abs((x.v::text)::numeric)>999999999999.99 OR round((x.v::text)::numeric,2)<>(x.v::text)::numeric ELSE false END
+ ) THEN RAISE EXCEPTION 'Campo o importe inválido'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_plantilla::text||':'||p_desde::text||':'||p_hasta::text,2));
+ SELECT revision INTO v_revision FROM public.cln_payroll_periods WHERE plantilla_id=p_plantilla AND desde=p_desde AND hasta=p_hasta FOR UPDATE;
+ IF NOT FOUND THEN
+  IF p_revision<>0 THEN RAISE EXCEPTION 'La planilla cambió; recargá los datos'; END IF;
+  INSERT INTO public.cln_payroll_periods(plantilla_id,desde,hasta,valores,revision) VALUES(p_plantilla,p_desde,p_hasta,p_valores,1);
+  RETURN 1;
+ END IF;
+ IF v_revision<>p_revision THEN RAISE EXCEPTION 'La planilla cambió; recargá los datos'; END IF;
+ UPDATE public.cln_payroll_periods SET valores=p_valores,revision=v_revision+1 WHERE plantilla_id=p_plantilla AND desde=p_desde AND hasta=p_hasta;
+ RETURN v_revision+1;
+END;
+$;
+REVOKE ALL ON FUNCTION cln_admin_internal.guardar_planilla(uuid,date,date,jsonb,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION cln_admin_internal.guardar_planilla(uuid,date,date,jsonb,integer) TO authenticated;
+CREATE OR REPLACE FUNCTION public.cln_guardar_planilla(p_plantilla uuid,p_desde date,p_hasta date,p_valores jsonb,p_revision integer)
+RETURNS integer LANGUAGE sql SECURITY INVOKER SET search_path TO ''
+AS $ SELECT cln_admin_internal.guardar_planilla(p_plantilla,p_desde,p_hasta,p_valores,p_revision) $;
+REVOKE ALL ON FUNCTION public.cln_guardar_planilla(uuid,date,date,jsonb,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.cln_guardar_planilla(uuid,date,date,jsonb,integer) TO authenticated;
+
 COMMIT;
