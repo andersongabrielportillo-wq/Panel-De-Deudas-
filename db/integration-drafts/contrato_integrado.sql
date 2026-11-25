@@ -55,7 +55,7 @@ REVOKE ALL ON FUNCTION cln_admin_internal.registrar_contrato_integrado(jsonb,jso
 GRANT EXECUTE ON FUNCTION cln_admin_internal.registrar_contrato_integrado(jsonb,jsonb,uuid) TO authenticated;
 CREATE OR REPLACE FUNCTION public.inv_registrar_contrato_integrado(p_contrato jsonb,p_ubicaciones jsonb,p_client_op_id uuid)
 RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path TO ''
-AS $ SELECT cln_admin_internal.registrar_contrato_integrado(p_contrato,p_ubicaciones,p_client_op_id) $;
+AS $$ SELECT cln_admin_internal.registrar_contrato_integrado(p_contrato,p_ubicaciones,p_client_op_id) $$;
 REVOKE ALL ON FUNCTION public.inv_registrar_contrato_integrado(jsonb,jsonb,uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.inv_registrar_contrato_integrado(jsonb,jsonb,uuid) TO authenticated;
 COMMIT;
