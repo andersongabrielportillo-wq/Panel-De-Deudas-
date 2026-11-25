@@ -1,5 +1,5 @@
 -- Draft: live projections from the authoritative sales and contracts.
--- No historical or personal data is included here. Do not deploy before isolated tests.
+-- Apply planillas_y_abonos.sql first. No historical or personal data is included here. Do not deploy before isolated tests.
 BEGIN;
 CREATE SCHEMA IF NOT EXISTS cln_admin_internal;
 REVOKE ALL ON SCHEMA cln_admin_internal FROM PUBLIC, anon, authenticated;
@@ -40,16 +40,17 @@ BEGIN
  ) x;
  ELSIF p_tipo='rutas' THEN
  SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO v_rows FROM (
- SELECT c.fecha,c.numero AS contrato,cl.nombre AS cliente,
+ SELECT c.id AS contrato_id,c.fecha,c.numero AS contrato,cl.nombre AS cliente,
  nullif(trim(c.ruta),'') AS ruta,c.frecuencia,c.dia_cobro,c.plan,c.fecha_plan,
  c.cuota,v.total,
  CASE WHEN p.estado='recibida' THEN p.monto ELSE 0 END AS prima_recibida,
- greatest(0,v.total-CASE WHEN p.estado='recibida' THEN p.monto ELSE 0 END)
- AS saldo_antes_de_abonos
+ coalesce(a.pagado,0) AS abonos,
+ greatest(0,v.total-CASE WHEN p.estado='recibida' THEN p.monto ELSE 0 END-coalesce(a.pagado,0)) AS saldo_pendiente
  FROM public.inv_contratos c
  JOIN public.inv_ventas v ON v.id=c.venta_id
  JOIN public.inv_clientes cl ON cl.id=c.cliente_id
  LEFT JOIN public.inv_contrato_primas p ON p.contrato_id=c.id
+ LEFT JOIN LATERAL (SELECT sum(monto) AS pagado FROM public.cln_route_payments a WHERE a.contrato_id=c.id) a ON true
  WHERE c.estado='confirmado' AND v.estado='registrada' AND v.anulada_en IS NULL
  AND c.modalidad='credito' AND c.fecha BETWEEN p_desde AND p_hasta
  ORDER BY c.ruta NULLS LAST,cl.nombre,c.id
@@ -59,13 +60,14 @@ BEGIN
  -- This is only the sales contribution, not a complete payroll calculation.
  -- Historical Excel imports must go to separate legacy tables and not into these aggregates.
  SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO v_rows FROM (
- SELECT s.nombre AS vendedor,count(*) AS contratos,sum(v.total) AS ventas_confirmadas,
+ SELECT pp.id AS persona_id,pp.nombre AS vendedor,x.contratos,x.ventas_confirmadas,x.comision_registrada
+ FROM public.cln_payroll_people pp
+ LEFT JOIN LATERAL (SELECT nullif(count(*),0) AS contratos,sum(v.total) AS ventas_confirmadas,
  sum(c.comision_total) AS comision_registrada
  FROM public.inv_contratos c JOIN public.inv_ventas v ON v.id=c.venta_id
- JOIN public.inv_vendedores s ON s.id=c.vendedor_id
- WHERE c.estado='confirmado' AND v.estado='registrada' AND v.anulada_en IS NULL
- AND c.fecha BETWEEN p_desde AND p_hasta
- GROUP BY s.id,s.nombre ORDER BY s.nombre,s.id
+ WHERE c.vendedor_id=pp.vendedor_id AND c.estado='confirmado' AND v.estado='registrada' AND v.anulada_en IS NULL
+ AND c.fecha BETWEEN p_desde AND p_hasta) x ON true
+ ORDER BY pp.nombre,pp.id
  LIMIT 101 OFFSET v_offset
  ) x;
  END IF;
