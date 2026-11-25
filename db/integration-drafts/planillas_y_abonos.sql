@@ -87,7 +87,7 @@ ALTER TABLE public.cln_payroll_periods ADD COLUMN IF NOT EXISTS revision integer
 CREATE OR REPLACE FUNCTION cln_admin_internal.guardar_planilla(
  p_plantilla uuid,p_desde date,p_hasta date,p_valores jsonb,p_revision integer
 ) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
-AS $
+AS $$
 DECLARE v_revision integer; v_fields jsonb;
 BEGIN
  IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.inv_members m WHERE m.user_id=auth.uid() AND m.rol='admin') THEN RAISE EXCEPTION 'No autorizado'; END IF;
@@ -111,12 +111,12 @@ BEGIN
  UPDATE public.cln_payroll_periods SET valores=p_valores,revision=v_revision+1 WHERE plantilla_id=p_plantilla AND desde=p_desde AND hasta=p_hasta;
  RETURN v_revision+1;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION cln_admin_internal.guardar_planilla(uuid,date,date,jsonb,integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION cln_admin_internal.guardar_planilla(uuid,date,date,jsonb,integer) TO authenticated;
 CREATE OR REPLACE FUNCTION public.cln_guardar_planilla(p_plantilla uuid,p_desde date,p_hasta date,p_valores jsonb,p_revision integer)
 RETURNS integer LANGUAGE sql SECURITY INVOKER SET search_path TO ''
-AS $ SELECT cln_admin_internal.guardar_planilla(p_plantilla,p_desde,p_hasta,p_valores,p_revision) $;
+AS $$ SELECT cln_admin_internal.guardar_planilla(p_plantilla,p_desde,p_hasta,p_valores,p_revision) $$;
 REVOKE ALL ON FUNCTION public.cln_guardar_planilla(uuid,date,date,jsonb,integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.cln_guardar_planilla(uuid,date,date,jsonb,integer) TO authenticated;
 
