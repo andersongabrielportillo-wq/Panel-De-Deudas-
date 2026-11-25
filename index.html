@@ -1020,7 +1020,7 @@ const clnHubViews=Object.freeze({
  clnHubSellers:{title:"Vendedores",description:"Registrá y consultá los vendedores disponibles en CL Nexus."},
  clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."},
  clnHubLedger:{title:"Libro de ventas",description:"Consulta de ventas nuevas y anulaciones registradas en CL Nexus."},
- clnHubRoutes:{title:"Rutas y abonos",description:"Contratos a crédito confirmados; el saldo mostrado aún no incluye abonos."},
+ clnHubRoutes:{title:"Rutas y abonos",description:"Contratos a crédito confirmados, saldo pendiente y abonos registrados."},
  clnHubPayroll:{title:"Planillas",description:"Avance de ventas y comisiones registradas por vendedor; no constituye una planilla liquidada."}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
@@ -1253,7 +1253,7 @@ function clnOpenAdministrativeProjection(id,token,status){
  const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
  const fields={
  libro:[["fecha","Fecha"],["venta","Venta"],["contrato","Contrato"],["cliente","Cliente"],["vendedor","Vendedor"],["modalidad","Modalidad"],["total","Total","money"],["estado","Estado"]],
- rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["saldo_antes_de_abonos","Saldo antes de abonos","money"]],
+ rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["abonos","Abonos","money"],["saldo_pendiente","Saldo pendiente","money"]],
  planillas:[["vendedor","Vendedor"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión registrada","money"]]
  }[kind];
  const form=document.createElement("form");form.className="cln-adm-filters";
@@ -1269,7 +1269,8 @@ function clnOpenAdministrativeProjection(id,token,status){
  const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
  for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
  prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
- clnHubDetail.append(form,list,pager);
+ const detailPanel=document.createElement("div");detailPanel.className="cln-adm-detail";
+ clnHubDetail.append(form,list,pager,detailPanel);
  let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null;
  const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
  const money=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
@@ -1277,10 +1278,65 @@ function clnOpenAdministrativeProjection(id,token,status){
   const table=document.createElement("table");table.className="cln-adm-table";
   const head=table.createTHead().insertRow();
   for(const f of fields){const th=document.createElement("th");th.scope="col";th.textContent=f[1];head.append(th);}
+  if(kind!=="libro"){const th=document.createElement("th");th.scope="col";th.textContent="Acciones";head.append(th);}
   const body=table.createTBody();
-  for(const row of rows){const tr=body.insertRow();for(const [key,label,format] of fields){const cell=tr.insertCell();const v=row[key];cell.textContent=v==null||v===""?"—":format==="money"?money.format(Number(v)):String(v);}}
+  for(const row of rows){const tr=body.insertRow();for(const [key,label,format] of fields){const cell=tr.insertCell();const v=row[key];cell.textContent=v==null||v===""?"":format==="money"?money.format(Number(v)):String(v);}if(kind!=="libro"){const cell=tr.insertCell(),b=document.createElement("button");b.type="button";b.className="g2";b.textContent=kind==="rutas"?"Abonos":"Ver planilla";b.onclick=()=>kind==="rutas"?showPayments(row):void showPayroll(row);cell.append(b);}}
   list.replaceChildren(table);
   if(!rows.length){const p=document.createElement("p");p.className="cln-empty";p.textContent="Sin registros en el período seleccionado.";list.append(p);}
+ }
+ let selection=0,pendingPayment=null;
+ async function showPayroll(row){
+  const seq=++selection;detailPanel.replaceChildren();
+  const title=document.createElement("h4");title.textContent="Planilla · "+row.vendedor;detailPanel.append(title);
+  const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
+  const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
+  if(!active()||seq!==selection)return;
+  if(error){message.textContent="No se pudo consultar la planilla: "+error.message;return;}
+  message.textContent="Formato individual sin valores históricos. Edición y fórmulas pendientes.";
+  for(const template of data||[]){
+   const heading=document.createElement("h5");heading.textContent=template.source_key;detailPanel.append(heading);
+   for(const field of Array.isArray(template.campos)?template.campos:[]){
+    const label=document.createElement("label");label.className="cln-adm-pay-field";label.textContent=String(field.etiqueta||"Campo");
+    const input=document.createElement("input");input.type="text";input.readOnly=true;input.value="";label.append(input);detailPanel.append(label);
+   }
+  }
+  if(!data?.length)message.textContent="No hay formatos asignados a esta persona.";
+ }
+ function showPayments(row){
+  if(pendingPayment){status.textContent="Hay un abono pendiente de verificar; reintentá la misma operación antes de cambiar de contrato.";return;}
+  const seq=++selection;detailPanel.replaceChildren();
+  const title=document.createElement("h4");title.textContent="Abonos · "+row.cliente+" · "+row.contrato;detailPanel.append(title);
+  const paymentForm=document.createElement("form");paymentForm.className="cln-adm-filters";
+  const add=(label,type)=>{const wrap=document.createElement("label");wrap.textContent=label;const input=document.createElement("input");input.type=type;input.required=true;wrap.append(input);paymentForm.append(wrap);return input;};
+  const amount=add("Monto","number");amount.min="0.01";amount.step="0.01";amount.max=String(row.saldo_pendiente);
+  const date=add("Fecha","date");date.value=today;const collector=add("Cobrador","text");collector.maxLength=200;
+  const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Registrar abono";paymentForm.append(submit);detailPanel.append(paymentForm);
+  const history=document.createElement("div");detailPanel.append(history);
+  async function paymentsHistory(){
+   const {data,error}=await SB.from("cln_route_payments").select("fecha,monto,cobrador").eq("contrato_id",row.contrato_id).order("fecha",{ascending:false}).limit(100);
+   if(!active()||seq!==selection)return;
+   history.replaceChildren();const heading=document.createElement("h5");heading.textContent="Últimos 100 abonos";history.append(heading);
+   if(error){const p=document.createElement("p");p.textContent=error.message;history.append(p);return;}
+   for(const item of data||[]){const p=document.createElement("p");p.textContent=item.fecha+" · "+money.format(Number(item.monto))+" · "+item.cobrador;history.append(p);}
+  }
+  paymentForm.onsubmit=async e=>{
+   e.preventDefault();if(!active()||submit.disabled)return;
+   if(!pendingPayment){if(!confirm("¿Registrar el abono de "+money.format(Number(amount.value))+"?"))return;
+    pendingPayment={p_contrato:row.contrato_id,p_op:crypto.randomUUID(),p_monto:Number(amount.value),p_fecha:date.value,p_cobrador:collector.value.trim()};}
+   submit.disabled=true;for(const input of [amount,date,collector])input.readOnly=true;
+   try{
+    const {data,error}=await SB.rpc("cln_registrar_abono",pendingPayment);
+    if(error||!data)throw Error(error?.message||"Resultado no verificado");
+    pendingPayment=null;
+    if(!active()||seq!==selection)return;
+    paymentForm.reset();date.value=today;status.textContent="Abono confirmado.";
+    await paymentsHistory();await load();
+    // Force a fresh selection so that the amount limit is taken from the refreshed row.
+    paymentForm.remove();
+   }catch(err){if(active()){status.textContent="Abono no verificado: "+String(err.message||err)+". Podés reintentar la misma operación.";submit.textContent="Reintentar mismo abono";}}
+   finally{submit.disabled=false;}
+  };
+  void paymentsHistory();
  }
  async function load(){
   if(!active()||busy)return;busy=true;refresh.disabled=true;prev.disabled=true;next.disabled=true;
@@ -3130,4 +3186,5 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 .cln-adm-table th{color:var(--mut);background:var(--card)}
 .cln-adm-pager{align-items:center;justify-content:space-between}
 </style>
+<style>.cln-adm-detail{margin-top:20px;border-top:1px solid var(--bd);padding-top:16px}.cln-adm-detail:empty{display:none}.cln-adm-pay-field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(80px,1fr);align-items:center;gap:8px;margin:10px 0}.cln-adm-pay-field input{width:100%;min-width:0}</style>
 </body></html>
