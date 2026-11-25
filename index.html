@@ -115,6 +115,9 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
   <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
   <button class="g2 cln-tab" type="button" id="clnHubSellers">Vendedores</button>
   <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubLedger">Libro de ventas</button>
+  <button class="g2 cln-tab" type="button" id="clnHubRoutes">Rutas y abonos</button>
+  <button class="g2 cln-tab" type="button" id="clnHubPayroll">Planillas</button>
   <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas</button>
  </nav><div class="cln-drawer-footer"><button type="button" class="g2" id="clnMenuLogout">Cerrar sesión</button></div></dialog>
  <main class="cln-content">
@@ -1015,7 +1018,10 @@ const clnHubViews=Object.freeze({
  clnHubSales:{title:"Ventas",description:"Registrá ventas con búsqueda rápida de artículos y selección de vendedor."},
  clnHubContracts:{title:"Contratos",description:"Creá contratos, asigná clientes y vendedores, y administrá primas."},
  clnHubSellers:{title:"Vendedores",description:"Registrá y consultá los vendedores disponibles en CL Nexus."},
- clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."}
+ clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."},
+ clnHubLedger:{title:"Libro de ventas",description:"Consulta de ventas nuevas y anulaciones registradas en CL Nexus."},
+ clnHubRoutes:{title:"Rutas y abonos",description:"Contratos a crédito confirmados; el saldo mostrado aún no incluye abonos."},
+ clnHubPayroll:{title:"Planillas",description:"Avance de ventas y comisiones registradas por vendedor; no constituye una planilla liquidada."}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
@@ -1242,6 +1248,59 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
  const initialIndex=groups.findIndex(group=>group[0]===initialLabel);
  activate(initialIndex<0?0:initialIndex);
 }
+
+function clnOpenAdministrativeProjection(id,token,status){
+ const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
+ const fields={
+ libro:[["fecha","Fecha"],["venta","Venta"],["contrato","Contrato"],["cliente","Cliente"],["vendedor","Vendedor"],["modalidad","Modalidad"],["total","Total","money"],["estado","Estado"]],
+ rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["saldo_antes_de_abonos","Saldo antes de abonos","money"]],
+ planillas:[["vendedor","Vendedor"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión registrada","money"]]
+ }[kind];
+ const form=document.createElement("form");form.className="cln-adm-filters";
+ const dates=new Intl.DateTimeFormat("en-CA",{timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const getDate=k=>dates.find(p=>p.type===k).value;
+ const today=getDate("year")+"-"+getDate("month")+"-"+getDate("day");
+ const dateField=(label,value)=>{const wrap=document.createElement("label");wrap.textContent=label;const input=document.createElement("input");input.type="date";input.required=true;input.value=value;wrap.append(input);form.append(wrap);return input};
+ const from=dateField("Desde",kind==="rutas"?getDate("year")+"-01-01":today.slice(0,7)+"-01");
+ const to=dateField("Hasta",today);
+ const refresh=document.createElement("button");refresh.type="submit";refresh.className="g2";refresh.textContent="Actualizar";form.append(refresh);
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
+ for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
+ prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
+ clnHubDetail.append(form,list,pager);
+ let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null;
+ const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
+ const money=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
+ function draw(rows){
+  const table=document.createElement("table");table.className="cln-adm-table";
+  const head=table.createTHead().insertRow();
+  for(const f of fields){const th=document.createElement("th");th.scope="col";th.textContent=f[1];head.append(th);}
+  const body=table.createTBody();
+  for(const row of rows){const tr=body.insertRow();for(const [key,label,format] of fields){const cell=tr.insertCell();const v=row[key];cell.textContent=v==null||v===""?"—":format==="money"?money.format(Number(v)):String(v);}}
+  list.replaceChildren(table);
+  if(!rows.length){const p=document.createElement("p");p.className="cln-empty";p.textContent="Sin registros en el período seleccionado.";list.append(p);}
+ }
+ async function load(){
+  if(!active()||busy)return;busy=true;refresh.disabled=true;prev.disabled=true;next.disabled=true;
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_integracion",{p_tipo:kind,p_desde:activeRange.from,p_hasta:activeRange.to,p_pagina:page});
+   if(!active())return;
+   if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta no válida");
+   more=!!data.hay_mas;draw(data.filas);
+   pageLabel.textContent="Página "+(page+1);
+   status.textContent="Datos del servidor · "+new Intl.DateTimeFormat("es-SV",{timeZone:"America/El_Salvador",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
+  }catch(e){if(active()){list.replaceChildren();status.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){refresh.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
+ }
+ form.onsubmit=e=>{e.preventDefault();if(busy)return;if(from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>366){status.textContent="Elegí un período válido de hasta 366 días.";return;}activeRange={from:from.value,to:to.value};page=0;void load();};
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};
+ next.onclick=()=>{if(!busy&&more){page++;void load();}};
+ void load();
+ timer=setInterval(()=>{if(!active()){clearInterval(timer);return;}if(document.visibilityState==="visible")void load();},15000);
+}
+
 async function openIndependentModule(id){
  document.getElementById("clnPrintableInventory")?.remove();
  if(clnModuleHistoryDialog.open)clnModuleHistoryDialog.close();
@@ -1259,9 +1318,11 @@ async function openIndependentModule(id){
  historyButton.textContent="Consultar historial";
  historyButton.onclick=()=>void clnShowModuleHistory(clnModuleByButton[id]);
  historyToolbar.append(historyButton);
- clnHubDetail.append(title,subtitle,status,historyToolbar);
+ clnHubDetail.append(title,subtitle,status);
+ if(clnModuleByButton[id])clnHubDetail.append(historyToolbar);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
+  if(["clnHubLedger","clnHubRoutes","clnHubPayroll"].includes(id)){clnOpenAdministrativeProjection(id,token,status);return;}
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
   void clnRecordModuleUse(clnModuleByButton[id]);
@@ -3060,4 +3121,13 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
  new MutationObserver(()=>{if(hub.hidden||hub.inert)close();}).observe(hub,{attributes:true,attributeFilter:["hidden","inert"]});
 })();
 </script>
+<style>
+.cln-adm-filters,.cln-adm-pager{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:16px 0}
+.cln-adm-filters label{display:grid;gap:6px;font-size:13px;color:var(--mut)}
+.cln-adm-table-wrap{max-width:100%;overflow:auto}
+.cln-adm-table{width:100%;border-collapse:collapse;font-size:13px}
+.cln-adm-table th,.cln-adm-table td{text-align:left;padding:12px;border-bottom:1px solid var(--bd);white-space:nowrap}
+.cln-adm-table th{color:var(--mut);background:var(--card)}
+.cln-adm-pager{align-items:center;justify-content:space-between}
+</style>
 </body></html>
