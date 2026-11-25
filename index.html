@@ -107,16 +107,16 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <div class="cln-workspace-content">
  <header class="cln-header">
   <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, ventas y contratos en un solo lugar.</p></div></div>
-  <span class="cln-session-chip">Sesión activa</span>
+  <div class="cln-header-actions"><span class="cln-session-chip">Sesión activa</span><button class="g2" id="clnMenuOpen" type="button" aria-haspopup="dialog" aria-controls="clnMenuDrawer" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Módulos</span></button></div>
  </header>
- <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
+ <dialog id="clnMenuDrawer" aria-labelledby="clnMenuTitle"><div class="cln-drawer-header"><h3 id="clnMenuTitle">Módulos</h3><button type="button" class="g2" id="clnMenuClose" aria-label="Cerrar menú" autofocus>×</button></div><nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
   <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
   <button class="g2 cln-tab" type="button" id="clnHubSales">Ventas</button>
   <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
   <button class="g2 cln-tab" type="button" id="clnHubSellers">Vendedores</button>
   <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
   <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas</button>
- </nav>
+ </nav><div class="cln-drawer-footer"><button type="button" class="g2" id="clnMenuLogout">Cerrar sesión</button></div></dialog>
  <main class="cln-content">
   <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
   <div id="clnHubDetail" aria-live="polite"></div>
@@ -3030,4 +3030,35 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-pending-entry-actions button:disabled{opacity:.55}
 </style>
 
+
+<style>
+#clnModuleHub .cln-header-actions{display:flex;align-items:center;gap:10px;flex:none}
+#clnMenuOpen{display:flex;align-items:center;gap:8px;min-height:44px;margin:0;padding:9px 13px;border-radius:14px}
+#clnMenuDrawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(340px,90vw);max-width:90vw;height:100dvh;max-height:100dvh;box-sizing:border-box;padding:20px;border:1px solid var(--bd);border-radius:24px 0 0 24px;background:var(--card);color:var(--tx);box-shadow:-12px 0 42px #0003;overflow:auto}
+#clnMenuDrawer:not([open]){display:none!important}
+#clnMenuDrawer::backdrop{background:rgba(0,0,0,.36)}
+@supports(backdrop-filter:blur(20px)){#clnMenuDrawer{background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(24px) saturate(150%)}}
+#clnMenuDrawer .cln-drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px}
+#clnMenuDrawer .cln-drawer-header h3{margin:0;font-size:20px}
+#clnMenuClose{min-width:44px;min-height:44px;margin:0;font-size:22px}
+#clnMenuDrawer #clnModuleChoices{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:0;border:0;background:none}
+#clnMenuDrawer #clnModuleChoices .cln-tab{flex:none;width:100%;min-height:48px;text-align:left;padding:12px 16px!important}
+#clnMenuDrawer .cln-drawer-footer{margin-top:24px;padding-top:16px;border-top:1px solid var(--bd)}
+#clnMenuLogout{width:100%;margin:0;min-height:44px}
+@media(max-width:500px){#clnMenuOpen span{display:none}#clnMenuOpen{padding:10px}#clnModuleHub .cln-header-actions{gap:4px}}
+</style>
+<script>
+(function(){
+ const hub=document.getElementById("clnModuleHub"), drawer=document.getElementById("clnMenuDrawer"), trigger=document.getElementById("clnMenuOpen");
+ const nav=document.getElementById("clnModuleChoices");
+ function close(){if(drawer.open)drawer.close();}
+ trigger.addEventListener("click",()=>{if(!hub.hidden&&!hub.inert&&!drawer.open){drawer.showModal();trigger.setAttribute("aria-expanded","true");}});
+ drawer.addEventListener("close",()=>{trigger.setAttribute("aria-expanded","false");if(!hub.hidden&&!hub.inert)trigger.focus();});
+ document.getElementById("clnMenuClose").addEventListener("click",close);
+ drawer.addEventListener("click",e=>{if(e.target===drawer){const b=drawer.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)close();}});
+ nav.addEventListener("click",e=>{const button=e.target.closest("button.cln-tab");if(button&&!button.disabled)close();});
+ document.getElementById("clnMenuLogout").addEventListener("click",()=>{close();document.getElementById("clnHubLogout").click();});
+ new MutationObserver(()=>{if(hub.hidden||hub.inert)close();}).observe(hub,{attributes:true,attributeFilter:["hidden","inert"]});
+})();
+</script>
 </body></html>
