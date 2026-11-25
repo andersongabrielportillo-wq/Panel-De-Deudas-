@@ -2192,7 +2192,7 @@ async function openIndependentModule(id){
    };
    clnHubDetail.append(confirmForm);
    const draftForm=document.createElement("form");
-   const draftTitle=document.createElement("h4");draftTitle.textContent="Crear contrato borrador";
+   const draftTitle=document.createElement("h4");draftTitle.textContent="Registrar contrato y venta";
    draftForm.append(draftTitle);
    const field=(label,type="text",required=false)=>{
     const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
@@ -2308,14 +2308,15 @@ async function openIndependentModule(id){
     const price=document.createElement("input");price.type="number";price.required=true;price.min="0";price.step="0.01";price.placeholder="Precio a crédito";
     const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea";
     const remove=document.createElement("button");remove.type="button";remove.className="g2";remove.textContent="Quitar";
-    const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
+    const location=document.createElement("select");location.required=true;location.setAttribute("aria-label","Ubicación de entrega");for(const [value,label] of [["","Elegir ubicación"],["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
+    const line={wrap,item,qty,price,lineCommission,location};contractLines.push(line);
     remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
-    wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+    wrap.append(item,qty,price,lineCommission,location,remove);details.append(wrap);
     if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
    const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
-   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Guardar contrato borrador";draftForm.append(draftButton);
+   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Registrar contrato y actualizar inventario";draftForm.append(draftButton);
 
    // El contrato enlaza IDs verificados: nunca guarda un nombre suelto de vendedor o cliente.
    draftForm.onsubmit=async event=>{
@@ -2343,6 +2344,8 @@ async function openIndependentModule(id){
     if(!contractDetails.length||contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){
      status.textContent="Revisá artículos, cantidades y precios.";return;
     }
+    const locationsByItem=Object.create(null);
+    for(const line of contractLines){const id=line.item.value,location=Number(line.location.value);if(![1,2].includes(location)){status.textContent="Elegí Oficina o Bodega para cada artículo.";line.location.focus();return;}if(locationsByItem[id]&&locationsByItem[id]!==location){status.textContent="Por ahora las líneas del mismo artículo deben salir de una misma ubicación.";return;}locationsByItem[id]=location;}
     if(!number.value.trim()||!date.value){
      status.textContent="Faltan el número o la fecha del contrato.";return;
     }
@@ -2364,7 +2367,7 @@ async function openIndependentModule(id){
     if(params.p_saldo_inicial!==null&&Math.abs(params.p_saldo_inicial-(total-params.p_prima))>0.009){
      status.textContent="El saldo inicial debe ser el total de artículos menos la prima.";return;
     }
-    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor antes de guardar el borrador. No se descontará inventario hasta confirmarlo."))return;
+    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor. El servidor confirmará el contrato, la venta y el descuento de inventario en una sola operación."))return;
     draftButton.disabled=true;status.textContent="Comprobando cliente y vendedor…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
@@ -2431,20 +2434,16 @@ async function openIndependentModule(id){
       paintContractSellerSuggestions();
      }
      status.textContent="Guardando contrato de "+fullName+"…";
-     const result=await actions.execute("createContract",params);
+     const {data:result,error:saveError}=await SB.rpc("inv_registrar_contrato_integrado",{p_contrato:params,p_ubicaciones:locationsByItem,p_client_op_id:crypto.randomUUID()});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     draftId.value=String(result);
-     status.textContent="Borrador guardado con cliente y vendedor vinculados. Lo encontrarás en el historial del vendedor. Aún falta confirmar ubicaciones para descontar inventario.";
-     const summary=document.createElement("p");summary.className="cln-contract-identity";
-     summary.textContent="Contrato "+params.p_numero+" · Cliente: "+fullName+" · DUI terminado en "+duiDigits.slice(-4)+" · Vendedor: "+sellerEntered;
-     const oldPreview=confirmForm.querySelector(".cln-contract-identity");if(oldPreview)oldPreview.remove();
-     confirmForm.insertBefore(summary,draftId);
+     if(saveError||!result?.contrato_id||!result?.venta_id)throw Error(saveError?.message||"Resultado no verificado");
+     status.textContent="Contrato "+params.p_numero+" confirmado. Venta registrada e inventario actualizado.";
+     confirmForm.reset();clearLoaded();
      draftForm.reset();date.value=new Date().toISOString().slice(0,10);details.replaceChildren();contractLines.length=0;newDetail();
      customerLookup.value="";fillSelect(customer,[],"Buscá un cliente o escribí nombre y DUI");
      vendorChoice.hidden=true;vendorChoice.replaceChildren();
-     await loadDraftDetails();
     }catch(e){
-     if(token===nexusViewEpoch)status.textContent="No se pudo completar el borrador: "+String(e.message||e)+". Si se registró el cliente o vendedor, se reutilizará su identificación en el siguiente intento.";
+     if(token===nexusViewEpoch)status.textContent="Registro no verificado: "+String(e.message||e)+". Buscá el contrato por nombre o DUI antes de reintentar. El cliente o vendedor puede haberse registrado previamente.";
     }finally{draftButton.disabled=false}
    };
    clnHubDetail.append(draftForm);
