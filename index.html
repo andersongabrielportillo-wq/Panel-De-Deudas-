@@ -1252,7 +1252,7 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
 function clnOpenAdministrativeProjection(id,token,status){
  const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
  const fields={
- libro:[["fecha","Fecha"],["venta","Venta"],["contrato","Contrato"],["cliente","Cliente"],["vendedor","Vendedor"],["modalidad","Modalidad"],["total","Total","money"],["estado","Estado"]],
+ libro:[["fecha","Fecha"],["origen","Origen"],["venta","Venta"],["contrato","Contrato"],["cliente","Cliente"],["articulo","Artículo"],["ruta","Ruta"],["vendedor","Vendedor"],["modalidad","Modalidad"],["total","Valor","money"],["prima","Prima registrada","money"],["estado","Estado"]],
  rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["abonos","Abonos","money"],["saldo_pendiente","Saldo pendiente","money"]],
  planillas:[["vendedor","Vendedor"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión registrada","money"]]
  }[kind];
@@ -1270,6 +1270,7 @@ function clnOpenAdministrativeProjection(id,token,status){
  for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
  prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
  const detailPanel=document.createElement("div");detailPanel.className="cln-adm-detail";
+ if(kind==="libro"){const note=document.createElement("p");note.className="cln-empty";note.textContent="Los registros del Excel histórico son de consulta; su estado de cobro y anulación está pendiente de conciliar. No afectan existencias ni planillas. Selecciona fechas hasta el 31/10/2026 para consultarlos.";clnHubDetail.append(note);const quick=document.createElement("button");quick.type="button";quick.className="g2";quick.textContent="Ver octubre 2026";quick.onclick=()=>{from.value="2026-10-01";to.value="2026-10-31";form.requestSubmit()};form.append(quick);}
  clnHubDetail.append(form,list,pager,detailPanel);
  let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null;
  const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
