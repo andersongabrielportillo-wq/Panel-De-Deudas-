@@ -26,16 +26,34 @@ BEGIN
  ) THEN RAISE EXCEPTION 'Planillas: acceso reservado al administrador'; END IF;
  v_offset:=p_pagina*100;
  IF p_tipo='libro' THEN
- SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO v_rows FROM (
- SELECT coalesce(c.fecha,v.fecha) AS fecha,v.numero AS venta,c.numero AS contrato,
+ -- Historic records remain independent from stock, operational contracts and payroll.
+ SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.fecha DESC,x.origen,x.orden),'[]'::jsonb) INTO v_rows FROM (
+ SELECT * FROM (
+ SELECT coalesce(c.fecha,v.fecha) AS fecha,v.numero::text AS venta,c.numero AS contrato,
  cl.nombre AS cliente,s.nombre AS vendedor,v.modalidad,v.total,
- CASE WHEN v.estado='anulada' OR c.estado='anulado' THEN 'anulada' ELSE v.estado END AS estado
+ CASE WHEN v.estado='anulada' OR c.estado='anulado' THEN 'anulada' ELSE v.estado END AS estado,
+ 'CL Nexus'::text AS origen,v.id::text AS orden,c.ruta,
+ (SELECT string_agg(i.nombre_original || ' × ' || d.cantidad::text, ', ' ORDER BY d.id)
+ FROM public.inv_venta_detalles d JOIN public.inv_items i ON i.id=d.item_id WHERE d.venta_id=v.id) AS articulo,
+ (SELECT sum(p.monto) FROM public.inv_contrato_primas p WHERE p.contrato_id=c.id AND p.estado='recibida') AS prima,
+ NULL::text AS valor_original
  FROM public.inv_ventas v
  JOIN public.inv_vendedores s ON s.id=v.vendedor_id
  LEFT JOIN public.inv_contratos c ON c.venta_id=v.id
  LEFT JOIN public.inv_clientes cl ON cl.id=c.cliente_id
  WHERE coalesce(c.fecha,v.fecha) BETWEEN p_desde AND p_hasta
- ORDER BY coalesce(c.fecha,v.fecha) DESC,v.id
+ UNION ALL
+ SELECT h.fecha,nullif(trim(h.cells->>'B'),''),NULL::text,
+ h.cells->>'E',h.cells->>'L',h.modalidad,
+ CASE WHEN trim(h.cells->>'I') ~ '^[0-9]{1,12}([.][0-9]{1,12})?$' THEN (trim(h.cells->>'I'))::numeric END,
+ CASE WHEN trim(h.cells->>'I') ~ '^[0-9]{1,12}([.][0-9]{1,12})?$' THEN 'Histórica · sin conciliar' ELSE 'Histórica · revisar valor' END,
+ 'Excel histórico',lpad(h.source_row::text,10,'0'),h.cells->>'K',h.cells->>'F',
+ CASE WHEN trim(h.cells->>'J') ~ '^[0-9]{1,12}([.][0-9]{1,12})?$' THEN (trim(h.cells->>'J'))::numeric END,
+ h.cells->>'I'
+ FROM cln_import_private.sales_stage h
+ WHERE h.status='eligible' AND h.fecha<DATE '2026-11-01' AND h.fecha BETWEEN p_desde AND p_hasta
+ ) u
+ ORDER BY fecha DESC,origen,orden
  LIMIT 101 OFFSET v_offset
  ) x;
  ELSIF p_tipo='rutas' THEN
