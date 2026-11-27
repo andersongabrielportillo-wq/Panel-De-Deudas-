@@ -3112,20 +3112,38 @@ startAuth();
   if(!('serviceWorker' in navigator) || !(location.protocol==='https:' || location.hostname==='localhost'))return;
   const box=document.getElementById('pwaUpdate'),msg=document.getElementById('pwaUpdateText');
   const apply=document.getElementById('pwaApply'),later=document.getElementById('pwaLater');
-  let reg=null,waiting=null,requested=false,refreshing=false;
-  const pending=()=>typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');
-  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del CL Nexus lista para instalar.';apply.disabled=false;}
+  let reg=null,waiting=null,requested=false,refreshing=false,activated=false;
+  const pending=()=>{
+    try{return typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');}
+    catch(_){return true;}
+  };
+  function show(worker){
+    if(worker)waiting=worker;
+    if(!waiting&&!activated)return;
+    box.hidden=false;apply.disabled=false;
+    apply.textContent=activated?'Recargar versión nueva':'Actualizar ahora';
+    msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':activated?'La versión nueva está activa. Guarda los formularios antes de recargar.':'Hay una nueva versión de CL Nexus lista para instalar. Guarda los formularios antes de actualizar.';
+  }
+  function reload(){if(refreshing)return;refreshing=true;location.reload();}
   apply.addEventListener('click',()=>{
     if(pending()){msg.textContent='Hay cambios pendientes. Espera a que aparezca «Sincronizado» y vuelve a intentarlo.';return;}
-    if(!waiting)return;
-    requested=true;apply.disabled=true;msg.textContent='Aplicando actualización…';waiting.postMessage({type:'SKIP_WAITING'});
+    if(!waiting&&!activated)return;
+    if(!confirm('Guarda todos los formularios de CL Nexus y termina las operaciones en curso antes de actualizar. ¿Confirmas que ya guardaste tus cambios?'))return;
+    if(activated){reload();return;}
+    requested=true;apply.disabled=true;msg.textContent='Aplicando actualización…';
+    try{waiting.postMessage({type:'SKIP_WAITING'});}catch(_){requested=false;apply.disabled=false;msg.textContent='No se pudo activar la actualización. Vuelve a intentarlo.';}
   });
   later.addEventListener('click',()=>{box.hidden=true;});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(refreshing)return;
-    if(!requested){if(reg&&reg.waiting)show(reg.waiting);return;}
-    if(pending()){requested=false;show(reg&&reg.waiting);msg.textContent='Se detectaron cambios pendientes. Termina de sincronizar antes de recargar.';return;}
-    refreshing=true;location.reload();
+    activated=true;waiting=null;
+    if(!requested||pending()){
+      requested=false;show(null);
+      return;
+    }
+    // Activation can happen after another edit was started. Require a fresh
+    // explicit reload instead of discarding unsaved administrative forms.
+    requested=false;show(null);
   });
   function check(){if(reg&&navigator.onLine!==false)reg.update().catch(()=>{});}
   window.addEventListener('load',async()=>{
@@ -3137,8 +3155,7 @@ startAuth();
         const w=reg.installing;if(!w)return;
         w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)show(reg.waiting||w);});
       });
-      check();
-      setInterval(check,15*60*1000);
+      check();setInterval(check,15*60*1000);
       document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
       window.addEventListener('online',check);
     }catch(err){console.warn('Actualización PWA:',err);}
