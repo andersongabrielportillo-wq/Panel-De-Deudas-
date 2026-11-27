@@ -1262,8 +1262,9 @@ function clnOpenInventoryReconciliation(panel,active){
  controls.append(search,state,refresh);
  const msg=document.createElement("p");msg.setAttribute("role","status");
  const list=document.createElement("div");list.className="cln-adm-table-wrap";
- panel.replaceChildren(title,note,controls,msg,list);
- let rows=[],busy=false;
+ const editor=document.createElement('section');editor.className='cln-adm-detail';editor.hidden=true;
+ panel.replaceChildren(title,note,controls,msg,editor,list);
+ let rows=[],busy=false,reviewSeq=0,saving=false;
  const labels={importado:"Importado",exacta:"Pendiente: coincidencia exacta",alias_propuesto:"Pendiente: nombre similar",multiple:"Pendiente: duplicado",sin_coincidencia:"Pendiente: sin coincidencia",pendiente:"Pendiente"};
  function draw(){
   if(!active())return;
@@ -1272,8 +1273,41 @@ function clnOpenInventoryReconciliation(panel,active){
   const cols=[["articulo","Artículo Excel"],["bodega_local_excel","Bodega/local Excel"],["garantia_excel","Garantía Excel"],["total_excel","Total Excel"],["estado","Estado"],["nombre_catalogo","Catálogo / candidato"],["disponible_registrado","Disponible registrado"],["garantia_registrada","Garantía registrada"],["unidades_retenidas","Retenidas / no disponibles"],["observacion","Observaciones"],["criterio","Criterio de importación"]];
   const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
   for(const [,label] of cols){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
-  const body=table.createTBody();for(const r of matches){const tr=body.insertRow();for(const [key] of cols){const td=tr.insertCell();td.textContent=key==="estado"?(labels[r.estado]||"Pendiente"):String(r[key]??(key.endsWith("_registrado")||key.endsWith("_registrada")?"Sin registrar":""));}}
+  const actionHead=document.createElement("th");actionHead.textContent="Acción";head.append(actionHead);
+ const body=table.createTBody();for(const r of matches){const tr=body.insertRow();for(const [key] of cols){const td=tr.insertCell();td.textContent=key==="estado"?(labels[r.estado]||"Pendiente"):String(r[key]??(key.endsWith("_registrado")||key.endsWith("_registrada")?"Sin registrar":""));}const cell=tr.insertCell();if(r.estado!=="importado"){const btn=document.createElement("button");btn.type="button";btn.className="g2";btn.textContent="Conciliar";btn.onclick=()=>void openReview(r);cell.append(btn);}}
   list.replaceChildren(table);msg.textContent=rows.filter(r=>r.estado==="importado").length+" de "+rows.length+" importados · "+matches.length+" visibles";
+ }
+ async function openReview(r){
+  if(!active()||saving)return;const seq=++reviewSeq;editor.hidden=false;editor.replaceChildren();
+  const h=document.createElement("h5");h.textContent="Conciliar · "+r.articulo;
+  const held=r.observacion==="1 EN MAL ESTADO"||r.observacion==="1 ESTA ROTA"?1:0;
+  const info=document.createElement("p");info.textContent="Bodega/Local: "+r.bodega_local_excel+" · Retenidas: "+held+" · A registrar: "+(Number(r.bodega_local_excel)-held)+". "+(r.criterio||"Verifica modelo y cantidad.");
+  const feedback=document.createElement("p");feedback.setAttribute("role","status");feedback.textContent="Consultando catálogo…";
+  const close=document.createElement("button");close.type="button";close.className="g2";close.textContent="Cerrar";close.onclick=()=>{if(!saving){reviewSeq++;editor.hidden=true;editor.replaceChildren();}};
+  editor.append(h,info,feedback,close);
+  try{
+   const {data,error}=await SB.rpc("inv_catalogo_articulos_admin");
+   if(!active()||seq!==reviewSeq)return;if(error||!Array.isArray(data))throw Error(error?.message||"Catálogo no disponible");
+   const candidates=data.filter(x=>x.oficina==null&&x.bodega==null);
+   const find=document.createElement("input");find.type="search";find.placeholder="Buscar artículo existente";find.setAttribute("aria-label","Buscar artículo del catálogo");
+   const select=document.createElement("select");select.setAttribute("aria-label","Artículo correcto");
+   const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Confirmar importación";save.disabled=true;
+   function options(){const q=find.value.trim().toLocaleLowerCase("es-SV");select.replaceChildren();const opt=document.createElement("option");opt.value="";opt.textContent="Selecciona el modelo exacto";select.append(opt);for(const x of candidates.filter(x=>String(x.nombre+" "+(x.codigo||"")).toLocaleLowerCase("es-SV").includes(q))){const o=document.createElement("option");o.value=x.id;o.textContent=x.nombre+(x.codigo?" · "+x.codigo:"");select.append(o);}const n=document.createElement("option");n.value="__new__";n.textContent="Crear artículo con el nombre del Excel";select.append(n);save.disabled=true;}
+   find.oninput=options;select.onchange=()=>save.disabled=!select.value;options();
+   feedback.textContent="Elige el modelo solo si estás seguro. El servidor no modifica existencias ya registradas.";
+   save.onclick=async()=>{
+    if(!active()||seq!==reviewSeq||saving||!select.value)return;const isNew=select.value==="__new__";const name=isNew?r.articulo:select.selectedOptions[0]?.textContent;
+    if(!confirm("¿Confirmas "+name+" con "+(Number(r.bodega_local_excel)-held)+" unidades disponibles y "+held+" retenidas?"))return;
+    saving=true;save.disabled=find.disabled=select.disabled=close.disabled=true;
+    try{
+     const result=await SB.rpc("cln_resolver_inventario_octubre",{p_fila:r.fila,p_item:isNew?null:select.value,p_nuevo:isNew});
+     if(!active()||seq!==reviewSeq)return;if(result.error||result.data?.importado!==true)throw Error(result.error?.message||"Resultado no verificado");
+     editor.replaceChildren();const success=document.createElement("p");success.setAttribute("role","status");success.textContent="Importado: "+result.data.nombre+" · "+result.data.cantidad+" disponibles · "+result.data.retenidas+" retenidas. Actualiza el inventario general para ver las existencias.";editor.append(success);await load();
+    }catch(e){if(active()&&seq===reviewSeq)feedback.textContent="No se pudo importar: "+String(e.message||e);}
+    finally{saving=false;if(active()&&seq===reviewSeq){find.disabled=select.disabled=close.disabled=false;save.disabled=!select.value;}}
+   };
+   editor.append(find,select,save);
+  }catch(e){if(active()&&seq===reviewSeq)feedback.textContent="No se pudo cargar: "+String(e.message||e);}
  }
  async function load(){if(!active()||busy)return;busy=true;refresh.disabled=true;msg.textContent="Consultando inventario de octubre…";try{const {data,error}=await SB.rpc("cln_consultar_conciliacion_inventario");if(!active())return;if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta inválida");rows=data.filas;draw();}catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);}}finally{busy=false;if(active())refresh.disabled=false;}}
  controls.onsubmit=e=>{e.preventDefault();void load();};search.oninput=draw;state.onchange=draw;void load();
