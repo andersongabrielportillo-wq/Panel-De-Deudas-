@@ -1249,6 +1249,46 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
  activate(initialIndex<0?0:initialIndex);
 }
 
+function clnOpenHistoricalRoutes(panel,active){
+ const heading=document.createElement("h4");heading.textContent="Tarjetas históricas de rutas";
+ const note=document.createElement("p");note.textContent="Solo consulta. El saldo anotado en Excel no es un saldo vigente confirmado. No se permite registrar abonos sobre estas tarjetas hasta conciliar su identidad y estado.";
+ const form=document.createElement("form");form.className="cln-adm-filters";
+ const route=document.createElement("select"), state=document.createElement("select"), query=document.createElement("input");
+ const labels={"":"Todos los estados",candidata_consistente:"Coincidencia consistente · pendiente de confirmar",articulo_o_precio_revisar:"Artículo o precio por revisar",solo_nombre:"Solo coincide el nombre",sin_coincidencia:"Sin coincidencia",fecha_o_saldo_revisar:"Fecha o saldo por revisar",multiples_coincidencias:"Coincidencias múltiples",venta_repetida:"Venta repetida"};
+ function addSelect(select,values){for(const [value,label] of values){const opt=document.createElement("option");opt.value=value;opt.textContent=label;select.append(opt);}}
+ addSelect(route,[["","Todas las rutas"]]);addSelect(state,Object.entries(labels));
+ query.type="search";query.maxLength=200;query.placeholder="Nombre, artículo o vendedor";
+ for(const [label,control] of [["Ruta",route],["Buscar",query],["Conciliación",state]]){const wrap=document.createElement("label");wrap.textContent=label;wrap.append(control);form.append(wrap);}
+ const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Buscar";form.append(submit);
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
+ for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
+ prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
+ panel.replaceChildren(heading,note,form,msg,list,pager);
+ let page=0,busy=false,more=false,initialized=false,filters={ruta:"",busqueda:"",estado:""};
+ async function load(){
+  if(!active()||busy)return;busy=true;submit.disabled=true;prev.disabled=true;next.disabled=true;msg.textContent="Consultando tarjetas…";
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_rutas_historicas",{p_ruta:filters.ruta,p_busqueda:filters.busqueda,p_estado:filters.estado,p_pagina:page});
+   if(!active())return;
+   if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta no válida");
+   if(!initialized){addSelect(route,(data.rutas||[]).map(x=>[x,x]));initialized=true;}
+   const columns=[["ruta","Ruta"],["cliente","Cliente"],["articulo","Artículo"],["vendedor","Vendedor"],["valor_original","Valor Excel"],["saldo_anotado","Saldo anotado"],["fecha_ultimo_abono","Último abono anotado"],["fecha_venta_candidata","Fecha de venta candidata"],["estado","Conciliación"]];
+   const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+   for(const [,label] of columns){const th=document.createElement("th");th.scope="col";th.textContent=label;head.append(th);}
+   const body=table.createTBody();
+   for(const row of data.filas){const tr=body.insertRow();for(const [key] of columns){const cell=tr.insertCell();cell.textContent=key==="estado"?(labels[row[key]]||"Pendiente de revisar"):String(row[key]??"");}}
+   list.replaceChildren(table);more=!!data.hay_mas;msg.textContent=String(data.total)+" tarjetas encontradas";pageLabel.textContent="Página "+(page+1);
+  }catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){submit.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
+ }
+ form.onsubmit=e=>{e.preventDefault();if(busy)return;filters={ruta:route.value,busqueda:query.value.trim(),estado:state.value};page=0;void load();};
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};next.onclick=()=>{if(!busy&&more){page++;void load();}};
+ void load();
+}
+
 function clnOpenAdministrativeProjection(id,token,status){
  const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
  const fields={
@@ -1275,6 +1315,12 @@ function clnOpenAdministrativeProjection(id,token,status){
  let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null;
  const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
  const money=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
+ if(kind==="rutas"){
+  const historicButton=document.createElement("button");historicButton.type="button";historicButton.className="g2";historicButton.textContent="Consultar tarjetas históricas";
+  const historicPanel=document.createElement("section");historicPanel.hidden=true;historicButton.setAttribute("aria-expanded","false");
+  clnHubDetail.append(historicButton,historicPanel);
+  historicButton.onclick=()=>{if(!active())return;historicPanel.hidden=!historicPanel.hidden;historicButton.setAttribute("aria-expanded",String(!historicPanel.hidden));historicButton.textContent=historicPanel.hidden?"Consultar tarjetas históricas":"Ocultar tarjetas históricas";if(!historicPanel.hidden&&!historicPanel.hasChildNodes())clnOpenHistoricalRoutes(historicPanel,active);};
+ }
  function draw(rows){
   const table=document.createElement("table");table.className="cln-adm-table";
   const head=table.createTHead().insertRow();
