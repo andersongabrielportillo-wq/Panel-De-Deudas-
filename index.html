@@ -107,21 +107,24 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <div class="cln-workspace-content">
  <header class="cln-header">
   <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, ventas y contratos en un solo lugar.</p></div></div>
-  <span class="cln-session-chip">Sesión activa</span>
+  <div class="cln-header-actions"><span class="cln-session-chip">Sesión activa</span><button class="g2" id="clnMenuOpen" type="button" aria-label="Abrir menú de módulos" aria-haspopup="dialog" aria-controls="clnMenuDrawer" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Módulos</span></button></div>
  </header>
- <nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
+ <dialog id="clnMenuDrawer" aria-labelledby="clnMenuTitle"><div class="cln-drawer-header"><h3 id="clnMenuTitle">Módulos</h3><button type="button" class="g2" id="clnMenuClose" aria-label="Cerrar menú" autofocus>×</button></div><nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
   <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
   <button class="g2 cln-tab" type="button" id="clnHubSales">Ventas</button>
   <button class="g2 cln-tab" type="button" id="clnHubContracts">Contratos</button>
   <button class="g2 cln-tab" type="button" id="clnHubSellers">Vendedores</button>
   <button class="g2 cln-tab" type="button" id="clnHubWarranties">Garantías</button>
+  <button class="g2 cln-tab" type="button" id="clnHubLedger">Libro de ventas</button>
+  <button class="g2 cln-tab" type="button" id="clnHubRoutes">Rutas y abonos</button>
+  <button class="g2 cln-tab" type="button" id="clnHubPayroll">Planillas</button>
   <button class="g2 cln-tab cln-tab-protected" type="button" id="clnHubDebts">Deudas</button>
- </nav>
+ </nav><div class="cln-drawer-footer"><button type="button" class="g2" id="clnMenuLogout">Cerrar sesión</button></div></dialog>
  <main class="cln-content">
   <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
   <div id="clnHubDetail" aria-live="polite"></div>
  </main>
- <footer class="cln-footer"><span>Las existencias se registran después del conteo físico; no se toman del inventario histórico.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
+ <footer class="cln-footer"><span>Existencias registradas con corte del 20/10/2026 y movimientos posteriores. Importación parcial: verificar artículos pendientes de conciliación.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
 </div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtSessionRenew" hidden>Renovar inicio de sesión general</button><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}
 #clnModuleHub{min-height:100dvh;padding:clamp(12px,2.8vw,32px);background:var(--bg);color:var(--tx)}
@@ -901,7 +904,7 @@ async function ensureAuthenticatedWorkspace(session){
  if(authConnectedUid===uid&&SB_WID&&debtController){
   // Si una notificación antigua ocultó la pantalla, restaura Inventario sin
   // volver a pedir credenciales mientras Supabase conserve la sesión válida.
-  if(moduleHub.hidden)showModuleHub(true);
+  if(moduleHub.hidden&&debtScreen.hidden&&document.getElementById("privateApp").hidden)showModuleHub(true);
   else gate(false);
   return true;
  }
@@ -1015,7 +1018,10 @@ const clnHubViews=Object.freeze({
  clnHubSales:{title:"Ventas",description:"Registrá ventas con búsqueda rápida de artículos y selección de vendedor."},
  clnHubContracts:{title:"Contratos",description:"Creá contratos, asigná clientes y vendedores, y administrá primas."},
  clnHubSellers:{title:"Vendedores",description:"Registrá y consultá los vendedores disponibles en CL Nexus."},
- clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."}
+ clnHubWarranties:{title:"Garantías",description:"Gestioná devoluciones, liberaciones y reparaciones autorizadas."},
+ clnHubLedger:{title:"Libro de ventas",description:"Consulta de ventas nuevas y anulaciones registradas en CL Nexus."},
+ clnHubRoutes:{title:"Rutas y abonos",description:"Contratos a crédito confirmados, saldo pendiente y abonos registrados."},
+ clnHubPayroll:{title:"Planillas",description:"Avance de ventas y comisiones registradas por vendedor; no constituye una planilla liquidada."}
 });
 const clnHubDetail=document.getElementById("clnHubDetail");
 let nexusReader=null,nexusViewEpoch=0;
@@ -1116,11 +1122,13 @@ function clnEnhanceArticleSearch(container){
 
 const clnModuleByButton=Object.freeze({
  clnHubInventory:"inventario",clnHubSales:"ventas",clnHubContracts:"contratos",
- clnHubSellers:"vendedores",clnHubWarranties:"garantias"
+ clnHubSellers:"vendedores",clnHubWarranties:"garantias",
+ clnHubLedger:"libro_ventas",clnHubRoutes:"rutas",clnHubPayroll:"planillas"
 });
 const clnModuleDisplay=Object.freeze({
  inventario:"Inventario",ventas:"Ventas",contratos:"Contratos",
- vendedores:"Vendedores",garantias:"Garantías",deudas:"Deudas"
+ vendedores:"Vendedores",garantias:"Garantías",deudas:"Deudas",
+ libro_ventas:"Libro de ventas",rutas:"Rutas y abonos",planillas:"Planillas"
 });
 const clnHistoryDateTime=new Intl.DateTimeFormat("es-SV",{
  timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit",
@@ -1242,6 +1250,377 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
  const initialIndex=groups.findIndex(group=>group[0]===initialLabel);
  activate(initialIndex<0?0:initialIndex);
 }
+
+function clnOpenInventoryReconciliation(panel,active){
+ const title=document.createElement("h4");title.textContent="Conciliación del inventario de octubre";
+ const note=document.createElement("p");note.textContent="Corte del 20/10/2026. Las cantidades del Excel son históricas. Sin registrar no equivale a cero. Bodega contiene provisionalmente el consolidado Bodega/Local; no confirma la distribución física.";
+ const controls=document.createElement("form");controls.className="cln-adm-filters";
+ const search=document.createElement("input");search.type="search";search.placeholder="Buscar artículo";search.setAttribute("aria-label","Buscar artículo");
+ const state=document.createElement("select");state.setAttribute("aria-label","Estado de conciliación");
+ for(const [value,label] of [["","Todos"],["importado","Importados"],["pendiente","Pendientes"]]){const o=document.createElement("option");o.value=value;o.textContent=label;state.append(o);}
+ const refresh=document.createElement("button");refresh.type="submit";refresh.className="g2";refresh.textContent="Actualizar";
+ controls.append(search,state,refresh);
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ const editor=document.createElement('section');editor.className='cln-adm-detail';editor.hidden=true;
+ panel.replaceChildren(title,note,controls,msg,editor,list);
+ let rows=[],busy=false,reviewSeq=0,saving=false;
+ const labels={importado:"Importado",exacta:"Pendiente: coincidencia exacta",alias_propuesto:"Pendiente: nombre similar",multiple:"Pendiente: duplicado",sin_coincidencia:"Pendiente: sin coincidencia",pendiente:"Pendiente"};
+ function draw(){
+  if(!active())return;
+  const q=search.value.trim().toLocaleLowerCase("es-SV"),filter=state.value;
+  const matches=rows.filter(r=>(!q||String(r.articulo+" "+(r.nombre_catalogo||"")).toLocaleLowerCase("es-SV").includes(q))&&(!filter||(filter==="importado"?r.estado==="importado":r.estado!=="importado")));
+  const cols=[["articulo","Artículo Excel"],["bodega_local_excel","Bodega/local Excel"],["garantia_excel","Garantía Excel"],["total_excel","Total Excel"],["estado","Estado"],["nombre_catalogo","Catálogo / candidato"],["disponible_registrado","Disponible registrado"],["garantia_registrada","Garantía registrada"],["unidades_retenidas","Retenidas / no disponibles"],["observacion","Observaciones"],["criterio","Criterio de importación"]];
+  const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+  for(const [,label] of cols){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
+  const actionHead=document.createElement("th");actionHead.textContent="Acción";head.append(actionHead);
+ const body=table.createTBody();for(const r of matches){const tr=body.insertRow();for(const [key] of cols){const td=tr.insertCell();td.textContent=key==="estado"?(labels[r.estado]||"Pendiente"):String(r[key]??(key.endsWith("_registrado")||key.endsWith("_registrada")?"Sin registrar":""));}const cell=tr.insertCell();if(r.estado!=="importado"){const btn=document.createElement("button");btn.type="button";btn.className="g2";btn.textContent="Conciliar";btn.onclick=()=>void openReview(r);cell.append(btn);}}
+  list.replaceChildren(table);msg.textContent=rows.filter(r=>r.estado==="importado").length+" de "+rows.length+" importados · "+matches.length+" visibles";
+ }
+ async function openReview(r){
+  if(!active()||saving)return;const seq=++reviewSeq;editor.hidden=false;editor.replaceChildren();
+  const h=document.createElement("h5");h.textContent="Conciliar · "+r.articulo;
+  const held=r.observacion==="1 EN MAL ESTADO"||r.observacion==="1 ESTA ROTA"?1:0;
+  const info=document.createElement("p");info.textContent="Bodega/Local: "+r.bodega_local_excel+" · Retenidas: "+held+" · A registrar: "+(Number(r.bodega_local_excel)-held)+". "+(r.criterio||"Verifica modelo y cantidad.");
+  const feedback=document.createElement("p");feedback.setAttribute("role","status");feedback.textContent="Consultando catálogo…";
+  const close=document.createElement("button");close.type="button";close.className="g2";close.textContent="Cerrar";close.onclick=()=>{if(!saving){reviewSeq++;editor.hidden=true;editor.replaceChildren();}};
+  editor.append(h,info,feedback,close);
+  try{
+   const {data,error}=await SB.rpc("inv_catalogo_articulos_admin");
+   if(!active()||seq!==reviewSeq)return;if(error||!Array.isArray(data))throw Error(error?.message||"Catálogo no disponible");
+   const candidates=data.filter(x=>x.oficina==null&&x.bodega==null);
+   const find=document.createElement("input");find.type="search";find.placeholder="Buscar artículo existente";find.setAttribute("aria-label","Buscar artículo del catálogo");
+   const select=document.createElement("select");select.setAttribute("aria-label","Artículo correcto");
+   const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Confirmar importación";save.disabled=true;
+   function options(){const q=find.value.trim().toLocaleLowerCase("es-SV");select.replaceChildren();const opt=document.createElement("option");opt.value="";opt.textContent="Selecciona el modelo exacto";select.append(opt);for(const x of candidates.filter(x=>String(x.nombre+" "+(x.codigo||"")).toLocaleLowerCase("es-SV").includes(q))){const o=document.createElement("option");o.value=x.id;o.textContent=x.nombre+(x.codigo?" · "+x.codigo:"");select.append(o);}const n=document.createElement("option");n.value="__new__";n.textContent="Crear artículo con el nombre del Excel";select.append(n);save.disabled=true;}
+   find.oninput=options;select.onchange=()=>save.disabled=!select.value;options();
+   feedback.textContent="Elige el modelo solo si estás seguro. El servidor no modifica existencias ya registradas.";
+   save.onclick=async()=>{
+    if(!active()||seq!==reviewSeq||saving||!select.value)return;const isNew=select.value==="__new__";const name=isNew?r.articulo:select.selectedOptions[0]?.textContent;
+    if(!confirm("¿Confirmas "+name+" con "+(Number(r.bodega_local_excel)-held)+" unidades disponibles y "+held+" retenidas?"))return;
+    saving=true;save.disabled=find.disabled=select.disabled=close.disabled=true;
+    try{
+     const result=await SB.rpc("cln_resolver_inventario_octubre",{p_fila:r.fila,p_item:isNew?null:select.value,p_nuevo:isNew});
+     if(!active()||seq!==reviewSeq)return;if(result.error||result.data?.importado!==true)throw Error(result.error?.message||"Resultado no verificado");
+     editor.replaceChildren();const success=document.createElement("p");success.setAttribute("role","status");success.textContent="Importado: "+result.data.nombre+" · "+result.data.cantidad+" disponibles · "+result.data.retenidas+" retenidas. Actualiza el inventario general para ver las existencias.";editor.append(success);await load();
+    }catch(e){if(active()&&seq===reviewSeq)feedback.textContent="No se pudo importar: "+String(e.message||e);}
+    finally{saving=false;if(active()&&seq===reviewSeq){find.disabled=select.disabled=close.disabled=false;save.disabled=!select.value;}}
+   };
+   editor.append(find,select,save);
+  }catch(e){if(active()&&seq===reviewSeq)feedback.textContent="No se pudo cargar: "+String(e.message||e);}
+ }
+ async function load(){if(!active()||busy)return;busy=true;refresh.disabled=true;msg.textContent="Consultando inventario de octubre…";try{const {data,error}=await SB.rpc("cln_consultar_conciliacion_inventario");if(!active())return;if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta inválida");rows=data.filas;draw();}catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);}}finally{busy=false;if(active())refresh.disabled=false;}}
+ controls.onsubmit=e=>{e.preventDefault();void load();};search.oninput=draw;state.onchange=draw;void load();
+}
+
+function clnOpenHistoricalRoutes(panel,active){
+ const heading=document.createElement("h4");heading.textContent="Tarjetas históricas de rutas";
+ const note=document.createElement("p");note.textContent="Solo consulta. El saldo anotado en Excel no es un saldo vigente confirmado. No se permite registrar abonos sobre estas tarjetas hasta conciliar su identidad y estado.";
+ const form=document.createElement("form");form.className="cln-adm-filters";
+ const route=document.createElement("select"), state=document.createElement("select"), query=document.createElement("input");
+ const labels={"":"Todos los estados",candidata_consistente:"Coincidencia consistente · pendiente de confirmar",articulo_o_precio_revisar:"Artículo o precio por revisar",solo_nombre:"Solo coincide el nombre",sin_coincidencia:"Sin coincidencia",fecha_o_saldo_revisar:"Fecha o saldo por revisar",multiples_coincidencias:"Coincidencias múltiples",venta_repetida:"Venta repetida"};
+ function addSelect(select,values){for(const [value,label] of values){const opt=document.createElement("option");opt.value=value;opt.textContent=label;select.append(opt);}}
+ addSelect(route,[["","Todas las rutas"]]);addSelect(state,Object.entries(labels));
+ query.type="search";query.maxLength=200;query.placeholder="Nombre, artículo o vendedor";
+ for(const [label,control] of [["Ruta",route],["Buscar",query],["Conciliación",state]]){const wrap=document.createElement("label");wrap.textContent=label;wrap.append(control);form.append(wrap);}
+ const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Buscar";form.append(submit);
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
+ for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
+ prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
+ panel.replaceChildren(heading,note,form,msg,list,pager);
+ let page=0,busy=false,more=false,initialized=false,filters={ruta:"",busqueda:"",estado:""};
+ async function load(){
+  if(!active()||busy)return;busy=true;submit.disabled=true;prev.disabled=true;next.disabled=true;msg.textContent="Consultando tarjetas…";
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_rutas_historicas",{p_ruta:filters.ruta,p_busqueda:filters.busqueda,p_estado:filters.estado,p_pagina:page});
+   if(!active())return;
+   if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta no válida");
+   if(!initialized){addSelect(route,(data.rutas||[]).map(x=>[x,x]));initialized=true;}
+   const columns=[["ruta","Ruta"],["cliente","Cliente"],["articulo","Artículo"],["vendedor","Vendedor"],["valor_original","Valor Excel"],["saldo_anotado","Saldo anotado"],["fecha_ultimo_abono","Último abono anotado"],["fecha_venta_candidata","Fecha de venta candidata"],["estado","Conciliación"]];
+   const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+   for(const [,label] of columns){const th=document.createElement("th");th.scope="col";th.textContent=label;head.append(th);}
+   const body=table.createTBody();
+   for(const row of data.filas){const tr=body.insertRow();for(const [key] of columns){const cell=tr.insertCell();cell.textContent=key==="estado"?(labels[row[key]]||"Pendiente de revisar"):String(row[key]??"");}}
+   list.replaceChildren(table);more=!!data.hay_mas;msg.textContent=String(data.total)+" tarjetas encontradas";pageLabel.textContent="Página "+(page+1);
+  }catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){submit.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
+ }
+ form.onsubmit=e=>{e.preventDefault();if(busy)return;filters={ruta:route.value,busqueda:query.value.trim(),estado:state.value};page=0;void load();};
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};next.onclick=()=>{if(!busy&&more){page++;void load();}};
+ void load();
+}
+
+
+// Plantillas de cálculo basadas en las hojas "Formato de Cobrador" y "Formato De Vendedor".
+// No se copian importes de noviembre, ni se resuelven referencias rotas del libro.
+function clnDraftPayrollTotals(base,earnings,deductions){
+ const valid=v=>Number.isSafeInteger(v)&&Math.abs(v)<=100000000000;
+ const sum=values=>{const present=values.filter(v=>v!==null);if(!present.length)return null;if(!present.every(valid))throw Error("Importe inválido");const total=present.reduce((a,b)=>a+b,0);if(!Number.isSafeInteger(total))throw Error("Total inválido");return total;};
+ const gross=sum([...base,...earnings]),discount=sum(deductions);
+ return {gross,discount,net:gross===null?null:gross-(discount??0)};
+}
+function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
+ const heading=document.createElement("h5");heading.textContent="Borrador de formato original · "+person;
+ const note=document.createElement("p");note.textContent="Los formatos de cobrador y vendedor comienzan vacíos. Ingresá importes del período actual: las sumas son preliminares, las comisiones pendientes no forman parte del pago. Podés guardar el borrador por persona, período y formato; guardar no liquida salarios. Las referencias #REF! del Excel no se convierten en importes.";
+ const choose=document.createElement("select");choose.setAttribute("aria-label","Formato de planilla");
+ for(const [value,label] of [["","Seleccionar formato"],["vendedor","Formato de vendedor"],["cobrador","Formato de cobrador"]]){const opt=document.createElement("option");opt.value=value;opt.textContent=label;choose.append(opt);}
+ const workspace=document.createElement("div");panel.replaceChildren(heading,note,choose,workspace);
+ let request=0,dirty=false,loadedKind="";
+ const rpc=(kind,data,rev)=>SB.rpc("cln_planilla_detalle",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_tipo:kind,p_datos:data,p_revision:rev});
+ function build(kind,stored){
+  workspace.replaceChildren();if(!kind||!active())return;
+  let revision=stored?.revision??0;const saved=stored?.datos;const sections=Object.create(null);
+  const manual=[],earned=[],discounts=[],pending=[];
+  const addSection=label=>{const sec=document.createElement("section");sec.className="cln-adm-detail";const h=document.createElement("h5");h.textContent=label;sec.append(h);workspace.append(sec);return sec;};
+  const cents=input=>{if(input.value.trim()==="")return null;if(!input.validity.valid)throw Error("Revisá importes y decimales");const v=Number(input.value);if(!Number.isFinite(v)||Math.abs(v)>1000000000)throw Error("Importe fuera de rango");return Math.round(v*100);};
+  const amount=(label,target,list,signed=false)=>{const wrap=document.createElement("label");wrap.className="cln-adm-pay-field";wrap.textContent=label;const input=document.createElement("input");input.type="number";input.step="0.01";if(!signed)input.min="0";input.max="1000000000";input.addEventListener("input",recalc);wrap.append(input);target.append(wrap);list.push(input);input.addEventListener("input",()=>{dirty=true;});return input;};
+  const base=addSection("Resumen salario líquido a pagar");
+  amount("Sueldo base",base,manual);amount("Días adicionales (importe)",base,manual);amount("Otros ingresos",base,manual,true);
+  manual.forEach((input,i)=>{const value=saved?.base?.[i];if(value!=null)input.value=String(value/100);});
+  if(contribution!=null){const p=document.createElement("p");p.textContent="Comisión registrada en CL Nexus: "+new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(contribution))+". Verificá cuáles comisiones deben cancelarse en este período; no se suman dos veces.";base.append(p);}
+  const totals=document.createElement("div");totals.className="cln-adm-pager";const display=[];
+  for(const label of ["Devengado","Menos descuentos","A pagar"]){const wrap=document.createElement("label");wrap.textContent=label;const o=document.createElement("output");o.textContent="";wrap.append(o);totals.append(wrap);display.push(o);}
+  base.append(totals);const feedback=document.createElement("p");feedback.setAttribute("role","status");base.append(feedback);
+  function recalc(){
+   if(!active())return;
+   try{const t=clnDraftPayrollTotals(manual.map(cents),earned.map(cents),discounts.map(cents));const fmt=v=>v===null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(v/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));feedback.textContent=t.gross===null&&t.discount===null?"":"Cálculo preliminar con los importes ingresados; los campos vacíos siguen sin registrar.";}catch(e){display.forEach(o=>o.textContent="");feedback.textContent=String(e.message||e);}
+  }
+  function detail(key,title,columns,group,amountIndex){
+   const refs=[];sections[key]=refs;
+   const sec=addSection(title),wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+   for(const [label] of columns){const th=document.createElement("th");th.textContent=label;head.append(th);}const th=document.createElement("th");th.textContent="Acciones";head.append(th);
+   const tbody=table.createTBody();wrap.append(table);sec.append(wrap);
+   const add=document.createElement("button");add.type="button";add.className="g2";add.textContent="Agregar fila";sec.append(add);
+   function row(values=[]){
+    const tr=tbody.insertRow();let linked=null;const fields=[];refs.push(fields);
+    columns.forEach(([label,type],i)=>{const td=tr.insertCell();const input=document.createElement("input");input.type=type;input.setAttribute("aria-label",label);if(type==="number"){input.step="0.01";input.min="0";input.max="1000000000";}else if(type==="text")input.maxLength=200;if(values[i]!=null)input.value=type==="number"?String(values[i]/100):String(values[i]);input.addEventListener("input",()=>{dirty=true;});fields.push(input);td.append(input);if(i===amountIndex){linked=input;group.push(input);input.addEventListener("input",recalc);}});
+    const del=document.createElement("button");del.type="button";del.className="g2";del.textContent="Quitar";del.onclick=()=>{if(!active())return;if(linked){const i=group.indexOf(linked);if(i>=0)group.splice(i,1);}const pos=refs.indexOf(fields);if(pos>=0)refs.splice(pos,1);tr.remove();dirty=true;recalc();};tr.insertCell().append(del);
+   }
+   add.onclick=()=>{if(active()&&tbody.rows.length<100){row();dirty=true;}};const initial=saved?.secciones?.[key];if(Array.isArray(initial)&&initial.length)initial.forEach(row);else row();
+  }
+  const saleCols=[["Fecha","date"],["Cliente","text"],["Artículo","text"],["Condición","text"],["Valor","number"],["Comisión","number"]];
+  if(kind==="cobrador")detail("cobros","Detalle de comisiones s/ cobros del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
+  detail("ventas","Detalle de ventas a cancelar en el presente período",saleCols,earned,5);
+  detail("pendientes","Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);
+  for(const [key,label] of [["anticipos","Anticipos"],["faltantes","Faltantes"],["hurtos","Hurtos"],["articulos","Artículos"],["varios","Varios"]])detail(key,label,[["Detalle","text"],["Valor","number"]],discounts,1);
+  recalc();
+  const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Guardar borrador de planilla";workspace.append(save);
+  const result=document.createElement("p");result.setAttribute("role","status");workspace.append(result);result.textContent=revision?"Revisión guardada: "+revision:"Borrador vacío.";
+  save.onclick=async()=>{if(!active()||save.disabled)return;let data;try{data={base:manual.map(cents),secciones:Object.fromEntries(Object.entries(sections).map(([k,rows])=>[k,rows.map(fields=>fields.map(input=>input.type==="number"?cents(input):(input.value.trim()||null))).filter(row=>row.some(v=>v!==null))]))};}catch(e){result.textContent=String(e.message||e);return;}
+   if(!confirm("¿Guardar este borrador del período seleccionado? No liquida salarios."))return;
+   const disabled=[...workspace.querySelectorAll("input,button")];disabled.forEach(el=>el.disabled=true);choose.disabled=true;
+   try{const response=await rpc(kind,data,revision);if(!active())return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");revision=response.data.revision;dirty=false;const t=response.data.totales;const fmt=v=>v==null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(v)/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));result.textContent="Guardado y verificado en servidor · Revisión "+revision;}catch(e){if(active())result.textContent="No se pudo guardar: "+String(e.message||e);}finally{if(active()){disabled.forEach(el=>el.disabled=false);choose.disabled=false;}}};
+ }
+ choose.onchange=async()=>{const kind=choose.value;if(dirty&&!confirm("Hay cambios sin guardar. ¿Cambiar de formato?")){choose.value=loadedKind;return;}dirty=false;const seq=++request;loadedKind=kind;workspace.replaceChildren();if(!kind||!active())return;const msg=document.createElement("p");msg.textContent="Cargando borrador guardado…";workspace.append(msg);try{const response=await rpc(kind,null,0);if(!active()||seq!==request)return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");build(kind,response.data);}catch(e){if(active()&&seq===request)msg.textContent="No se pudo cargar: "+String(e.message||e);}};
+}
+
+function clnOpenPayrollCommissions(panel,active,personId,personName,range){
+ const note=document.createElement("p");note.textContent="Contratos nuevos confirmados del período de venta. Las comisiones pendientes y pagadas se muestran por separado; no se liquidan ni se agregan otra vez al borrador automáticamente.";
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const content=document.createElement("div");const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),refresh=document.createElement("button");
+ for(const [el,label] of [[prev,"Anterior"],[next,"Siguiente"],[refresh,"Actualizar comisiones"]]){el.type="button";el.className="g2";el.textContent=label;}
+ pager.append(prev,next,refresh);panel.replaceChildren(note,msg,content,pager);
+ let page=0,busy=false,more=false;
+ const fmt=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
+ const money=v=>v==null?"Sin registrar":fmt.format(Number(v));
+ async function load(){
+  if(!active()||busy)return;busy=true;prev.disabled=next.disabled=refresh.disabled=true;
+  msg.textContent="Consultando comisiones…";
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_comisiones_planilla",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_pagina:page});
+   if(!active())return;if(error||typeof data?.vinculado!=="boolean")throw Error(error?.message||"Respuesta inválida");
+   content.replaceChildren();more=!!data.hay_mas;
+   if(!data.vinculado){
+    msg.textContent="Esta persona todavía no está vinculada a un vendedor.";
+    const select=document.createElement("select");select.setAttribute("aria-label","Vendedor para vincular");
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar vendedor existente";select.append(placeholder);
+    for(const row of data.vendedores||[]){const o=document.createElement("option");o.value=row.id;o.textContent=row.nombre;select.append(o);}
+    const link=document.createElement("button");link.type="button";link.className="g2";link.textContent="Vincular vendedor";
+    link.disabled=true;select.onchange=()=>link.disabled=!select.value;
+    link.onclick=async()=>{
+     if(!active()||link.disabled||!select.value||busy)return;
+     const chosen=select.selectedOptions[0]?.textContent||"";if(!confirm("¿Vincular "+personName+" con "+chosen+"? Confirmá que corresponden a la misma persona."))return;
+     busy=true;link.disabled=select.disabled=refresh.disabled=true;
+     try{const response=await SB.rpc("cln_vincular_vendedor_planilla",{p_persona:personId,p_vendedor:select.value});if(!active())return;if(response.error||response.data?.vinculado!==true)throw Error(response.error?.message||"No se pudo verificar");busy=false;page=0;await load();}
+     catch(e){if(active())msg.textContent="No se pudo vincular: "+String(e.message||e);}
+     finally{busy=false;if(active()){select.disabled=false;link.disabled=!select.value;refresh.disabled=false;}}
+    };
+    if(!data.vendedores?.length){const empty=document.createElement("p");empty.textContent="No hay vendedores activos sin vincular. Primero registrá el vendedor en Vendedores.";content.append(empty);}else content.append(select,link);
+   }else{
+    msg.textContent="Vendedor: "+data.vendedor+" · "+data.total+" contratos · página "+(page+1);
+    const summary=document.createElement("p");summary.textContent="Comisión registrada: "+money(data.comision_registrada)+" · Pendiente: "+money(data.pendiente)+" · Pagada: "+money(data.pagada);content.append(summary);
+    const wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";
+    const fields=[["fecha","Fecha"],["contrato","Contrato"],["cliente","Cliente"],["articulo","Artículo"],["modalidad","Modalidad"],["venta","Venta"],["comision","Comisión"],["estado","Estado"]];
+    const head=table.createTHead().insertRow();for(const [,label] of fields){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
+    const body=table.createTBody();for(const row of data.filas||[]){const tr=body.insertRow();for(const [key] of fields){const td=tr.insertCell();td.textContent=key==="venta"||key==="comision"?money(row[key]):String(row[key]??"");}}
+    wrap.append(table);content.append(wrap);
+   }
+  }catch(e){if(active()){content.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){prev.disabled=page===0;next.disabled=!more;refresh.disabled=false;}}
+ }
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};next.onclick=()=>{if(!busy&&more){page++;void load();}};refresh.onclick=()=>void load();void load();
+}
+
+function clnOpenAdministrativeProjection(id,token,status){
+ const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
+ const fields={
+ libro:[["fecha","Fecha"],["origen","Origen"],["venta","Venta"],["contrato","Contrato"],["cliente","Cliente"],["articulo","Artículo"],["ruta","Ruta"],["vendedor","Vendedor"],["modalidad","Modalidad"],["total","Valor","money"],["prima","Prima registrada","money"],["estado","Estado"]],
+ rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["abonos","Abonos","money"],["saldo_pendiente","Saldo pendiente","money"]],
+ planillas:[["vendedor","Vendedor"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión registrada","money"]]
+ }[kind];
+ const form=document.createElement("form");form.className="cln-adm-filters";
+ const dates=new Intl.DateTimeFormat("en-CA",{timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const getDate=k=>dates.find(p=>p.type===k).value;
+ const today=getDate("year")+"-"+getDate("month")+"-"+getDate("day");
+ const dateField=(label,value)=>{const wrap=document.createElement("label");wrap.textContent=label;const input=document.createElement("input");input.type="date";input.required=true;input.value=value;wrap.append(input);form.append(wrap);return input};
+ const from=dateField("Desde",kind==="rutas"?getDate("year")+"-01-01":today.slice(0,7)+"-01");
+ const to=dateField("Hasta",today);
+ const refresh=document.createElement("button");refresh.type="submit";refresh.className="g2";refresh.textContent="Actualizar";form.append(refresh);
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
+ for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
+ prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
+ const detailPanel=document.createElement("div");detailPanel.className="cln-adm-detail";
+ if(kind==="libro"){const note=document.createElement("p");note.className="cln-empty";note.textContent="Los registros del Excel histórico son de consulta; su estado de cobro y anulación está pendiente de conciliar. No afectan existencias ni planillas. Selecciona fechas hasta el 31/10/2026 para consultarlos.";clnHubDetail.append(note);const quick=document.createElement("button");quick.type="button";quick.className="g2";quick.textContent="Ver octubre 2026";quick.onclick=()=>{from.value="2026-10-01";to.value="2026-10-31";form.requestSubmit()};form.append(quick);}
+ clnHubDetail.append(form,list,pager,detailPanel);
+ let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null;
+ const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
+ const money=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
+ if(kind==="rutas"){
+  const historicButton=document.createElement("button");historicButton.type="button";historicButton.className="g2";historicButton.textContent="Consultar tarjetas históricas";
+  const historicPanel=document.createElement("section");historicPanel.hidden=true;historicButton.setAttribute("aria-expanded","false");
+  clnHubDetail.append(historicButton,historicPanel);
+  historicButton.onclick=()=>{if(!active())return;historicPanel.hidden=!historicPanel.hidden;historicButton.setAttribute("aria-expanded",String(!historicPanel.hidden));historicButton.textContent=historicPanel.hidden?"Consultar tarjetas históricas":"Ocultar tarjetas históricas";if(!historicPanel.hidden&&!historicPanel.hasChildNodes())clnOpenHistoricalRoutes(historicPanel,active);};
+ }
+ function draw(rows){
+  const table=document.createElement("table");table.className="cln-adm-table";
+  const head=table.createTHead().insertRow();
+  for(const f of fields){const th=document.createElement("th");th.scope="col";th.textContent=f[1];head.append(th);}
+  if(kind!=="libro"){const th=document.createElement("th");th.scope="col";th.textContent="Acciones";head.append(th);}
+  const body=table.createTBody();
+  for(const row of rows){const tr=body.insertRow();for(const [key,label,format] of fields){const cell=tr.insertCell();const v=row[key];cell.textContent=v==null||v===""?"":format==="money"?money.format(Number(v)):String(v);}if(kind!=="libro"){const cell=tr.insertCell(),b=document.createElement("button");b.type="button";b.className="g2";b.textContent=kind==="rutas"?"Abonos":"Ver planilla";b.onclick=()=>kind==="rutas"?showPayments(row):void showPayroll(row);cell.append(b);}}
+  list.replaceChildren(table);
+  if(!rows.length){const p=document.createElement("p");p.className="cln-empty";p.textContent="Sin registros en el período seleccionado.";list.append(p);}
+ }
+ let selection=0,pendingPayment=null;
+ async function showPayroll(row){
+  const seq=++selection;detailPanel.replaceChildren();
+  const range={from:activeRange.from,to:activeRange.to};
+  const valid=()=>active()&&seq===selection;
+  const title=document.createElement("h4");title.textContent="Planilla · "+row.vendedor;detailPanel.append(title);
+  const period=document.createElement("p");period.textContent="Período: "+range.from+" a "+range.to;detailPanel.append(period);
+  const contribution=document.createElement("p");contribution.textContent="Ventas confirmadas: "+(row.ventas_confirmadas==null?"—":money.format(Number(row.ventas_confirmadas)))+" · Comisión registrada: "+(row.comision_registrada==null?"—":money.format(Number(row.comision_registrada)));detailPanel.append(contribution);
+  const draftButton=document.createElement("button");draftButton.type="button";draftButton.className="g2";draftButton.textContent="Borrador cobrador / vendedor";draftButton.setAttribute("aria-expanded","false");
+  const draftPanel=document.createElement("section");draftPanel.hidden=true;
+  draftButton.onclick=()=>{if(!valid())return;draftPanel.hidden=!draftPanel.hidden;draftButton.setAttribute("aria-expanded",String(!draftPanel.hidden));if(!draftPanel.hidden&&!draftPanel.hasChildNodes())clnOpenPayrollDraft(draftPanel,valid,row.vendedor,row.comision_registrada,row.persona_id,range);};
+  const commissionButton=document.createElement("button");commissionButton.type="button";commissionButton.className="g2";commissionButton.textContent="Consultar comisiones de contratos";commissionButton.setAttribute("aria-expanded","false");
+  const commissionPanel=document.createElement("section");commissionPanel.hidden=true;
+  commissionButton.onclick=()=>{if(!valid())return;commissionPanel.hidden=!commissionPanel.hidden;commissionButton.setAttribute("aria-expanded",String(!commissionPanel.hidden));if(!commissionPanel.hidden&&!commissionPanel.hasChildNodes())clnOpenPayrollCommissions(commissionPanel,valid,row.persona_id,row.vendedor,range);};
+  detailPanel.append(commissionButton,commissionPanel);
+  detailPanel.append(draftButton,draftPanel);
+  const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
+  try{
+   const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
+   if(!valid())return;
+   if(error)throw Error(error.message);
+   message.textContent="Los campos manuales vacíos permanecen vacíos. Las ventas y comisiones se consultan desde los contratos; la liquidación automática requiere validar las fórmulas de cada formato.";
+   if(!data?.length){message.textContent="No hay formatos asignados a esta persona.";return;}
+   for(const template of data){
+    const result=await SB.from("cln_payroll_periods").select("valores,revision").eq("plantilla_id",template.id).eq("desde",range.from).eq("hasta",range.to).maybeSingle();
+    if(!valid())return;
+    if(result.error)throw Error(result.error.message);
+    let revision=result.data?.revision??0;
+    const values=result.data?.valores??{};
+    const edit=document.createElement("form");edit.className="cln-adm-payroll-form";
+    const heading=document.createElement("h5");heading.textContent=template.source_key;edit.append(heading);
+    const inputs=[];
+    for(const [i,field] of (Array.isArray(template.campos)?template.campos:[]).entries()){
+     const label=document.createElement("label");label.className="cln-adm-pay-field";label.textContent=String(field.etiqueta||"Campo");
+     const input=document.createElement("input");input.type="number";input.step="0.01";input.value=values[i]==null?"":String(values[i]);
+     const editable=(field.tipo||"manual")==="manual";input.readOnly=!editable;
+     if(editable)inputs.push([String(i),input]);
+     label.append(input);edit.append(label);
+    }
+    const save=document.createElement("button");save.type="submit";save.className="g2";save.textContent="Guardar planilla";
+    const feedback=document.createElement("p");feedback.setAttribute("role","status");edit.append(save,feedback);
+    edit.onsubmit=async e=>{
+     e.preventDefault();if(!valid()||save.disabled)return;
+     const payload=Object.create(null);
+     for(const [key,input] of inputs){if(input.value!==""){const val=Number(input.value);if(!Number.isFinite(val)){feedback.textContent="Revisá los importes.";return;}payload[key]=val;}}
+     if(!confirm("¿Guardar los valores manuales de esta planilla?"))return;
+     save.disabled=true;
+     try{
+      const response=await SB.rpc("cln_guardar_planilla",{p_plantilla:template.id,p_desde:range.from,p_hasta:range.to,p_valores:payload,p_revision:revision});
+      if(!valid())return;
+      if(response.error||!Number.isInteger(response.data))throw Error(response.error?.message||"Resultado no verificado");
+      revision=response.data;feedback.textContent="Planilla guardada.";
+     }catch(e){if(valid())feedback.textContent="No se pudo guardar: "+String(e.message||e);}
+     finally{save.disabled=false;}
+    };
+    detailPanel.append(edit);
+   }
+  }catch(e){if(valid())message.textContent="No se pudo consultar la planilla: "+String(e.message||e);}
+ }
+ function showPayments(row){
+  if(pendingPayment){status.textContent="Hay un abono pendiente de verificar; reintentá la misma operación antes de cambiar de contrato.";return;}
+  const seq=++selection;detailPanel.replaceChildren();
+  const title=document.createElement("h4");title.textContent="Abonos · "+row.cliente+" · "+row.contrato;detailPanel.append(title);
+  const paymentForm=document.createElement("form");paymentForm.className="cln-adm-filters";
+  const add=(label,type)=>{const wrap=document.createElement("label");wrap.textContent=label;const input=document.createElement("input");input.type=type;input.required=true;wrap.append(input);paymentForm.append(wrap);return input;};
+  const amount=add("Monto","number");amount.min="0.01";amount.step="0.01";amount.max=String(row.saldo_pendiente);
+  const date=add("Fecha","date");date.value=today;const collector=add("Cobrador","text");collector.maxLength=200;
+  const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Registrar abono";paymentForm.append(submit);detailPanel.append(paymentForm);
+  const history=document.createElement("div");detailPanel.append(history);
+  async function paymentsHistory(){
+   const {data,error}=await SB.from("cln_route_payments").select("fecha,monto,cobrador").eq("contrato_id",row.contrato_id).order("fecha",{ascending:false}).limit(100);
+   if(!active()||seq!==selection)return;
+   history.replaceChildren();const heading=document.createElement("h5");heading.textContent="Últimos 100 abonos";history.append(heading);
+   if(error){const p=document.createElement("p");p.textContent=error.message;history.append(p);return;}
+   for(const item of data||[]){const p=document.createElement("p");p.textContent=item.fecha+" · "+money.format(Number(item.monto))+" · "+item.cobrador;history.append(p);}
+  }
+  paymentForm.onsubmit=async e=>{
+   e.preventDefault();if(!active()||submit.disabled)return;
+   if(!pendingPayment){if(!confirm("¿Registrar el abono de "+money.format(Number(amount.value))+"?"))return;
+    pendingPayment={p_contrato:row.contrato_id,p_op:crypto.randomUUID(),p_monto:Number(amount.value),p_fecha:date.value,p_cobrador:collector.value.trim()};}
+   submit.disabled=true;for(const input of [amount,date,collector])input.readOnly=true;
+   try{
+    const {data,error}=await SB.rpc("cln_registrar_abono",pendingPayment);
+    if(error||!data)throw Error(error?.message||"Resultado no verificado");
+    pendingPayment=null;
+    if(!active()||seq!==selection)return;
+    paymentForm.reset();date.value=today;status.textContent="Abono confirmado.";
+    await paymentsHistory();await load();
+    // Force a fresh selection so that the amount limit is taken from the refreshed row.
+    paymentForm.remove();
+   }catch(err){if(active()){status.textContent="Abono no verificado: "+String(err.message||err)+". Podés reintentar la misma operación.";submit.textContent="Reintentar mismo abono";}}
+   finally{submit.disabled=false;}
+  };
+  void paymentsHistory();
+ }
+ async function load(){
+  if(!active()||busy)return;busy=true;refresh.disabled=true;prev.disabled=true;next.disabled=true;
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_integracion",{p_tipo:kind,p_desde:activeRange.from,p_hasta:activeRange.to,p_pagina:page});
+   if(!active())return;
+   if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta no válida");
+   more=!!data.hay_mas;draw(data.filas);
+   pageLabel.textContent="Página "+(page+1);
+   status.textContent="Datos del servidor · "+new Intl.DateTimeFormat("es-SV",{timeZone:"America/El_Salvador",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date());
+  }catch(e){if(active()){list.replaceChildren();status.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){refresh.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
+ }
+ form.onsubmit=e=>{e.preventDefault();if(busy)return;if(from.value>to.value||(Date.parse(to.value)-Date.parse(from.value))/86400000>366){status.textContent="Elegí un período válido de hasta 366 días.";return;}if(pendingPayment){status.textContent="Verificá el abono pendiente antes de cambiar el período.";return;}selection++;detailPanel.replaceChildren();activeRange={from:from.value,to:to.value};page=0;void load();};
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};
+ next.onclick=()=>{if(!busy&&more){page++;void load();}};
+ void load();
+ timer=setInterval(()=>{if(!active()){clearInterval(timer);return;}if(document.visibilityState==="visible")void load();},15000);
+}
+
 async function openIndependentModule(id){
  document.getElementById("clnPrintableInventory")?.remove();
  if(clnModuleHistoryDialog.open)clnModuleHistoryDialog.close();
@@ -1259,9 +1638,11 @@ async function openIndependentModule(id){
  historyButton.textContent="Consultar historial";
  historyButton.onclick=()=>void clnShowModuleHistory(clnModuleByButton[id]);
  historyToolbar.append(historyButton);
- clnHubDetail.append(title,subtitle,status,historyToolbar);
+ clnHubDetail.append(title,subtitle,status);
+ if(clnModuleByButton[id])clnHubDetail.append(historyToolbar);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
+  if(["clnHubLedger","clnHubRoutes","clnHubPayroll"].includes(id)){void clnRecordModuleUse(clnModuleByButton[id]);clnOpenAdministrativeProjection(id,token,status);return;}
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
   void clnRecordModuleUse(clnModuleByButton[id]);
@@ -1518,7 +1899,11 @@ async function openIndependentModule(id){
       }
      };
      const tools=document.createElement("div");tools.className="cln-inventory-tools";
-     tools.append(printButton);results.append(tools);
+     const compare=document.createElement("button");compare.type="button";compare.className="g2";compare.textContent="Conciliación de octubre";compare.setAttribute("aria-expanded","false");
+     const review=document.createElement("section");review.hidden=true;
+     const current=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
+     compare.onclick=()=>{if(!current())return;review.hidden=!review.hidden;compare.setAttribute("aria-expanded",String(!review.hidden));if(!review.hidden&&!review.hasChildNodes())clnOpenInventoryReconciliation(review,current);};
+     tools.append(printButton,compare);results.append(tools,review);
     }
     results.append(search,count,cards);paint();
    }else{
@@ -2192,7 +2577,7 @@ async function openIndependentModule(id){
    };
    clnHubDetail.append(confirmForm);
    const draftForm=document.createElement("form");
-   const draftTitle=document.createElement("h4");draftTitle.textContent="Crear contrato borrador";
+   const draftTitle=document.createElement("h4");draftTitle.textContent="Registrar contrato y venta";
    draftForm.append(draftTitle);
    const field=(label,type="text",required=false)=>{
     const el=document.createElement("input");el.type=type;el.placeholder=label;el.setAttribute("aria-label",label);el.required=required;el.maxLength=200;draftForm.append(el);return el;
@@ -2308,16 +2693,18 @@ async function openIndependentModule(id){
     const price=document.createElement("input");price.type="number";price.required=true;price.min="0";price.step="0.01";price.placeholder="Precio a crédito";
     const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea";
     const remove=document.createElement("button");remove.type="button";remove.className="g2";remove.textContent="Quitar";
-    const line={wrap,item,qty,price,lineCommission};contractLines.push(line);
+    const location=document.createElement("select");location.required=true;location.setAttribute("aria-label","Ubicación de entrega");for(const [value,label] of [["","Elegir ubicación"],["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
+    const line={wrap,item,qty,price,lineCommission,location};contractLines.push(line);
     remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
-    wrap.append(item,qty,price,lineCommission,remove);details.append(wrap);
+    wrap.append(item,qty,price,lineCommission,location,remove);details.append(wrap);
     if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
    const draftNotes=document.createElement("textarea");draftNotes.placeholder="Observaciones";draftNotes.setAttribute("aria-label","Observaciones de contrato");draftForm.append(draftNotes);
-   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Guardar contrato borrador";draftForm.append(draftButton);
+   const draftButton=document.createElement("button");draftButton.type="submit";draftButton.className="g2";draftButton.textContent="Registrar contrato y actualizar inventario";draftForm.append(draftButton);
 
    // El contrato enlaza IDs verificados: nunca guarda un nombre suelto de vendedor o cliente.
+   let integratedPending=null;
    draftForm.onsubmit=async event=>{
     event.preventDefault();
     if(token!==nexusViewEpoch||moduleHub.hidden||draftButton.disabled)return;
@@ -2343,6 +2730,8 @@ async function openIndependentModule(id){
     if(!contractDetails.length||contractDetails.some(line=>!line.item_id||!Number.isInteger(line.cantidad)||line.cantidad<=0||![line.precio_credito_unitario,line.comision_linea].every(v=>Number.isFinite(v)&&v>=0))){
      status.textContent="Revisá artículos, cantidades y precios.";return;
     }
+    const locationsByItem=Object.create(null);
+    for(const line of contractLines){const id=line.item.value,location=Number(line.location.value);if(![1,2].includes(location)){status.textContent="Elegí Oficina o Bodega para cada artículo.";line.location.focus();return;}if(locationsByItem[id]&&locationsByItem[id]!==location){status.textContent="Por ahora las líneas del mismo artículo deben salir de una misma ubicación.";return;}locationsByItem[id]=location;}
     if(!number.value.trim()||!date.value){
      status.textContent="Faltan el número o la fecha del contrato.";return;
     }
@@ -2364,7 +2753,7 @@ async function openIndependentModule(id){
     if(params.p_saldo_inicial!==null&&Math.abs(params.p_saldo_inicial-(total-params.p_prima))>0.009){
      status.textContent="El saldo inicial debe ser el total de artículos menos la prima.";return;
     }
-    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor antes de guardar el borrador. No se descontará inventario hasta confirmarlo."))return;
+    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor. El servidor confirmará el contrato, la venta y el descuento de inventario en una sola operación."))return;
     draftButton.disabled=true;status.textContent="Comprobando cliente y vendedor…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
@@ -2431,20 +2820,20 @@ async function openIndependentModule(id){
       paintContractSellerSuggestions();
      }
      status.textContent="Guardando contrato de "+fullName+"…";
-     const result=await actions.execute("createContract",params);
+     const integratedPayload=JSON.stringify({p_contrato:params,p_ubicaciones:locationsByItem});
+     if(integratedPending&&integratedPending.payload!==integratedPayload)throw Error("Hay una operación anterior no verificada. Consultá el contrato antes de cambiar sus datos.");
+     if(!integratedPending)integratedPending={payload:integratedPayload,op:crypto.randomUUID()};
+     const {data:result,error:saveError}=await SB.rpc("inv_registrar_contrato_integrado",{p_contrato:params,p_ubicaciones:locationsByItem,p_client_op_id:integratedPending.op});
      if(token!==nexusViewEpoch||moduleHub.hidden)return;
-     draftId.value=String(result);
-     status.textContent="Borrador guardado con cliente y vendedor vinculados. Lo encontrarás en el historial del vendedor. Aún falta confirmar ubicaciones para descontar inventario.";
-     const summary=document.createElement("p");summary.className="cln-contract-identity";
-     summary.textContent="Contrato "+params.p_numero+" · Cliente: "+fullName+" · DUI terminado en "+duiDigits.slice(-4)+" · Vendedor: "+sellerEntered;
-     const oldPreview=confirmForm.querySelector(".cln-contract-identity");if(oldPreview)oldPreview.remove();
-     confirmForm.insertBefore(summary,draftId);
+     if(saveError||!result?.contrato_id||!result?.venta_id)throw Error(saveError?.message||"Resultado no verificado");
+     integratedPending=null;
+     status.textContent="Contrato "+params.p_numero+" confirmado. Venta registrada e inventario actualizado.";
+     confirmForm.reset();clearLoaded();
      draftForm.reset();date.value=new Date().toISOString().slice(0,10);details.replaceChildren();contractLines.length=0;newDetail();
      customerLookup.value="";fillSelect(customer,[],"Buscá un cliente o escribí nombre y DUI");
      vendorChoice.hidden=true;vendorChoice.replaceChildren();
-     await loadDraftDetails();
     }catch(e){
-     if(token===nexusViewEpoch)status.textContent="No se pudo completar el borrador: "+String(e.message||e)+". Si se registró el cliente o vendedor, se reutilizará su identificación en el siguiente intento.";
+     if(token===nexusViewEpoch)status.textContent="Registro no verificado: "+String(e.message||e)+". Buscá el contrato por nombre o DUI antes de reintentar. El cliente o vendedor puede haberse registrado previamente.";
     }finally{draftButton.disabled=false}
    };
    clnHubDetail.append(draftForm);
@@ -2567,19 +2956,31 @@ for(const id of Object.keys(clnHubViews)){
  document.getElementById(id).onclick=()=>openIndependentModule(id);
 }
 document.getElementById("debtUnlockButton").onclick=async()=>{
- if(!debtController)return;
+ if(!debtController||!SB_UID||!SB_WID)return;
  const input=document.getElementById("debtUnlockPassword"),button=document.getElementById("debtUnlockButton");
- const password=input.value;input.value="";button.disabled=true;
+ const back=document.getElementById("debtUnlockBack"),renew=document.getElementById("debtSessionRenew");
+ if(button.disabled)return;
+ const password=input.value;input.value="";if(!password){debtScreenVisible(true,"Ingresá la contraseña adicional de Deudas.");return;}
+ const generation=authSessionGeneration,uid=SB_UID,controller=debtController;
+ const current=()=>generation===authSessionGeneration&&uid===SB_UID&&controller===debtController;
+ button.disabled=back.disabled=renew.disabled=true;
+ document.getElementById("debtUnlockError").textContent="Verificando sesión general…";
  try{
-  await debtController.open(password);
-  void clnRecordModuleUse("deudas");
+  const {data,error}=await SB.rpc("cln_debt_session_status");
+  if(!current())return;
+  if(error)throw Error(error.message||"No se pudo verificar la sesión general");
+  if(data==="sesion_no_activa"||data==="sesion_requerida")throw Error("Sesión no activa");
+  if(data!=="activa")throw Error("Acceso a Deudas no autorizado");
+  await controller.open(password);
+  if(current())void clnRecordModuleUse("deudas");
  }catch(e){
+  if(!current())return;
   const detail=String(e.message||"No se pudo autorizar Deudas");
-  debtScreenVisible(true,/sesi[oó]n no activa/i.test(detail)?
-   "La sesión principal guardada ya no está activa en el servidor. Renovala para entrar a Deudas; no es un problema de la contraseña adicional.":detail);
-  if(/sesi[oó]n no activa/i.test(detail))document.getElementById("debtSessionRenew").hidden=false;
+  const stale=/sesi[oó]n (?:no activa|requerida|inv[aá]lida)|JWT expired/i.test(detail);
+  debtScreenVisible(true,stale?"Sesión no activa: renová el inicio de sesión general. La contraseña adicional todavía no se ha confirmado.":detail);
+  if(stale)renew.hidden=false;
  }
- finally{button.disabled=false}
+ finally{button.disabled=back.disabled=renew.disabled=false;}
 };
 document.getElementById("debtSessionRenew").onclick=async()=>{
  const button=document.getElementById("debtSessionRenew");button.disabled=true;
@@ -2745,20 +3146,38 @@ startAuth();
   if(!('serviceWorker' in navigator) || !(location.protocol==='https:' || location.hostname==='localhost'))return;
   const box=document.getElementById('pwaUpdate'),msg=document.getElementById('pwaUpdateText');
   const apply=document.getElementById('pwaApply'),later=document.getElementById('pwaLater');
-  let reg=null,waiting=null,requested=false,refreshing=false;
-  const pending=()=>typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');
-  function show(worker){if(!worker)return;waiting=worker;box.hidden=false;msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':'Hay una nueva versión del CL Nexus lista para instalar.';apply.disabled=false;}
+  let reg=null,waiting=null,requested=false,refreshing=false,activated=false;
+  const pending=()=>{
+    try{return typeof SY!=='undefined' && (SY.pend || SY.pushing || localStorage.getItem('cp_pend')==='1');}
+    catch(_){return true;}
+  };
+  function show(worker){
+    if(worker)waiting=worker;
+    if(!waiting&&!activated)return;
+    box.hidden=false;apply.disabled=false;
+    apply.textContent=activated?'Recargar versión nueva':'Actualizar ahora';
+    msg.textContent=pending()?'Nueva versión lista. Primero espera a que tus cambios se sincronicen con Supabase.':activated?'La versión nueva está activa. Guarda los formularios antes de recargar.':'Hay una nueva versión de CL Nexus lista para instalar. Guarda los formularios antes de actualizar.';
+  }
+  function reload(){if(refreshing)return;refreshing=true;location.reload();}
   apply.addEventListener('click',()=>{
     if(pending()){msg.textContent='Hay cambios pendientes. Espera a que aparezca «Sincronizado» y vuelve a intentarlo.';return;}
-    if(!waiting)return;
-    requested=true;apply.disabled=true;msg.textContent='Aplicando actualización…';waiting.postMessage({type:'SKIP_WAITING'});
+    if(!waiting&&!activated)return;
+    if(!confirm('Guarda todos los formularios de CL Nexus y termina las operaciones en curso antes de actualizar. ¿Confirmas que ya guardaste tus cambios?'))return;
+    if(activated){reload();return;}
+    requested=true;apply.disabled=true;msg.textContent='Aplicando actualización…';
+    try{waiting.postMessage({type:'SKIP_WAITING'});}catch(_){requested=false;apply.disabled=false;msg.textContent='No se pudo activar la actualización. Vuelve a intentarlo.';}
   });
   later.addEventListener('click',()=>{box.hidden=true;});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(refreshing)return;
-    if(!requested){if(reg&&reg.waiting)show(reg.waiting);return;}
-    if(pending()){requested=false;show(reg&&reg.waiting);msg.textContent='Se detectaron cambios pendientes. Termina de sincronizar antes de recargar.';return;}
-    refreshing=true;location.reload();
+    activated=true;waiting=null;
+    if(!requested||pending()){
+      requested=false;show(null);
+      return;
+    }
+    // Activation can happen after another edit was started. Require a fresh
+    // explicit reload instead of discarding unsaved administrative forms.
+    requested=false;show(null);
   });
   function check(){if(reg&&navigator.onLine!==false)reg.update().catch(()=>{});}
   window.addEventListener('load',async()=>{
@@ -2770,8 +3189,7 @@ startAuth();
         const w=reg.installing;if(!w)return;
         w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)show(reg.waiting||w);});
       });
-      check();
-      setInterval(check,15*60*1000);
+      check();setInterval(check,15*60*1000);
       document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
       window.addEventListener('online',check);
     }catch(err){console.warn('Actualización PWA:',err);}
@@ -3030,4 +3448,45 @@ dialog::backdrop{background:rgba(4,12,26,.5);-webkit-backdrop-filter:blur(5px);b
 #clnHubDetail .cln-pending-entry-actions button:disabled{opacity:.55}
 </style>
 
+
+<style>
+#clnModuleHub .cln-header-actions{display:flex;align-items:center;gap:10px;flex:none}
+#clnMenuOpen{display:flex;align-items:center;gap:8px;min-height:44px;margin:0;padding:9px 13px;border-radius:14px}
+#clnMenuDrawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(340px,90vw);max-width:90vw;height:100dvh;max-height:100dvh;box-sizing:border-box;padding:20px;border:1px solid var(--bd);border-radius:24px 0 0 24px;background:var(--card);color:var(--tx);box-shadow:-12px 0 42px #0003;overflow:auto}
+#clnMenuDrawer:not([open]){display:none!important}
+#clnMenuDrawer::backdrop{background:rgba(0,0,0,.36)}
+@supports(backdrop-filter:blur(20px)){#clnMenuDrawer{background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(24px) saturate(150%)}}
+#clnMenuDrawer .cln-drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px}
+#clnMenuDrawer .cln-drawer-header h3{margin:0;font-size:20px}
+#clnMenuClose{min-width:44px;min-height:44px;margin:0;font-size:22px}
+#clnMenuDrawer #clnModuleChoices{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:0;border:0;background:none}
+#clnMenuDrawer #clnModuleChoices .cln-tab{flex:none;width:100%;min-height:48px;text-align:left;padding:12px 16px!important}
+#clnMenuDrawer .cln-drawer-footer{margin-top:24px;padding-top:16px;border-top:1px solid var(--bd)}
+#clnMenuLogout{width:100%;margin:0;min-height:44px}
+@media(max-width:500px){#clnMenuOpen span{display:none}#clnMenuOpen{padding:10px}#clnModuleHub .cln-header-actions{gap:4px}}
+</style>
+<script>
+(function(){
+ const hub=document.getElementById("clnModuleHub"), drawer=document.getElementById("clnMenuDrawer"), trigger=document.getElementById("clnMenuOpen");
+ const nav=document.getElementById("clnModuleChoices");
+ function close(){if(drawer.open)drawer.close();}
+ trigger.addEventListener("click",()=>{if(!hub.hidden&&!hub.inert&&!drawer.open){drawer.showModal();trigger.setAttribute("aria-expanded","true");}});
+ drawer.addEventListener("close",()=>{trigger.setAttribute("aria-expanded","false");if(!hub.hidden&&!hub.inert)trigger.focus();});
+ document.getElementById("clnMenuClose").addEventListener("click",close);
+ drawer.addEventListener("click",e=>{if(e.target===drawer){const b=drawer.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)close();}});
+ nav.addEventListener("click",e=>{const button=e.target.closest("button.cln-tab");if(button&&!button.disabled)close();});
+ document.getElementById("clnMenuLogout").addEventListener("click",()=>{close();document.getElementById("clnHubLogout").click();});
+ new MutationObserver(()=>{if(hub.hidden||hub.inert)close();}).observe(hub,{attributes:true,attributeFilter:["hidden","inert"]});
+})();
+</script>
+<style>
+.cln-adm-filters,.cln-adm-pager{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:16px 0}
+.cln-adm-filters label{display:grid;gap:6px;font-size:13px;color:var(--mut)}
+.cln-adm-table-wrap{max-width:100%;overflow:auto}
+.cln-adm-table{width:100%;border-collapse:collapse;font-size:13px}
+.cln-adm-table th,.cln-adm-table td{text-align:left;padding:12px;border-bottom:1px solid var(--bd);white-space:nowrap}
+.cln-adm-table th{color:var(--mut);background:var(--card)}
+.cln-adm-pager{align-items:center;justify-content:space-between}
+</style>
+<style>.cln-adm-detail{margin-top:20px;border-top:1px solid var(--bd);padding-top:16px}.cln-adm-detail:empty{display:none}.cln-adm-pay-field{display:grid;grid-template-columns:minmax(120px,1fr) minmax(80px,1fr);align-items:center;gap:8px;margin:10px 0}.cln-adm-pay-field input{width:100%;min-width:0}</style>
 </body></html>
