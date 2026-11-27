@@ -1269,7 +1269,7 @@ function clnOpenInventoryReconciliation(panel,active){
   if(!active())return;
   const q=search.value.trim().toLocaleLowerCase("es-SV"),filter=state.value;
   const matches=rows.filter(r=>(!q||String(r.articulo+" "+(r.nombre_catalogo||"")).toLocaleLowerCase("es-SV").includes(q))&&(!filter||(filter==="importado"?r.estado==="importado":r.estado!=="importado")));
-  const cols=[["articulo","Artículo Excel"],["bodega_local_excel","Bodega/local Excel"],["garantia_excel","Garantía Excel"],["total_excel","Total Excel"],["estado","Estado"],["nombre_catalogo","Catálogo / candidato"],["disponible_registrado","Disponible registrado"],["garantia_registrada","Garantía registrada"],["observacion","Observaciones"]];
+  const cols=[["articulo","Artículo Excel"],["bodega_local_excel","Bodega/local Excel"],["garantia_excel","Garantía Excel"],["total_excel","Total Excel"],["estado","Estado"],["nombre_catalogo","Catálogo / candidato"],["disponible_registrado","Disponible registrado"],["garantia_registrada","Garantía registrada"],["unidades_retenidas","Retenidas / no disponibles"],["observacion","Observaciones"],["criterio","Criterio de importación"]];
   const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
   for(const [,label] of cols){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
   const body=table.createTBody();for(const r of matches){const tr=body.insertRow();for(const [key] of cols){const td=tr.insertCell();td.textContent=key==="estado"?(labels[r.estado]||"Pendiente"):String(r[key]??(key.endsWith("_registrado")||key.endsWith("_registrada")?"Sin registrar":""));}}
