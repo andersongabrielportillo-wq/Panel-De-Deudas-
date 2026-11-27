@@ -1251,6 +1251,34 @@ function arrangeNexusSections(groups,epoch,initialLabel=""){
  activate(initialIndex<0?0:initialIndex);
 }
 
+function clnOpenInventoryReconciliation(panel,active){
+ const title=document.createElement("h4");title.textContent="Conciliación del inventario de octubre";
+ const note=document.createElement("p");note.textContent="Corte del 20/10/2026. Las cantidades del Excel son históricas. Sin registrar no equivale a cero. Bodega contiene provisionalmente el consolidado Bodega/Local; no confirma la distribución física.";
+ const controls=document.createElement("form");controls.className="cln-adm-filters";
+ const search=document.createElement("input");search.type="search";search.placeholder="Buscar artículo";search.setAttribute("aria-label","Buscar artículo");
+ const state=document.createElement("select");state.setAttribute("aria-label","Estado de conciliación");
+ for(const [value,label] of [["","Todos"],["importado","Importados"],["pendiente","Pendientes"]]){const o=document.createElement("option");o.value=value;o.textContent=label;state.append(o);}
+ const refresh=document.createElement("button");refresh.type="submit";refresh.className="g2";refresh.textContent="Actualizar";
+ controls.append(search,state,refresh);
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const list=document.createElement("div");list.className="cln-adm-table-wrap";
+ panel.replaceChildren(title,note,controls,msg,list);
+ let rows=[],busy=false;
+ const labels={importado:"Importado",exacta:"Pendiente: coincidencia exacta",alias_propuesto:"Pendiente: nombre similar",multiple:"Pendiente: duplicado",sin_coincidencia:"Pendiente: sin coincidencia",pendiente:"Pendiente"};
+ function draw(){
+  if(!active())return;
+  const q=search.value.trim().toLocaleLowerCase("es-SV"),filter=state.value;
+  const matches=rows.filter(r=>(!q||String(r.articulo+" "+(r.nombre_catalogo||"")).toLocaleLowerCase("es-SV").includes(q))&&(!filter||(filter==="importado"?r.estado==="importado":r.estado!=="importado")));
+  const cols=[["articulo","Artículo Excel"],["bodega_local_excel","Bodega/local Excel"],["garantia_excel","Garantía Excel"],["total_excel","Total Excel"],["estado","Estado"],["nombre_catalogo","Catálogo / candidato"],["disponible_registrado","Disponible registrado"],["garantia_registrada","Garantía registrada"],["observacion","Observaciones"]];
+  const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+  for(const [,label] of cols){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
+  const body=table.createTBody();for(const r of matches){const tr=body.insertRow();for(const [key] of cols){const td=tr.insertCell();td.textContent=key==="estado"?(labels[r.estado]||"Pendiente"):String(r[key]??(key.endsWith("_registrado")||key.endsWith("_registrada")?"Sin registrar":""));}}
+  list.replaceChildren(table);msg.textContent=rows.filter(r=>r.estado==="importado").length+" de "+rows.length+" importados · "+matches.length+" visibles";
+ }
+ async function load(){if(!active()||busy)return;busy=true;refresh.disabled=true;msg.textContent="Consultando inventario de octubre…";try{const {data,error}=await SB.rpc("cln_consultar_conciliacion_inventario");if(!active())return;if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta inválida");rows=data.filas;draw();}catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);}}finally{busy=false;if(active())refresh.disabled=false;}}
+ controls.onsubmit=e=>{e.preventDefault();void load();};search.oninput=draw;state.onchange=draw;void load();
+}
+
 function clnOpenHistoricalRoutes(panel,active){
  const heading=document.createElement("h4");heading.textContent="Tarjetas históricas de rutas";
  const note=document.createElement("p");note.textContent="Solo consulta. El saldo anotado en Excel no es un saldo vigente confirmado. No se permite registrar abonos sobre estas tarjetas hasta conciliar su identidad y estado.";
@@ -1717,7 +1745,11 @@ async function openIndependentModule(id){
       }
      };
      const tools=document.createElement("div");tools.className="cln-inventory-tools";
-     tools.append(printButton);results.append(tools);
+     const compare=document.createElement("button");compare.type="button";compare.className="g2";compare.textContent="Conciliación de octubre";compare.setAttribute("aria-expanded","false");
+     const review=document.createElement("section");review.hidden=true;
+     const current=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
+     compare.onclick=()=>{if(!current())return;review.hidden=!review.hidden;compare.setAttribute("aria-expanded",String(!review.hidden));if(!review.hidden&&!review.hasChildNodes())clnOpenInventoryReconciliation(review,current);};
+     tools.append(printButton,compare);results.append(tools,review);
     }
     results.append(search,count,cards);paint();
    }else{
