@@ -1383,6 +1383,54 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
  choose.onchange=async()=>{const kind=choose.value;if(dirty&&!confirm("Hay cambios sin guardar. ¿Cambiar de formato?")){choose.value=loadedKind;return;}dirty=false;const seq=++request;loadedKind=kind;workspace.replaceChildren();if(!kind||!active())return;const msg=document.createElement("p");msg.textContent="Cargando borrador guardado…";workspace.append(msg);try{const response=await rpc(kind,null,0);if(!active()||seq!==request)return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");build(kind,response.data);}catch(e){if(active()&&seq===request)msg.textContent="No se pudo cargar: "+String(e.message||e);}};
 }
 
+function clnOpenPayrollCommissions(panel,active,personId,personName,range){
+ const note=document.createElement("p");note.textContent="Contratos nuevos confirmados del período de venta. Las comisiones pendientes y pagadas se muestran por separado; no se liquidan ni se agregan otra vez al borrador automáticamente.";
+ const msg=document.createElement("p");msg.setAttribute("role","status");
+ const content=document.createElement("div");const pager=document.createElement("div");pager.className="cln-adm-pager";
+ const prev=document.createElement("button"),next=document.createElement("button"),refresh=document.createElement("button");
+ for(const [el,label] of [[prev,"Anterior"],[next,"Siguiente"],[refresh,"Actualizar comisiones"]]){el.type="button";el.className="g2";el.textContent=label;}
+ pager.append(prev,next,refresh);panel.replaceChildren(note,msg,content,pager);
+ let page=0,busy=false,more=false;
+ const fmt=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
+ const money=v=>v==null?"Sin registrar":fmt.format(Number(v));
+ async function load(){
+  if(!active()||busy)return;busy=true;prev.disabled=next.disabled=refresh.disabled=true;
+  msg.textContent="Consultando comisiones…";
+  try{
+   const {data,error}=await SB.rpc("cln_consultar_comisiones_planilla",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_pagina:page});
+   if(!active())return;if(error||typeof data?.vinculado!=="boolean")throw Error(error?.message||"Respuesta inválida");
+   content.replaceChildren();more=!!data.hay_mas;
+   if(!data.vinculado){
+    msg.textContent="Esta persona todavía no está vinculada a un vendedor.";
+    const select=document.createElement("select");select.setAttribute("aria-label","Vendedor para vincular");
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccionar vendedor existente";select.append(placeholder);
+    for(const row of data.vendedores||[]){const o=document.createElement("option");o.value=row.id;o.textContent=row.nombre;select.append(o);}
+    const link=document.createElement("button");link.type="button";link.className="g2";link.textContent="Vincular vendedor";
+    link.disabled=true;select.onchange=()=>link.disabled=!select.value;
+    link.onclick=async()=>{
+     if(!active()||link.disabled||!select.value||busy)return;
+     const chosen=select.selectedOptions[0]?.textContent||"";if(!confirm("¿Vincular "+personName+" con "+chosen+"? Confirmá que corresponden a la misma persona."))return;
+     busy=true;link.disabled=select.disabled=refresh.disabled=true;
+     try{const response=await SB.rpc("cln_vincular_vendedor_planilla",{p_persona:personId,p_vendedor:select.value});if(!active())return;if(response.error||response.data?.vinculado!==true)throw Error(response.error?.message||"No se pudo verificar");busy=false;page=0;await load();}
+     catch(e){if(active())msg.textContent="No se pudo vincular: "+String(e.message||e);}
+     finally{busy=false;if(active()){select.disabled=false;link.disabled=!select.value;refresh.disabled=false;}}
+    };
+    if(!data.vendedores?.length){const empty=document.createElement("p");empty.textContent="No hay vendedores activos sin vincular. Primero registrá el vendedor en Vendedores.";content.append(empty);}else content.append(select,link);
+   }else{
+    msg.textContent="Vendedor: "+data.vendedor+" · "+data.total+" contratos · página "+(page+1);
+    const summary=document.createElement("p");summary.textContent="Comisión registrada: "+money(data.comision_registrada)+" · Pendiente: "+money(data.pendiente)+" · Pagada: "+money(data.pagada);content.append(summary);
+    const wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";
+    const fields=[["fecha","Fecha"],["contrato","Contrato"],["cliente","Cliente"],["articulo","Artículo"],["modalidad","Modalidad"],["venta","Venta"],["comision","Comisión"],["estado","Estado"]];
+    const head=table.createTHead().insertRow();for(const [,label] of fields){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
+    const body=table.createTBody();for(const row of data.filas||[]){const tr=body.insertRow();for(const [key] of fields){const td=tr.insertCell();td.textContent=key==="venta"||key==="comision"?money(row[key]):String(row[key]??"");}}
+    wrap.append(table);content.append(wrap);
+   }
+  }catch(e){if(active()){content.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
+  finally{busy=false;if(active()){prev.disabled=page===0;next.disabled=!more;refresh.disabled=false;}}
+ }
+ prev.onclick=()=>{if(!busy&&page>0){page--;void load();}};next.onclick=()=>{if(!busy&&more){page++;void load();}};refresh.onclick=()=>void load();void load();
+}
+
 function clnOpenAdministrativeProjection(id,token,status){
  const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
  const fields={
@@ -1436,6 +1484,10 @@ function clnOpenAdministrativeProjection(id,token,status){
   const draftButton=document.createElement("button");draftButton.type="button";draftButton.className="g2";draftButton.textContent="Borrador cobrador / vendedor";draftButton.setAttribute("aria-expanded","false");
   const draftPanel=document.createElement("section");draftPanel.hidden=true;
   draftButton.onclick=()=>{if(!valid())return;draftPanel.hidden=!draftPanel.hidden;draftButton.setAttribute("aria-expanded",String(!draftPanel.hidden));if(!draftPanel.hidden&&!draftPanel.hasChildNodes())clnOpenPayrollDraft(draftPanel,valid,row.vendedor,row.comision_registrada,row.persona_id,range);};
+  const commissionButton=document.createElement("button");commissionButton.type="button";commissionButton.className="g2";commissionButton.textContent="Consultar comisiones de contratos";commissionButton.setAttribute("aria-expanded","false");
+  const commissionPanel=document.createElement("section");commissionPanel.hidden=true;
+  commissionButton.onclick=()=>{if(!valid())return;commissionPanel.hidden=!commissionPanel.hidden;commissionButton.setAttribute("aria-expanded",String(!commissionPanel.hidden));if(!commissionPanel.hidden&&!commissionPanel.hasChildNodes())clnOpenPayrollCommissions(commissionPanel,valid,row.persona_id,row.vendedor,range);};
+  detailPanel.append(commissionButton,commissionPanel);
   detailPanel.append(draftButton,draftPanel);
   const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
   try{
