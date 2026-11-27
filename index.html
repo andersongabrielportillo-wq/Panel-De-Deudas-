@@ -904,7 +904,7 @@ async function ensureAuthenticatedWorkspace(session){
  if(authConnectedUid===uid&&SB_WID&&debtController){
   // Si una notificación antigua ocultó la pantalla, restaura Inventario sin
   // volver a pedir credenciales mientras Supabase conserve la sesión válida.
-  if(moduleHub.hidden)showModuleHub(true);
+  if(moduleHub.hidden&&debtScreen.hidden&&document.getElementById("privateApp").hidden)showModuleHub(true);
   else gate(false);
   return true;
  }
@@ -2922,19 +2922,31 @@ for(const id of Object.keys(clnHubViews)){
  document.getElementById(id).onclick=()=>openIndependentModule(id);
 }
 document.getElementById("debtUnlockButton").onclick=async()=>{
- if(!debtController)return;
+ if(!debtController||!SB_UID||!SB_WID)return;
  const input=document.getElementById("debtUnlockPassword"),button=document.getElementById("debtUnlockButton");
- const password=input.value;input.value="";button.disabled=true;
+ const back=document.getElementById("debtUnlockBack"),renew=document.getElementById("debtSessionRenew");
+ if(button.disabled)return;
+ const password=input.value;input.value="";if(!password){debtScreenVisible(true,"Ingresá la contraseña adicional de Deudas.");return;}
+ const generation=authSessionGeneration,uid=SB_UID,controller=debtController;
+ const current=()=>generation===authSessionGeneration&&uid===SB_UID&&controller===debtController;
+ button.disabled=back.disabled=renew.disabled=true;
+ document.getElementById("debtUnlockError").textContent="Verificando sesión general…";
  try{
-  await debtController.open(password);
-  void clnRecordModuleUse("deudas");
+  const {data,error}=await SB.rpc("cln_debt_session_status");
+  if(!current())return;
+  if(error)throw Error(error.message||"No se pudo verificar la sesión general");
+  if(data==="sesion_no_activa"||data==="sesion_requerida")throw Error("Sesión no activa");
+  if(data!=="activa")throw Error("Acceso a Deudas no autorizado");
+  await controller.open(password);
+  if(current())void clnRecordModuleUse("deudas");
  }catch(e){
+  if(!current())return;
   const detail=String(e.message||"No se pudo autorizar Deudas");
-  debtScreenVisible(true,/sesi[oó]n no activa/i.test(detail)?
-   "La sesión principal guardada ya no está activa en el servidor. Renovala para entrar a Deudas; no es un problema de la contraseña adicional.":detail);
-  if(/sesi[oó]n no activa/i.test(detail))document.getElementById("debtSessionRenew").hidden=false;
+  const stale=/sesi[oó]n (?:no activa|requerida|inv[aá]lida)|JWT expired/i.test(detail);
+  debtScreenVisible(true,stale?"Sesión no activa: renová el inicio de sesión general. La contraseña adicional todavía no se ha confirmado.":detail);
+  if(stale)renew.hidden=false;
  }
- finally{button.disabled=false}
+ finally{button.disabled=back.disabled=renew.disabled=false;}
 };
 document.getElementById("debtSessionRenew").onclick=async()=>{
  const button=document.getElementById("debtSessionRenew");button.disabled=true;
