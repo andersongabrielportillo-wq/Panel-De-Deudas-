@@ -107,7 +107,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
 <div class="cln-workspace-content">
  <header class="cln-header">
   <div class="cln-header-brand"><span class="cln-logo" aria-hidden="true">CL</span><div><p class="cln-kicker">COMERCIAL LÓPEZ · PANEL DE GESTIÓN</p><h2>CL Nexus</h2><p class="cln-subtitle">Inventario, ventas y contratos en un solo lugar.</p></div></div>
-  <div class="cln-header-actions"><span class="cln-session-chip">Sesión activa</span><button class="g2" id="clnMenuOpen" type="button" aria-haspopup="dialog" aria-controls="clnMenuDrawer" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Módulos</span></button></div>
+  <div class="cln-header-actions"><span class="cln-session-chip">Sesión activa</span><button class="g2" id="clnMenuOpen" type="button" aria-label="Abrir menú de módulos" aria-haspopup="dialog" aria-controls="clnMenuDrawer" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Módulos</span></button></div>
  </header>
  <dialog id="clnMenuDrawer" aria-labelledby="clnMenuTitle"><div class="cln-drawer-header"><h3 id="clnMenuTitle">Módulos</h3><button type="button" class="g2" id="clnMenuClose" aria-label="Cerrar menú" autofocus>×</button></div><nav id="clnModuleChoices" aria-label="Secciones de CL Nexus">
   <button class="g2 cln-tab" type="button" id="clnHubInventory">Inventario</button>
@@ -124,7 +124,7 @@ details.box summary{cursor:pointer;font-weight:600;font-size:14.5px}details.box[
   <p id="clnHubStatus" role="status" aria-live="polite" class="cln-section-status"></p>
   <div id="clnHubDetail" aria-live="polite"></div>
  </main>
- <footer class="cln-footer"><span>Las existencias se registran después del conteo físico; no se toman del inventario histórico.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
+ <footer class="cln-footer"><span>Existencias registradas con corte del 20/10/2026 y movimientos posteriores. Importación parcial: verificar artículos pendientes de conciliación.</span><div class="cln-utilities"><button class="g2" type="button" id="clnHubHttpAudit">Verificar seguridad HTTP</button><button class="g2" type="button" id="clnHubLogout">Cerrar sesión</button></div></footer>
 </div></section><section id="debtUnlockScreen" class="debt-unlock-screen" hidden inert aria-label="Desbloquear Deudas"><div class="authCard"><h2>Acceso a Deudas</h2><p>Introduce la contraseña adicional compartida. Inventario, Garantías y Contratos no usan esta contraseña.</p><label for="debtUnlockPassword">Contraseña de Deudas</label><input id="debtUnlockPassword" type="password" autocomplete="off" maxlength="72" placeholder="Contraseña adicional"><button class="b" type="button" id="debtUnlockButton">Desbloquear Deudas</button><p id="debtUnlockError" role="status" aria-live="polite"></p><button class="g2" type="button" id="debtSessionRenew" hidden>Renovar inicio de sesión general</button><button class="g2" type="button" id="debtUnlockBack">Volver a módulos</button><button class="g2" type="button" id="debtUnlockLogout">Cerrar sesión</button></div></section>
 <style>.debt-unlock-screen{min-height:70vh;display:grid;place-items:center;padding:20px}.debt-unlock-screen[hidden]{display:none!important}.debt-unlock-screen .authCard{max-width:440px;width:100%}.debt-unlock-screen input{display:block;width:100%;margin:12px 0}.debt-unlock-screen button{margin:6px 4px 0 0}
 #clnModuleHub{min-height:100dvh;padding:clamp(12px,2.8vw,32px);background:var(--bg);color:var(--tx)}
@@ -1122,11 +1122,13 @@ function clnEnhanceArticleSearch(container){
 
 const clnModuleByButton=Object.freeze({
  clnHubInventory:"inventario",clnHubSales:"ventas",clnHubContracts:"contratos",
- clnHubSellers:"vendedores",clnHubWarranties:"garantias"
+ clnHubSellers:"vendedores",clnHubWarranties:"garantias",
+ clnHubLedger:"libro_ventas",clnHubRoutes:"rutas",clnHubPayroll:"planillas"
 });
 const clnModuleDisplay=Object.freeze({
  inventario:"Inventario",ventas:"Ventas",contratos:"Contratos",
- vendedores:"Vendedores",garantias:"Garantías",deudas:"Deudas"
+ vendedores:"Vendedores",garantias:"Garantías",deudas:"Deudas",
+ libro_ventas:"Libro de ventas",rutas:"Rutas y abonos",planillas:"Planillas"
 });
 const clnHistoryDateTime=new Intl.DateTimeFormat("es-SV",{
  timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit",
@@ -1458,7 +1460,7 @@ async function openIndependentModule(id){
  if(clnModuleByButton[id])clnHubDetail.append(historyToolbar);
  document.getElementById("clnHubStatus").textContent=config.title;
  try{
-  if(["clnHubLedger","clnHubRoutes","clnHubPayroll"].includes(id)){clnOpenAdministrativeProjection(id,token,status);return;}
+  if(["clnHubLedger","clnHubRoutes","clnHubPayroll"].includes(id)){void clnRecordModuleUse(clnModuleByButton[id]);clnOpenAdministrativeProjection(id,token,status);return;}
   if(!window.CLNexusReader)throw Error("Módulo de consultas no disponible");
   if(!nexusReader)nexusReader=window.CLNexusReader.createNexusReader({client:SB,authorized:()=>!!SB_UID&&!!SB_WID});
   void clnRecordModuleUse(clnModuleByButton[id]);
