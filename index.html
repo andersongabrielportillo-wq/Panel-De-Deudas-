@@ -1319,6 +1319,59 @@ function clnOpenHistoricalRoutes(panel,active){
  void load();
 }
 
+
+// Plantillas de cálculo basadas en las hojas "Formato de Cobrador" y "Formato De Vendedor".
+// No se copian importes de noviembre, ni se resuelven referencias rotas del libro.
+function clnDraftPayrollTotals(base,earnings,deductions){
+ const valid=v=>Number.isSafeInteger(v)&&Math.abs(v)<=100000000000;
+ const sum=values=>{const present=values.filter(v=>v!==null);if(!present.length)return null;if(!present.every(valid))throw Error("Importe inválido");const total=present.reduce((a,b)=>a+b,0);if(!Number.isSafeInteger(total))throw Error("Total inválido");return total;};
+ const gross=sum([...base,...earnings]),discount=sum(deductions);
+ return {gross,discount,net:gross===null?null:gross-(discount??0)};
+}
+function clnOpenPayrollDraft(panel,active,person,contribution){
+ const heading=document.createElement("h5");heading.textContent="Borrador de formato original · "+person;
+ const note=document.createElement("p");note.textContent="Los formatos de cobrador y vendedor comienzan vacíos. Ingresá importes del período actual: las sumas son preliminares, las comisiones pendientes no forman parte del pago. No se guardan ni se liquidan salarios desde este borrador. Las referencias #REF! del Excel no se convierten en importes.";
+ const choose=document.createElement("select");choose.setAttribute("aria-label","Formato de planilla");
+ for(const [value,label] of [["","Seleccionar formato"],["vendedor","Formato de vendedor"],["cobrador","Formato de cobrador"]]){const opt=document.createElement("option");opt.value=value;opt.textContent=label;choose.append(opt);}
+ const workspace=document.createElement("div");panel.replaceChildren(heading,note,choose,workspace);
+ function build(kind){
+  workspace.replaceChildren();if(!kind||!active())return;
+  const manual=[],earned=[],discounts=[],pending=[];
+  const addSection=label=>{const sec=document.createElement("section");sec.className="cln-adm-detail";const h=document.createElement("h5");h.textContent=label;sec.append(h);workspace.append(sec);return sec;};
+  const cents=input=>{if(input.value.trim()==="")return null;if(!input.validity.valid)throw Error("Revisá importes y decimales");const v=Number(input.value);if(!Number.isFinite(v)||Math.abs(v)>1000000000)throw Error("Importe fuera de rango");return Math.round(v*100);};
+  const amount=(label,target,list,signed=false)=>{const wrap=document.createElement("label");wrap.className="cln-adm-pay-field";wrap.textContent=label;const input=document.createElement("input");input.type="number";input.step="0.01";if(!signed)input.min="0";input.max="1000000000";input.addEventListener("input",recalc);wrap.append(input);target.append(wrap);list.push(input);return input;};
+  const base=addSection("Resumen salario líquido a pagar");
+  amount("Sueldo base",base,manual);amount("Días adicionales (importe)",base,manual);amount("Otros ingresos",base,manual,true);
+  if(contribution!=null){const p=document.createElement("p");p.textContent="Comisión registrada en CL Nexus: "+new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(contribution))+". Verificá cuáles comisiones deben cancelarse en este período; no se suman dos veces.";base.append(p);}
+  const totals=document.createElement("div");totals.className="cln-adm-pager";const display=[];
+  for(const label of ["Devengado","Menos descuentos","A pagar"]){const wrap=document.createElement("label");wrap.textContent=label;const o=document.createElement("output");o.textContent="";wrap.append(o);totals.append(wrap);display.push(o);}
+  base.append(totals);const feedback=document.createElement("p");feedback.setAttribute("role","status");base.append(feedback);
+  function recalc(){
+   if(!active())return;
+   try{const t=clnDraftPayrollTotals(manual.map(cents),earned.map(cents),discounts.map(cents));const fmt=v=>v===null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(v/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));feedback.textContent=t.gross===null&&t.discount===null?"":"Cálculo preliminar con los importes ingresados; los campos vacíos siguen sin registrar.";}catch(e){display.forEach(o=>o.textContent="");feedback.textContent=String(e.message||e);}
+  }
+  function detail(title,columns,group,amountIndex){
+   const sec=addSection(title),wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
+   for(const [label] of columns){const th=document.createElement("th");th.textContent=label;head.append(th);}const th=document.createElement("th");th.textContent="Acciones";head.append(th);
+   const tbody=table.createTBody();wrap.append(table);sec.append(wrap);
+   const add=document.createElement("button");add.type="button";add.className="g2";add.textContent="Agregar fila";sec.append(add);
+   function row(){
+    const tr=tbody.insertRow();let linked=null;
+    columns.forEach(([label,type],i)=>{const td=tr.insertCell();const input=document.createElement("input");input.type=type;input.setAttribute("aria-label",label);if(type==="number"){input.step="0.01";input.min="0";input.max="1000000000";}else if(type==="text")input.maxLength=200;td.append(input);if(i===amountIndex){linked=input;group.push(input);input.addEventListener("input",recalc);}});
+    const del=document.createElement("button");del.type="button";del.className="g2";del.textContent="Quitar";del.onclick=()=>{if(!active())return;if(linked){const i=group.indexOf(linked);if(i>=0)group.splice(i,1);}tr.remove();recalc();};tr.insertCell().append(del);
+   }
+   add.onclick=()=>{if(active()&&tbody.rows.length<100)row();};row();
+  }
+  const saleCols=[["Fecha","date"],["Cliente","text"],["Artículo","text"],["Condición","text"],["Valor","number"],["Comisión","number"]];
+  if(kind==="cobrador")detail("Detalle de comisiones s/ cobros del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
+  detail("Detalle de ventas a cancelar en el presente período",saleCols,earned,5);
+  detail("Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);
+  for(const label of ["Anticipos","Faltantes","Hurtos","Artículos","Varios"])detail(label,[["Detalle","text"],["Valor","number"]],discounts,1);
+  recalc();
+ }
+ choose.onchange=()=>build(choose.value);
+}
+
 function clnOpenAdministrativeProjection(id,token,status){
  const kind={clnHubLedger:"libro",clnHubRoutes:"rutas",clnHubPayroll:"planillas"}[id];
  const fields={
@@ -1369,6 +1422,10 @@ function clnOpenAdministrativeProjection(id,token,status){
   const title=document.createElement("h4");title.textContent="Planilla · "+row.vendedor;detailPanel.append(title);
   const period=document.createElement("p");period.textContent="Período: "+range.from+" a "+range.to;detailPanel.append(period);
   const contribution=document.createElement("p");contribution.textContent="Ventas confirmadas: "+(row.ventas_confirmadas==null?"—":money.format(Number(row.ventas_confirmadas)))+" · Comisión registrada: "+(row.comision_registrada==null?"—":money.format(Number(row.comision_registrada)));detailPanel.append(contribution);
+  const draftButton=document.createElement("button");draftButton.type="button";draftButton.className="g2";draftButton.textContent="Borrador cobrador / vendedor";draftButton.setAttribute("aria-expanded","false");
+  const draftPanel=document.createElement("section");draftPanel.hidden=true;
+  draftButton.onclick=()=>{if(!valid())return;draftPanel.hidden=!draftPanel.hidden;draftButton.setAttribute("aria-expanded",String(!draftPanel.hidden));if(!draftPanel.hidden&&!draftPanel.hasChildNodes())clnOpenPayrollDraft(draftPanel,valid,row.vendedor,row.comision_registrada);};
+  detailPanel.append(draftButton,draftPanel);
   const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
   try{
    const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
