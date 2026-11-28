@@ -23,7 +23,7 @@ function restoreEmpty(storage,backup){
  if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function')throw Error('Almacenamiento inválido');
  const keys=Object.keys(backup.entries);
  // Preflight ALL keys before writing ANY: never overwrite local edits.
- for(const key of keys)if(storage.getItem(key)!==null)throw Error('Restauración detenida: existen datos locales');
+ for(const key of KEYS)if(storage.getItem(key)!==null)throw Error('Restauración detenida: existen datos locales');
  const written=[];
  try{for(const key of keys){written.push(key);storage.setItem(key,backup.entries[key]);if(storage.getItem(key)!==backup.entries[key])throw Error('No se pudo verificar la restauración')}}
  catch(err){
