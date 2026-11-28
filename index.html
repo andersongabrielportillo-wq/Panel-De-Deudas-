@@ -1478,7 +1478,7 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
 }
 
 function clnOpenPayrollCommissions(panel,active,personId,personName,range,onRefresh=()=>{}){
- const note=document.createElement("p");note.textContent="Contratos confirmados del período de venta. Registrá únicamente comisiones que ya entregaste al vendedor; esta acción no transfiere dinero ni liquida el salario. No vuelvas a incluir el mismo pago en las filas manuales.";
+ const note=document.createElement("p");note.textContent="Ventas del período, comisiones pendientes de períodos anteriores y pagos realizados en el período seleccionado. Registrá únicamente comisiones ya entregadas. No vuelvas a ingresarlas en las filas manuales.";
  const msg=document.createElement("p");msg.setAttribute("role","status");
  const content=document.createElement("div");const pager=document.createElement("div");pager.className="cln-adm-pager";
  const prev=document.createElement("button"),next=document.createElement("button"),refresh=document.createElement("button");
@@ -1514,14 +1514,14 @@ function clnOpenPayrollCommissions(panel,active,personId,personName,range,onRefr
     if(!data.vendedores?.length){const empty=document.createElement("p");empty.textContent="No hay vendedores activos sin vincular. Primero registrá el vendedor en Vendedores.";content.append(empty);}else content.append(select,link);
    }else{
     msg.textContent="Vendedor: "+data.vendedor+" · "+data.total+" contratos · página "+(page+1);
-    const summary=document.createElement("p");summary.textContent="Comisión registrada: "+money(data.comision_registrada)+" · Pendiente: "+money(data.pendiente)+" · Pagada: "+money(data.pagada);content.append(summary);
+    const summary=document.createElement("p");summary.textContent="Comisión de ventas del período: "+money(data.comision_registrada)+" · Pendiente a la fecha de consulta (incluye anteriores): "+money(data.pendiente)+" · Pagada durante el período: "+money(data.pagada);content.append(summary);
     const wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";
     const fields=[["fecha","Fecha"],["contrato","Contrato"],["cliente","Cliente"],["articulo","Artículo"],["modalidad","Modalidad"],["venta","Venta"],["comision","Comisión"],["estado","Estado"],["fecha_pago","Fecha de pago"]];
     const head=table.createTHead().insertRow();for(const [,label] of fields){const th=document.createElement("th");th.textContent=label;th.scope="col";head.append(th);}
     const actionHead=document.createElement("th");actionHead.scope="col";actionHead.textContent="Registro de pago";head.append(actionHead);
     const body=table.createTBody();
     for(const row of data.filas||[]){
-     const tr=body.insertRow();for(const [key] of fields){const td=tr.insertCell();td.textContent=key==="venta"||key==="comision"?money(row[key]):String(row[key]??"");}
+     const tr=body.insertRow();for(const [key] of fields){const td=tr.insertCell();td.textContent=key==="venta"||key==="comision"?money(row[key]):key==="fecha"&&row.periodo_anterior?String(row.fecha)+" · Anterior":String(row[key]??"");}
      const cell=tr.insertCell();
      if(row.estado!=="pendiente"||!row.contrato_id||!(Number(row.comision)>0))continue;
      const date=document.createElement("input");date.type="date";date.setAttribute("aria-label","Fecha en que se pagó la comisión");date.min=String(row.fecha)>range.from?String(row.fecha):range.from;date.max=range.to<today?range.to:today;date.value=pending?.p_contrato===row.contrato_id?pending.p_fecha:(today>=date.min&&today<=date.max?today:"");
