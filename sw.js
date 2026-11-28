@@ -1,5 +1,5 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v29-resumen-comisiones';
+const CACHE = 'panel-de-deudas-shell-v30-arrastre-y-tarjetas';
 const CORE = ['./index.html', './manifest.webmanifest', './cl-nexus-reader.cjs', './cl-nexus-actions.cjs', './cln-http-auth-probe.cjs', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
