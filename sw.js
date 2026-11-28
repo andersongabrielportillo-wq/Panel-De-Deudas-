@@ -1,6 +1,6 @@
 /* Panel de Deudas — Service Worker de actualizaciones controladas. */
-const CACHE = 'panel-de-deudas-shell-v3-comercial-lopez-2';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'panel-de-deudas-shell-v35-secretaria';
+const CORE = ['./index.html', './manifest.webmanifest', './cl-nexus-reader.cjs', './cl-nexus-actions.cjs', './cln-http-auth-probe.cjs', './debt-gate-client.cjs', './debt-module-controller.cjs', './debt-cache-preflight.cjs', './debt-legacy-backup.cjs', './debt-encrypted-backup.cjs', './icons/icon-192.png', './icons/icon-512.png'];
 const SHELL = new Set(CORE.map(path => new URL(path, self.registration.scope).pathname));
 
 self.addEventListener('install', event => {
@@ -24,12 +24,23 @@ self.addEventListener('fetch', event => {
   // Nunca interceptar Supabase, autenticación, CDNs ni otros orígenes.
   if (url.origin !== self.location.origin) return;
   const isNav = req.mode === 'navigate';
+  // Solo la portada pertenece al shell offline. No guardar callbacks de Auth,
+  // rutas desconocidas ni URLs con tokens/códigos en sus parámetros.
+  const home = new URL('./', self.registration.scope).pathname;
+  const index = new URL('./index.html', self.registration.scope).pathname;
+  if (isNav && (url.search || (url.pathname !== home && url.pathname !== index))) return;
   if (!isNav && !SHELL.has(url.pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
       const response = await fetch(req, {cache:'no-store'});
-      if (response.ok && response.type === 'basic') await cache.put(req, response.clone());
+      // Evitar guardar páginas de inicio de sesión o errores devueltos por redirects.
+      // Solo se almacena una respuesta 200 del recurso solicitado, sin redirecciones.
+      if (response.status === 200 && response.type === 'basic' && !response.redirected &&
+          new URL(response.url).origin === url.origin &&
+          new URL(response.url).pathname === url.pathname) {
+        await cache.put(req, response.clone());
+      }
       return response;
     } catch (err) {
       const cached = await cache.match(req, {ignoreSearch:isNav});

@@ -1,7 +1,7 @@
 {
-  "name": "Comercial López 2",
-  "short_name": "Comercial López 2",
-  "description": "Gestión administrativa de Comercial López 2: deudas, inventario y operaciones.",
+  "name": "CL Nexus — Comercial López",
+  "short_name": "CL Nexus",
+  "description": "Panel unificado de Deudas, Inventario, Garantías y Contratos. Requiere inicio de sesión.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
