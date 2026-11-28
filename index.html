@@ -1343,8 +1343,21 @@ function clnOpenHistoricalRoutes(panel,active){
  const prev=document.createElement("button"),next=document.createElement("button"),pageLabel=document.createElement("span");
  for(const b of [prev,next]){b.type="button";b.className="g2";b.disabled=true;}
  prev.textContent="Anterior";next.textContent="Siguiente";pager.append(prev,pageLabel,next);
- panel.replaceChildren(heading,note,form,msg,list,pager);
- let page=0,busy=false,more=false,initialized=false,filters={ruta:"",busqueda:"",estado:""};
+ const card=document.createElement('section');card.className='cln-adm-detail';card.hidden=true;panel.replaceChildren(heading,note,form,msg,card,list,pager);
+ let cardSeq=0;let page=0,busy=false,more=false,initialized=false,filters={ruta:"",busqueda:"",estado:""};
+ async function openCard(row){
+ const seq=++cardSeq;card.hidden=false;card.replaceChildren();list.hidden=true;form.hidden=true;pager.hidden=true;
+ const back=document.createElement("button");back.type="button";back.className="g2";back.textContent="Volver a las tarjetas";back.onclick=()=>{cardSeq++;card.hidden=true;card.replaceChildren();list.hidden=false;form.hidden=false;pager.hidden=false;};
+ const h=document.createElement("h4");h.textContent="Tarjeta histórica · "+row.cliente;const p=document.createElement("p");p.textContent="Cargando detalle original…";card.append(back,h,p);card.scrollIntoView({block:"start",behavior:"smooth"});
+ try{const {data,error}=await SB.rpc("cln_consultar_tarjeta_excel",{p_ruta:row.ruta,p_fila:row.fila,p_columna:row.columna});
+ if(!active()||seq!==cardSeq)return;if(error||!Array.isArray(data?.filas))throw Error(error?.message||"Respuesta inválida");
+ p.textContent="RUTA: "+data.ruta+" · ARTÍCULO: "+data.articulo+" · VENDEDOR: "+(data.vendedor||"")+" · VALOR: "+(data.valor||"");
+ const note=document.createElement("p");note.textContent="Consulta del Excel: hasta 26 filas identificadas de esta tarjeta. Los abonos y restas son anotaciones históricas, no saldos vigentes.";
+ const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();for(const label of ["FECHA","ABONO","RESTA","COBRADOR"]){const th=document.createElement("th");th.textContent=label;head.append(th);}
+ const date=value=>{const t=String(value??"").trim();if(/^\d{5}(?:\.0+)?$/.test(t)){const n=Number(t);if(n>=30000&&n<=80000)return new Date(Date.UTC(1899,11,30)+n*86400000).toISOString().slice(0,10);}return t;};
+ const body=table.createTBody();for(const item of data.filas){const tr=body.insertRow();for(const v of [date(item.fecha),item.abono,item.resta,item.cobrador])tr.insertCell().textContent=String(v??"");}card.append(note,table);if(!data.filas.length){const msg=document.createElement("p");msg.textContent="No se encontraron abonos identificables en esta tarjeta.";card.append(msg);}
+ }catch(e){if(active()&&seq===cardSeq)p.textContent="No se pudo consultar la tarjeta: "+String(e.message||e);}
+ }
  async function load(){
   if(!active()||busy)return;busy=true;submit.disabled=true;prev.disabled=true;next.disabled=true;msg.textContent="Consultando tarjetas…";
   try{
@@ -1355,8 +1368,8 @@ function clnOpenHistoricalRoutes(panel,active){
    const columns=[["ruta","Ruta"],["cliente","Cliente"],["articulo","Artículo"],["vendedor","Vendedor"],["valor_original","Valor Excel"],["saldo_anotado","Saldo anotado"],["fecha_ultimo_abono","Último abono anotado"],["fecha_venta_candidata","Fecha de venta candidata"],["estado","Conciliación"]];
    const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();
    for(const [,label] of columns){const th=document.createElement("th");th.scope="col";th.textContent=label;head.append(th);}
-   const body=table.createTBody();
-   for(const row of data.filas){const tr=body.insertRow();for(const [key] of columns){const cell=tr.insertCell();cell.textContent=key==="estado"?(labels[row[key]]||"Pendiente de revisar"):String(row[key]??"");}}
+   const action=document.createElement("th");action.textContent="Tarjeta";head.append(action);
+ const body=table.createTBody();for(const row of data.filas){const tr=body.insertRow();for(const [key] of columns){const cell=tr.insertCell();cell.textContent=key==="estado"?(labels[row[key]]||"Pendiente de revisar"):String(row[key]??"");}const btn=document.createElement("button");btn.type="button";btn.className="g2";btn.textContent="Ver tarjeta";btn.onclick=()=>void openCard(row);tr.insertCell().append(btn);}
    list.replaceChildren(table);more=!!data.hay_mas;msg.textContent=String(data.total)+" tarjetas encontradas";pageLabel.textContent="Página "+(page+1);
   }catch(e){if(active()){list.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
   finally{busy=false;if(active()){submit.disabled=false;prev.disabled=page===0;next.disabled=!more;}}
