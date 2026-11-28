@@ -1388,6 +1388,9 @@ function clnDraftPayrollTotals(base,earnings,deductions){
  const gross=sum([...base,...earnings]),discount=sum(deductions);
  return {gross,discount,net:gross===null?null:gross-(discount??0)};
 }
+// Formula from "Formato de Cobrador", D24. Only used on explicit request.
+function clnCollectionTenPercent(cents){if(cents===null||cents===0)return null;if(!Number.isSafeInteger(cents)||cents<0||cents>100000000000)throw Error("Cobro inválido");return Math.round(cents/10);}
+function clnPayrollWeekday(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return "";const day=new Date(date+"T12:00:00Z");if(!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==date)return "";return new Intl.DateTimeFormat("es-SV",{weekday:"long",timeZone:"UTC"}).format(day);}
 function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
  const heading=document.createElement("h5");heading.textContent="Planilla individual · "+person;
  const note=document.createElement("p");note.textContent="Una sola planilla por persona y período. Los importes manuales empiezan vacíos. Las comisiones de contratos se consultan en esta misma planilla; no se consideran pagadas automáticamente. Guardar no liquida salarios." ;
@@ -1397,7 +1400,7 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
  function build(kind,stored){
   workspace.replaceChildren();if(!kind||!active())return;
   let revision=stored?.revision??0;const saved=stored?.datos;const sections=Object.create(null);
-  const manual=[],earned=[],discounts=[],pending=[],sectionSums=Object.create(null),summaryOutputs=Object.create(null);
+  const manual=[],earned=[],discounts=[],pending=[],sectionSums=Object.create(null),summaryOutputs=Object.create(null);let salesGrand=null;
   const paper=document.createElement("div");paper.className="cln-payroll-paper";
  const header=document.createElement("header");header.className="cln-payroll-heading";
  const company=document.createElement("h3");company.textContent="COMERCIAL LÓPEZ";
@@ -1419,7 +1422,8 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
  base.append(summary,totals);const feedback=document.createElement("p");feedback.setAttribute("role","status");base.append(feedback);
   function recalc(){
    if(!active())return;
-   try{const t=clnDraftPayrollTotals(manual.map(cents),earned.map(cents),discounts.map(cents));const fmt=v=>v===null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(v/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));for(const [key,part] of Object.entries(sectionSums)){const vals=part.refs.map(fields=>cents(fields[part.index])).filter(v=>v!==null);const total=vals.length?vals.reduce((a,b)=>a+b,0):null;part.output.textContent=fmt(total);if(summaryOutputs[key])summaryOutputs[key].textContent=fmt(total);}
+   try{const t=clnDraftPayrollTotals(manual.map(cents),earned.map(cents),discounts.map(cents));const fmt=v=>v===null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(v/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));for(const [key,part] of Object.entries(sectionSums)){const vals=part.refs.map(fields=>cents(fields[part.index])).filter(v=>v!==null);const total=vals.length?vals.reduce((a,b)=>a+b,0):null;part.output.textContent=fmt(total);if(summaryOutputs[key])summaryOutputs[key].textContent=fmt(total);if(part.valueOutput){const amounts=part.refs.map(fields=>cents(fields[part.valueIndex])).filter(v=>v!==null);part.valueOutput.textContent=fmt(amounts.length?amounts.reduce((a,b)=>a+b,0):null);}}
+ if(salesGrand){for(const [index,out] of [[4,salesGrand.value],[5,salesGrand.commission]]){const vals=["ventas","pendientes"].flatMap(key=>(sectionSums[key]?.refs||[]).map(fields=>cents(fields[index]))).filter(v=>v!==null);out.textContent=fmt(vals.length?vals.reduce((a,b)=>a+b,0):null);}}
  feedback.textContent=t.gross===null&&t.discount===null?"":"Cálculo preliminar con los importes ingresados; los campos vacíos siguen sin registrar.";}catch(e){display.forEach(o=>o.textContent="");feedback.textContent=String(e.message||e);}
   }
   function detail(key,title,columns,group,amountIndex){
@@ -1428,12 +1432,14 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
    for(const [label] of columns){const th=document.createElement("th");th.textContent=label;head.append(th);}const th=document.createElement("th");th.textContent="Acciones";head.append(th);
    const tbody=table.createTBody();wrap.append(table);sec.append(wrap);
  const subtotal=document.createElement("div");subtotal.className="cln-adm-pay-field";const st=document.createElement("span");st.textContent="Subtotal "+(isDiscount?title:"comisión");const output=document.createElement("output");subtotal.append(st,output);sec.append(subtotal);sectionSums[key]={refs,index:amountIndex,output};
+ if(!isDiscount){const line=document.createElement("div");line.className="cln-adm-pay-field";const label=document.createElement("span");label.textContent=key==="cobros"?"Subtotal cobrado":"Subtotal valor de ventas";const out=document.createElement("output");line.append(label,out);sec.insertBefore(line,subtotal);sectionSums[key].valueIndex=key==="cobros"?2:4;sectionSums[key].valueOutput=out;}
    const add=document.createElement("button");add.type="button";add.className="g2";add.textContent="Agregar fila";sec.append(add);
    function row(values=[]){
     if(key==="anticipos"&&values.length===2)values=[null,...values];
     const tr=tbody.insertRow();let linked=null;const fields=[];refs.push(fields);
-    columns.forEach(([label,type],i)=>{const td=tr.insertCell();const input=document.createElement("input");input.type=type;input.setAttribute("aria-label",label);if(type==="number"){input.step="0.01";input.min="0";input.max="1000000000";}else if(type==="text")input.maxLength=200;if(values[i]!=null)input.value=type==="number"?String(values[i]/100):String(values[i]);input.addEventListener("input",()=>{dirty=true;});fields.push(input);td.append(input);if(i===amountIndex){linked=input;group.push(input);input.addEventListener("input",recalc);}});
-    const del=document.createElement("button");del.type="button";del.className="g2";del.textContent="Quitar";del.onclick=()=>{if(!active())return;if(linked){const i=group.indexOf(linked);if(i>=0)group.splice(i,1);}const pos=refs.indexOf(fields);if(pos>=0)refs.splice(pos,1);tr.remove();dirty=true;recalc();};tr.insertCell().append(del);
+    columns.forEach(([label,type],i)=>{const td=tr.insertCell();const input=document.createElement("input");input.type=type;input.setAttribute("aria-label",label);if(type==="number"){input.step="0.01";input.min="0";input.max="1000000000";}else if(type==="text")input.maxLength=200;if(values[i]!=null)input.value=type==="number"?String(values[i]/100):String(values[i]);input.addEventListener("input",()=>{dirty=true;});fields.push(input);td.append(input);if(i===amountIndex){linked=input;group.push(input);input.addEventListener("input",recalc);}if(!isDiscount&&i===(key==="cobros"?2:4))input.addEventListener("input",recalc);});
+    if(key==="cobros"){fields[0].addEventListener("change",()=>{fields[1].value=clnPayrollWeekday(fields[0].value);dirty=true;});}
+ const del=document.createElement("button");del.type="button";del.className="g2";del.textContent="Quitar";del.onclick=()=>{if(!active())return;if(linked){const i=group.indexOf(linked);if(i>=0)group.splice(i,1);}const pos=refs.indexOf(fields);if(pos>=0)refs.splice(pos,1);tr.remove();dirty=true;recalc();};const action=tr.insertCell();action.append(del);if(key==="cobros"){const ten=document.createElement("button");ten.type="button";ten.className="g2";ten.textContent="10 %";ten.title="Aplicar fórmula del formato general de cobrador";ten.onclick=()=>{if(!active())return;try{const value=clnCollectionTenPercent(cents(fields[2]));if(value===null){feedback.textContent="Ingresá un cobro positivo para aplicar el 10 %.";return;}if(fields[3].value!==""&&!confirm("¿Reemplazar la comisión ingresada por el 10 % del cobro?"))return;fields[3].value=(value/100).toFixed(2);dirty=true;recalc();}catch(e){feedback.textContent=String(e.message||e);}};action.append(ten);}
    }
    add.onclick=()=>{if(active()&&tbody.rows.length<100){row();dirty=true;}};const initial=saved?.secciones?.[key];if(Array.isArray(initial)&&initial.length)initial.forEach(row);else row();
   }
@@ -1442,6 +1448,7 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
   if(kind==="cobrador")detail("cobros","Detalle de comisiones s/ cobros del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
   detail("ventas","Detalle de ventas a cancelar en el presente período",saleCols,earned,5);
   detail("pendientes","Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);
+  const grand=addSection("Totales de ventas y comisiones del formato");salesGrand={};for(const [key,label] of [["value","Valor total de ventas"],["commission","Comisión total (incluye pendientes)"]]){const line=document.createElement("div");line.className="cln-adm-pay-field";const span=document.createElement("span");span.textContent=label;const out=document.createElement("output");salesGrand[key]=out;line.append(span,out);grand.append(line);}const explain=document.createElement("p");explain.textContent="Las comisiones pendientes se muestran en este total informativo, pero no se suman al salario líquido.";grand.append(explain);
   for(const [key,label] of [["anticipos","Anticipos"],["faltantes","Faltantes"],["hurtos","Hurtos"],["articulos","Artículos"],["varios","Varios"]])detail(key,label,key==="anticipos"?[["Fecha","date"],["Detalle","text"],["Valor","number"]]:[["Detalle","text"],["Valor","number"]],discounts,key==="anticipos"?2:1);
   recalc();
   const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Guardar planilla";workspace.append(save);
