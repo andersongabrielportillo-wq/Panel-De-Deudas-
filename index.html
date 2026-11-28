@@ -1389,12 +1389,10 @@ function clnDraftPayrollTotals(base,earnings,deductions){
  return {gross,discount,net:gross===null?null:gross-(discount??0)};
 }
 function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
- const heading=document.createElement("h5");heading.textContent="Borrador de formato original · "+person;
- const note=document.createElement("p");note.textContent="Los formatos de cobrador y vendedor comienzan vacíos. Ingresá importes del período actual: las sumas son preliminares, las comisiones pendientes no forman parte del pago. Podés guardar el borrador por persona, período y formato; guardar no liquida salarios. Las referencias #REF! del Excel no se convierten en importes.";
- const choose=document.createElement("select");choose.setAttribute("aria-label","Formato de planilla");
- for(const [value,label] of [["","Seleccionar formato"],["vendedor","Formato de vendedor"],["cobrador","Formato de cobrador"]]){const opt=document.createElement("option");opt.value=value;opt.textContent=label;choose.append(opt);}
- const workspace=document.createElement("div");panel.replaceChildren(heading,note,choose,workspace);
- let request=0,dirty=false,loadedKind="";
+ const heading=document.createElement("h5");heading.textContent="Planilla individual · "+person;
+ const note=document.createElement("p");note.textContent="Una sola planilla por persona y período. Los importes manuales empiezan vacíos. Las comisiones de contratos se consultan en esta misma planilla; no se consideran pagadas automáticamente. Guardar no liquida salarios." ;
+ const workspace=document.createElement("div");panel.replaceChildren(heading,note,workspace);
+ let dirty=false;
  const rpc=(kind,data,rev)=>SB.rpc("cln_planilla_detalle",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_tipo:kind,p_datos:data,p_revision:rev});
  function build(kind,stored){
   workspace.replaceChildren();if(!kind||!active())return;
@@ -1403,8 +1401,8 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
   const paper=document.createElement("div");paper.className="cln-payroll-paper";
  const header=document.createElement("header");header.className="cln-payroll-heading";
  const company=document.createElement("h3");company.textContent="COMERCIAL LÓPEZ";
- const report=document.createElement("p");report.textContent=(kind==="cobrador"?"Reporte de Salario Devengado del ":"Reporte de Ventas del Periodo del ")+range.from+" al "+range.to;
- const identity=document.createElement("p");identity.textContent="NOMBRE: "+person+" · CARGO: "+(kind==="cobrador"?"COBRADOR (A) VENDEDOR (A) DE RUTA":"VENDEDOR (A) DE RUTA");
+ const report=document.createElement("p");report.textContent="Reporte de salario devengado del "+range.from+" al "+range.to;
+ const identity=document.createElement("p");identity.textContent="NOMBRE: "+person;
  const entryLabel=document.createElement("label");entryLabel.textContent="Fecha de ingreso: ";const entry=document.createElement("input");entry.type="date";entry.min="1900-01-01";entry.max="2200-12-31";entry.value=saved?.fecha_ingreso||"";entry.addEventListener("input",()=>{dirty=true;});entryLabel.append(entry);header.append(company,report,identity,entryLabel);
  const layout=document.createElement("div");layout.className="cln-payroll-layout";const left=document.createElement("div"),right=document.createElement("div");right.className="cln-payroll-discounts";const rh=document.createElement("h4");rh.textContent="DETALLE DE DESCUENTOS";right.append(rh);layout.append(left,right);paper.append(header,layout);workspace.append(paper);
  const addSection=(label,target=left)=>{const sec=document.createElement("section");sec.className="cln-adm-detail";const h=document.createElement("h5");h.textContent=label;sec.append(h);target.append(sec);return sec;};
@@ -1439,20 +1437,34 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
    }
    add.onclick=()=>{if(active()&&tbody.rows.length<100){row();dirty=true;}};const initial=saved?.secciones?.[key];if(Array.isArray(initial)&&initial.length)initial.forEach(row);else row();
   }
+  const automatic=addSection("Comisiones de contratos · consulta automática"),autoContent=document.createElement("div");automatic.append(autoContent);clnOpenPayrollCommissions(autoContent,active,personId,person,range);
   const saleCols=[["Fecha","date"],["Cliente","text"],["Artículo","text"],["Condición","text"],["Valor","number"],["Comisión","number"]];
   if(kind==="cobrador")detail("cobros","Detalle de comisiones s/ cobros del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
   detail("ventas","Detalle de ventas a cancelar en el presente período",saleCols,earned,5);
   detail("pendientes","Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);
   for(const [key,label] of [["anticipos","Anticipos"],["faltantes","Faltantes"],["hurtos","Hurtos"],["articulos","Artículos"],["varios","Varios"]])detail(key,label,key==="anticipos"?[["Fecha","date"],["Detalle","text"],["Valor","number"]]:[["Detalle","text"],["Valor","number"]],discounts,key==="anticipos"?2:1);
   recalc();
-  const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Guardar borrador de planilla";workspace.append(save);
+  const save=document.createElement("button");save.type="button";save.className="g2";save.textContent="Guardar planilla";workspace.append(save);
   const result=document.createElement("p");result.setAttribute("role","status");workspace.append(result);result.textContent=revision?"Revisión guardada: "+revision:"Borrador vacío.";
   save.onclick=async()=>{if(!active()||save.disabled)return;let data;try{data={base:manual.map(cents),fecha_ingreso:entry.value||null,secciones:Object.fromEntries(Object.entries(sections).map(([k,rows])=>[k,rows.map(fields=>fields.map(input=>input.type==="number"?cents(input):(input.value.trim()||null))).filter(row=>row.some(v=>v!==null))]))};}catch(e){result.textContent=String(e.message||e);return;}
    if(!confirm("¿Guardar este borrador del período seleccionado? No liquida salarios."))return;
-   const disabled=[...workspace.querySelectorAll("input,button")];disabled.forEach(el=>el.disabled=true);choose.disabled=true;
-   try{const response=await rpc(kind,data,revision);if(!active())return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");revision=response.data.revision;dirty=false;const t=response.data.totales;const fmt=v=>v==null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(v)/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));result.textContent="Guardado y verificado en servidor · Revisión "+revision;}catch(e){if(active())result.textContent="No se pudo guardar: "+String(e.message||e);}finally{if(active()){disabled.forEach(el=>el.disabled=false);choose.disabled=false;}}};
+   const disabled=[...workspace.querySelectorAll("input,button")];const prior=disabled.map(el=>el.disabled);disabled.forEach(el=>el.disabled=true);
+   try{const response=await rpc(kind,data,revision);if(!active())return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");revision=response.data.revision;dirty=false;const t=response.data.totales;const fmt=v=>v==null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(v)/100);[t.gross,t.discount,t.net].forEach((v,i)=>display[i].textContent=fmt(v));result.textContent="Guardado y verificado en servidor · Revisión "+revision;}catch(e){if(active())result.textContent="No se pudo guardar: "+String(e.message||e);}finally{if(active()){disabled.forEach((el,i)=>el.disabled=prior[i]);}}};
  }
- choose.onchange=async()=>{const kind=choose.value;if(dirty&&!confirm("Hay cambios sin guardar. ¿Cambiar de formato?")){choose.value=loadedKind;return;}dirty=false;const seq=++request;loadedKind=kind;workspace.replaceChildren();if(!kind||!active())return;const msg=document.createElement("p");msg.textContent="Cargando borrador guardado…";workspace.append(msg);try{const response=await rpc(kind,null,0);if(!active()||seq!==request)return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");build(kind,response.data);}catch(e){if(active()&&seq===request)msg.textContent="No se pudo cargar: "+String(e.message||e);}};
+ async function load(){
+  const msg=document.createElement("p");msg.textContent="Cargando planilla…";workspace.replaceChildren(msg);
+  try{
+   // The full combined format is the canonical record. Preserve any prior
+   // vendor-only draft rather than silently replacing or duplicating it.
+   const [combined,legacy]=await Promise.all([rpc("cobrador",null,0),rpc("vendedor",null,0)]);
+   if(!active())return;
+   for(const response of [combined,legacy])if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");
+   if(combined.data.revision>0&&legacy.data.revision>0)throw Error("Existen dos borradores previos. Requieren conciliación antes de editar.");
+   const kind=legacy.data.revision>0?"vendedor":"cobrador";
+   build(kind,kind==="vendedor"?legacy.data:combined.data);
+  }catch(e){if(active()){msg.textContent="No se pudo cargar la planilla: "+String(e.message||e);const retry=document.createElement("button");retry.type="button";retry.className="g2";retry.textContent="Reintentar";retry.onclick=()=>void load();workspace.append(retry);}}
+ }
+ void load();
 }
 
 function clnOpenPayrollCommissions(panel,active,personId,personName,range){
@@ -1567,56 +1579,8 @@ function clnOpenAdministrativeProjection(id,token,status){
   const title=document.createElement("h4");title.textContent="Planilla · "+row.vendedor;detailPanel.append(title);
   const period=document.createElement("p");period.textContent="Período: "+range.from+" a "+range.to;detailPanel.append(period);
   const contribution=document.createElement("p");contribution.textContent="Ventas confirmadas: "+(row.ventas_confirmadas==null?"—":money.format(Number(row.ventas_confirmadas)))+" · Comisión registrada: "+(row.comision_registrada==null?"—":money.format(Number(row.comision_registrada)));detailPanel.append(contribution);
-  const draftButton=document.createElement("button");draftButton.type="button";draftButton.className="g2";draftButton.textContent="Formato de planilla Excel";draftButton.setAttribute("aria-expanded","true");
-  const draftPanel=document.createElement("section");draftPanel.hidden=false;
-  draftButton.onclick=()=>{if(!valid())return;draftPanel.hidden=!draftPanel.hidden;draftButton.setAttribute("aria-expanded",String(!draftPanel.hidden));if(!draftPanel.hidden&&!draftPanel.hasChildNodes())clnOpenPayrollDraft(draftPanel,valid,row.vendedor,row.comision_registrada,row.persona_id,range);};
-  const commissionButton=document.createElement("button");commissionButton.type="button";commissionButton.className="g2";commissionButton.textContent="Consultar comisiones de contratos";commissionButton.setAttribute("aria-expanded","false");
-  const commissionPanel=document.createElement("section");commissionPanel.hidden=true;
-  commissionButton.onclick=()=>{if(!valid())return;commissionPanel.hidden=!commissionPanel.hidden;commissionButton.setAttribute("aria-expanded",String(!commissionPanel.hidden));if(!commissionPanel.hidden&&!commissionPanel.hasChildNodes())clnOpenPayrollCommissions(commissionPanel,valid,row.persona_id,row.vendedor,range);};
-  detailPanel.append(commissionButton,commissionPanel);
-  detailPanel.append(draftButton,draftPanel);clnOpenPayrollDraft(draftPanel,valid,row.vendedor,row.comision_registrada,row.persona_id,range);
-  const message=document.createElement("p");message.textContent="Cargando formatos privados…";detailPanel.append(message);
-  try{
-   const {data,error}=await SB.from("cln_payroll_templates").select("id,source_key,campos").eq("persona_id",row.persona_id).order("source_key");
-   if(!valid())return;
-   if(error)throw Error(error.message);
-   message.textContent="Los campos manuales vacíos permanecen vacíos. Las ventas y comisiones se consultan desde los contratos; la liquidación automática requiere validar las fórmulas de cada formato.";
-   if(!data?.length){message.textContent="No hay formatos asignados a esta persona.";return;}
-   for(const template of data){
-    const result=await SB.from("cln_payroll_periods").select("valores,revision").eq("plantilla_id",template.id).eq("desde",range.from).eq("hasta",range.to).maybeSingle();
-    if(!valid())return;
-    if(result.error)throw Error(result.error.message);
-    let revision=result.data?.revision??0;
-    const values=result.data?.valores??{};
-    const edit=document.createElement("form");edit.className="cln-adm-payroll-form";
-    const heading=document.createElement("h5");heading.textContent=template.source_key;edit.append(heading);
-    const inputs=[];
-    for(const [i,field] of (Array.isArray(template.campos)?template.campos:[]).entries()){
-     const label=document.createElement("label");label.className="cln-adm-pay-field";label.textContent=String(field.etiqueta||"Campo");
-     const input=document.createElement("input");input.type="number";input.step="0.01";input.value=values[i]==null?"":String(values[i]);
-     const editable=(field.tipo||"manual")==="manual";input.readOnly=!editable;
-     if(editable)inputs.push([String(i),input]);
-     label.append(input);edit.append(label);
-    }
-    const save=document.createElement("button");save.type="submit";save.className="g2";save.textContent="Guardar planilla";
-    const feedback=document.createElement("p");feedback.setAttribute("role","status");edit.append(save,feedback);
-    edit.onsubmit=async e=>{
-     e.preventDefault();if(!valid()||save.disabled)return;
-     const payload=Object.create(null);
-     for(const [key,input] of inputs){if(input.value!==""){const val=Number(input.value);if(!Number.isFinite(val)){feedback.textContent="Revisá los importes.";return;}payload[key]=val;}}
-     if(!confirm("¿Guardar los valores manuales de esta planilla?"))return;
-     save.disabled=true;
-     try{
-      const response=await SB.rpc("cln_guardar_planilla",{p_plantilla:template.id,p_desde:range.from,p_hasta:range.to,p_valores:payload,p_revision:revision});
-      if(!valid())return;
-      if(response.error||!Number.isInteger(response.data))throw Error(response.error?.message||"Resultado no verificado");
-      revision=response.data;feedback.textContent="Planilla guardada.";
-     }catch(e){if(valid())feedback.textContent="No se pudo guardar: "+String(e.message||e);}
-     finally{save.disabled=false;}
-    };
-    detailPanel.append(edit);
-   }
-  }catch(e){if(valid())message.textContent="No se pudo consultar la planilla: "+String(e.message||e);}
+  const single=document.createElement("section");single.className="cln-single-payroll";detailPanel.append(single);
+  clnOpenPayrollDraft(single,valid,row.vendedor,row.comision_registrada,row.persona_id,range);
  }
  function showPayments(row){
   if(pendingPayment){status.textContent="Hay un abono pendiente de verificar; reintentá la misma operación antes de cambiar de contrato.";return;}
