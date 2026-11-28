@@ -1631,13 +1631,21 @@ function clnOpenAdministrativeProjection(id,token,status){
   const amount=add("Monto","number");amount.min="0.01";amount.step="0.01";amount.max=String(row.saldo_pendiente);
   const date=add("Fecha","date");date.value=today;const collector=add("Cobrador","text");collector.maxLength=200;
   const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Registrar abono";paymentForm.append(submit);detailPanel.append(paymentForm);
-  const history=document.createElement("div");detailPanel.append(history);
+  const history=document.createElement("div");detailPanel.append(history);let historyPage=0,historySeq=0;
   async function paymentsHistory(){
-   const {data,error}=await SB.from("cln_route_payments").select("fecha,monto,cobrador").eq("contrato_id",row.contrato_id).order("fecha",{ascending:false}).limit(100);
-   if(!active()||seq!==selection)return;
-   history.replaceChildren();const heading=document.createElement("h5");heading.textContent="Últimos 100 abonos";history.append(heading);
-   if(error){const p=document.createElement("p");p.textContent=error.message;history.append(p);return;}
-   const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();for(const label of ["FECHA","ABONO","COBRADOR"]){const th=document.createElement("th");th.textContent=label;head.append(th);}const body=table.createTBody();for(const item of data||[]){const tr=body.insertRow();for(const value of [item.fecha,money.format(Number(item.monto)),item.cobrador])tr.insertCell().textContent=value??"";}history.append(table);
+   const request=++historySeq;history.textContent="Consultando tarjeta…";submit.disabled=true;
+   try{
+    const {data,error}=await SB.rpc("cln_consultar_abonos_tarjeta",{p_contrato:row.contrato_id,p_pagina:historyPage});
+    if(!active()||seq!==selection||request!==historySeq)return;
+    if(error||!Array.isArray(data?.filas)||!Number.isFinite(Number(data.saldo_pendiente)))throw Error(error?.message||"Respuesta no válida");
+    info.textContent="RUTA: "+(row.ruta||"")+" · CONTRATO: "+row.contrato+" · VALOR: "+money.format(Number(data.total))+" · PRIMA RECIBIDA: "+money.format(Number(data.prima))+" · ABONOS: "+money.format(Number(data.abonos))+" · RESTA: "+money.format(Number(data.saldo_pendiente));
+    amount.max=String(Math.max(0,Number(data.saldo_pendiente)));submit.disabled=Number(data.saldo_pendiente)<=0;
+    history.replaceChildren();const heading=document.createElement("h5");heading.textContent="Abonos · "+data.cantidad+" registros";history.append(heading);
+    const note=document.createElement("p");note.textContent="Resta reconstruida por fecha de abono, descontando la prima recibida actualmente. No representa necesariamente el saldo histórico si se modificó la prima posteriormente.";history.append(note);
+    const wrap=document.createElement("div");wrap.className="cln-adm-table-wrap";const table=document.createElement("table");table.className="cln-adm-table";const head=table.createTHead().insertRow();for(const label of ["FECHA","ABONO","RESTA","COBRADOR"]){const th=document.createElement("th");th.textContent=label;head.append(th);}
+    const body=table.createTBody();for(const item of data.filas){const tr=body.insertRow();for(const value of [item.fecha,money.format(Number(item.monto)),money.format(Number(item.resta)),item.cobrador])tr.insertCell().textContent=value??"";}wrap.append(table);history.append(wrap);
+    const nav=document.createElement("div");nav.className="cln-adm-pager";for(const [label,delta,disabled] of [["Anterior",-1,historyPage===0],["Siguiente",1,!data.hay_mas]]){const btn=document.createElement("button");btn.type="button";btn.className="g2";btn.textContent=label;btn.disabled=disabled;btn.onclick=()=>{if(active()&&!pendingPayment){historyPage+=delta;void paymentsHistory();}};nav.append(btn);}const pageLabel=document.createElement("span");pageLabel.textContent="Página "+(historyPage+1);nav.append(pageLabel);history.append(nav);
+   }catch(err){if(active()&&seq===selection&&request===historySeq){history.textContent="No se pudo verificar la tarjeta: "+String(err.message||err);const retry=document.createElement("button");retry.type="button";retry.className="g2";retry.textContent="Reintentar consulta";retry.onclick=()=>void paymentsHistory();history.append(retry);}}
   }
   paymentForm.onsubmit=async e=>{
    e.preventDefault();if(!active()||submit.disabled)return;
@@ -1650,7 +1658,7 @@ function clnOpenAdministrativeProjection(id,token,status){
     pendingPayment=null;
     if(!active()||seq!==selection)return;
     paymentForm.reset();date.value=today;status.textContent="Abono confirmado.";
-    await paymentsHistory();await load();
+    historyPage=0;await paymentsHistory();await load();
     // Force a fresh selection so that the amount limit is taken from the refreshed row.
     paymentForm.remove();
    }catch(err){if(active()){status.textContent="Abono no verificado: "+String(err.message||err)+". Podés reintentar la misma operación.";submit.textContent="Reintentar mismo abono";}}
