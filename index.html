@@ -1429,7 +1429,8 @@ function clnDraftPayrollTotals(base,earnings,deductions){
 function clnCollectionTenPercent(cents){if(cents===null||cents===0)return null;if(!Number.isSafeInteger(cents)||cents<0||cents>100000000000)throw Error("Cobro inválido");return Math.round(cents/10);}
 function clnPayrollWeekday(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return "";const day=new Date(date+"T12:00:00Z");if(!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==date)return "";return new Intl.DateTimeFormat("es-SV",{weekday:"long",timeZone:"UTC"}).format(day);}
 function clnPayrollWithPaid(t,paid){if(paid!==null&&(!Number.isSafeInteger(paid)||paid<0))throw Error("Importe pagado no válido");const gross=t.gross===null&&paid===null?null:(t.gross??0)+(paid??0);if(gross!==null&&!Number.isSafeInteger(gross))throw Error("Total fuera de rango");return {gross,discount:t.discount,paid,net:t.net};}
-function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
+function clnOpenPayrollDraft(panel,active,person,contribution,personId,range,profile={}){
+ const current=profile.estado_laboral==="actual",seller=current&&profile.cargo_actual==="vendedor",collector=current&&profile.cargo_actual==="cobrador";
  const heading=document.createElement("h5");heading.textContent="Planilla individual · "+person;
  const note=document.createElement("p");note.textContent="Una sola planilla por persona y período. Los importes manuales empiezan vacíos. Las comisiones de contratos se consultan en esta misma planilla; no se consideran pagadas automáticamente. Guardar no liquida salarios." ;
  const workspace=document.createElement("div");panel.replaceChildren(heading,note,workspace);
@@ -1437,29 +1438,29 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
  const rpc=(kind,data,rev)=>SB.rpc("cln_planilla_detalle",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_tipo:kind,p_datos:data,p_revision:rev});
  function build(kind,stored){
   workspace.replaceChildren();if(!kind||!active())return;
-  let revision=stored?.revision??0;let paidCents=stored?.comisiones_pagadas_centavos==null?null:Number(stored.comisiones_pagadas_centavos),paidVerified=true,paidSeq=0;const saved=stored?.datos;const sections=Object.create(null);
+  let revision=stored?.revision??0;let paidCents=stored?.comisiones_pagadas_centavos==null?null:Number(stored.comisiones_pagadas_centavos),collectionCents=stored?.comisiones_cobros_centavos==null?null:Number(stored.comisiones_cobros_centavos),collectedCents=stored?.cobros_centavos==null?null:Number(stored.cobros_centavos),pendingCents=null,paidVerified=true,paidSeq=0;const saved=stored?.datos;const sections=Object.create(null);
   const manual=[],earned=[],discounts=[],pending=[],sectionSums=Object.create(null),summaryOutputs=Object.create(null);let salesGrand=null;
   const paper=document.createElement("div");paper.className="cln-payroll-paper";
  const header=document.createElement("header");header.className="cln-payroll-heading";
  const company=document.createElement("h3");company.textContent="COMERCIAL LÓPEZ";
  const report=document.createElement("p");report.textContent="Reporte de salario devengado del "+range.from+" al "+range.to;
- const identity=document.createElement("p");identity.textContent="NOMBRE: "+person;
+ const identity=document.createElement("p");identity.textContent="NOMBRE: "+person+(current?" · "+(seller?"VENDEDOR · 9 %":"COBRADOR · 10 %")+(profile.sueldo_fijo?" · SUELDO FIJO":" · POR COMISIÓN"):" · TRABAJADOR ANTIGUO");
  const entryLabel=document.createElement("label");entryLabel.textContent="Fecha de ingreso: ";const entry=document.createElement("input");entry.type="date";entry.min="1900-01-01";entry.max="2200-12-31";entry.value=saved?.fecha_ingreso||"";entry.addEventListener("input",()=>{dirty=true;});entryLabel.append(entry);header.append(company,report,identity,entryLabel);
  const layout=document.createElement("div");layout.className="cln-payroll-layout";const left=document.createElement("div"),right=document.createElement("div");right.className="cln-payroll-discounts";const rh=document.createElement("h4");rh.textContent="DETALLE DE DESCUENTOS";right.append(rh);layout.append(left,right);paper.append(header,layout);workspace.append(paper);
  const addSection=(label,target=left)=>{const sec=document.createElement("section");sec.className="cln-adm-detail";const h=document.createElement("h5");h.textContent=label;sec.append(h);target.append(sec);return sec;};
   const cents=input=>{if(input.value.trim()==="")return null;if(!input.validity.valid)throw Error("Revisá importes y decimales");const v=Number(input.value);if(!Number.isFinite(v)||Math.abs(v)>1000000000)throw Error("Importe fuera de rango");return Math.round(v*100);};
   const amount=(label,target,list,signed=false)=>{const wrap=document.createElement("label");wrap.className="cln-adm-pay-field";wrap.textContent=label;const input=document.createElement("input");input.type="number";input.step="0.01";if(!signed)input.min="0";input.max="1000000000";input.addEventListener("input",recalc);wrap.append(input);target.append(wrap);list.push(input);input.addEventListener("input",()=>{dirty=true;});return input;};
   const base=addSection("Resumen salario líquido a pagar");
-  amount("Sueldo base",base,manual);amount("Días adicionales (importe)",base,manual);amount("Otros ingresos",base,manual,true);
+  const salary=amount("Sueldo base",base,manual);if(current&&!profile.sueldo_fijo){salary.readOnly=true;salary.placeholder="No aplica";}amount("Días adicionales (importe)",base,manual);amount("Otros ingresos",base,manual,true);
   manual.forEach((input,i)=>{const value=saved?.base?.[i];if(value!=null)input.value=String(value/100);});
   if(contribution!=null){const p=document.createElement("p");p.textContent="Comisión registrada en CL Nexus: "+new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(contribution))+". Verificá cuáles comisiones deben cancelarse en este período; no se suman dos veces.";base.append(p);}
   const totals=document.createElement("div");totals.className="cln-adm-pager";const display=[];
   for(const label of ["Devengado registrado","Menos descuentos","Comisiones ya pagadas","A pagar (borrador)"]){const wrap=document.createElement("label");wrap.textContent=label;const o=document.createElement("output");o.textContent="";wrap.append(o);totals.append(wrap);display.push(o);}
   const summary=document.createElement("div");summary.className="cln-payroll-summary";
  for(const [key,label] of [...(kind==="cobrador"?[["cobros","Comisión sobre cobros"]]:[]),["ventas","Comisión sobre ventas"],["anticipos","Anticipos"],["faltantes","Faltantes"],["hurtos","Hurtos"],["articulos","Artículos"],["varios","Varios"]]){const wrap=document.createElement("div");wrap.className="cln-adm-pay-field";const text=document.createElement("span");text.textContent=label;const out=document.createElement("output");summaryOutputs[key]=out;wrap.append(text,out);summary.append(wrap);}
- const paidInfo=document.createElement("p");paidInfo.textContent="Las comisiones ya entregadas se muestran en el devengado registrado y se restan como pagadas; no aumentan el saldo a pagar. Las ventas manuales son exclusivamente para operaciones externas a CL Nexus.";base.append(summary,totals,paidInfo);const feedback=document.createElement("p");feedback.setAttribute("role","status");base.append(feedback);
-  function showTotals(t){const fmt=v=>v==null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(v)/100);const combined=clnPayrollWithPaid(t,paidCents);[combined.gross,combined.discount,combined.paid,combined.net].forEach((v,i)=>display[i].textContent=paidVerified?fmt(v):"");}
- async function refreshPaid(){const seq=++paidSeq;try{const response=await rpc(kind,null,0);if(!active()||seq!==paidSeq)return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");paidCents=response.data.comisiones_pagadas_centavos==null?null:Number(response.data.comisiones_pagadas_centavos);paidVerified=true;recalc();}catch(e){if(active()&&seq===paidSeq){paidVerified=false;display.forEach(o=>o.textContent="");feedback.textContent="No se pudieron verificar los pagos del período: "+String(e.message||e);}}}
+ const paidInfo=document.createElement("p");paidInfo.textContent="Las comisiones ya entregadas se muestran en el devengado registrado y se restan como pagadas; no aumentan el saldo a pagar. Las ventas manuales son exclusivamente para operaciones externas a CL Nexus.";const autoSummary=document.createElement("div");autoSummary.className="cln-payroll-summary";const autoOutputs={};for(const [k,label] of (seller?[["pending","Comisión por ventas pendiente de pagar"],["projected","Proyección incluyendo comisiones pendientes"]]:collector?[["collected","Cobros registrados en rutas"],["collection","Comisión automática por cobros (10 %)"]]:[])){const line=document.createElement("div");line.className="cln-adm-pay-field";const span=document.createElement("span");span.textContent=label;const out=document.createElement("output");autoOutputs[k]=out;line.append(span,out);autoSummary.append(line);}base.append(summary,autoSummary,totals,paidInfo);const feedback=document.createElement("p");feedback.setAttribute("role","status");base.append(feedback);
+  function showTotals(t){const fmt=v=>v==null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(Number(v)/100);const adjusted=collectionCents==null?t:{gross:(t.gross??0)+collectionCents,discount:t.discount,net:(t.gross??0)+collectionCents-(t.discount??0)};const combined=clnPayrollWithPaid(adjusted,paidCents);[combined.gross,combined.discount,combined.paid,combined.net].forEach((v,i)=>display[i].textContent=paidVerified?fmt(v):"");if(autoOutputs.pending)autoOutputs.pending.textContent=fmt(pendingCents);if(autoOutputs.projected)autoOutputs.projected.textContent=fmt(pendingCents==null?null:(combined.net??-(combined.discount??0))+pendingCents);if(autoOutputs.collected)autoOutputs.collected.textContent=paidVerified?fmt(collectedCents):"";if(autoOutputs.collection)autoOutputs.collection.textContent=paidVerified?fmt(collectionCents):"";}
+ async function refreshPaid(){const seq=++paidSeq;try{const response=await rpc(kind,null,0);if(!active()||seq!==paidSeq)return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");paidCents=response.data.comisiones_pagadas_centavos==null?null:Number(response.data.comisiones_pagadas_centavos);collectionCents=response.data.comisiones_cobros_centavos==null?null:Number(response.data.comisiones_cobros_centavos);collectedCents=response.data.cobros_centavos==null?null:Number(response.data.cobros_centavos);paidVerified=true;recalc();}catch(e){if(active()&&seq===paidSeq){paidVerified=false;display.forEach(o=>o.textContent="");feedback.textContent="No se pudieron verificar los pagos del período: "+String(e.message||e);}}}
  function recalc(){
    if(!active())return;
    try{const t=clnDraftPayrollTotals(manual.map(cents),earned.map(cents),discounts.map(cents));const fmt=v=>v===null?"":new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"}).format(v/100);showTotals(t);for(const [key,part] of Object.entries(sectionSums)){const vals=part.refs.map(fields=>cents(fields[part.index])).filter(v=>v!==null);const total=vals.length?vals.reduce((a,b)=>a+b,0):null;part.output.textContent=fmt(total);if(summaryOutputs[key])summaryOutputs[key].textContent=fmt(total);if(part.valueOutput){const amounts=part.refs.map(fields=>cents(fields[part.valueIndex])).filter(v=>v!==null);part.valueOutput.textContent=fmt(amounts.length?amounts.reduce((a,b)=>a+b,0):null);}}
@@ -1478,16 +1479,15 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
     if(key==="anticipos"&&values.length===2)values=[null,...values];
     const tr=tbody.insertRow();let linked=null;const fields=[];refs.push(fields);
     columns.forEach(([label,type],i)=>{const td=tr.insertCell();const input=document.createElement("input");input.type=type;input.setAttribute("aria-label",label);if(type==="number"){input.step="0.01";input.min="0";input.max="1000000000";}else if(type==="text")input.maxLength=200;if(values[i]!=null)input.value=type==="number"?String(values[i]/100):String(values[i]);input.addEventListener("input",()=>{dirty=true;});fields.push(input);td.append(input);if(i===amountIndex){linked=input;group.push(input);input.addEventListener("input",recalc);}if(!isDiscount&&i===(key==="cobros"?2:4))input.addEventListener("input",recalc);});
-    if(key==="cobros"){fields[0].addEventListener("change",()=>{fields[1].value=clnPayrollWeekday(fields[0].value);dirty=true;});}
+    if(key==="cobros"){fields[0].addEventListener("change",()=>{fields[1].value=clnPayrollWeekday(fields[0].value);dirty=true;});}if((collector&&key==="cobros")||(seller&&["ventas","pendientes"].includes(key))){const idx=key==="cobros"?2:4;const commissionIndex=key==="cobros"?3:5;fields[commissionIndex].readOnly=true;fields[idx].addEventListener("input",()=>{try{const v=cents(fields[idx]);fields[commissionIndex].value=v==null?"":(Math.round(v*(key==="cobros"?0.10:0.09))/100).toFixed(2);recalc();}catch(e){feedback.textContent=String(e.message||e);}});}
  const del=document.createElement("button");del.type="button";del.className="g2";del.textContent="Quitar";del.onclick=()=>{if(!active())return;if(linked){const i=group.indexOf(linked);if(i>=0)group.splice(i,1);}const pos=refs.indexOf(fields);if(pos>=0)refs.splice(pos,1);tr.remove();dirty=true;recalc();};const action=tr.insertCell();action.append(del);if(key==="cobros"){const ten=document.createElement("button");ten.type="button";ten.className="g2";ten.textContent="10 %";ten.title="Aplicar fórmula del formato general de cobrador";ten.onclick=()=>{if(!active())return;try{const value=clnCollectionTenPercent(cents(fields[2]));if(value===null){feedback.textContent="Ingresá un cobro positivo para aplicar el 10 %.";return;}if(fields[3].value!==""&&!confirm("¿Reemplazar la comisión ingresada por el 10 % del cobro?"))return;fields[3].value=(value/100).toFixed(2);dirty=true;recalc();}catch(e){feedback.textContent=String(e.message||e);}};action.append(ten);}
    }
    add.onclick=()=>{if(active()&&tbody.rows.length<100){row();dirty=true;}};const initial=saved?.secciones?.[key];if(Array.isArray(initial)&&initial.length)initial.forEach(row);else row();
   }
-  const automatic=addSection("Comisiones de contratos · consulta automática"),autoContent=document.createElement("div");automatic.append(autoContent);clnOpenPayrollCommissions(autoContent,active,personId,person,range,refreshPaid);
+  if(!collector){const automatic=addSection("Comisiones de contratos · consulta automática"),autoContent=document.createElement("div");automatic.append(autoContent);clnOpenPayrollCommissions(autoContent,active,personId,person,range,data=>{pendingCents=data?.pendiente==null?null:Math.round(Number(data.pendiente)*100);void refreshPaid();});}else{const auto=addSection("Comisiones automáticas sobre abonos registrados");const refresh=document.createElement("button");refresh.type="button";refresh.className="g2";refresh.textContent="Actualizar cobros";refresh.onclick=()=>void refreshPaid();const n=document.createElement("p");n.textContent="Los abonos de rutas se suman por cobrador y fecha de pago; ingresá manualmente solo cobros externos a la aplicación.";auto.append(n,refresh);}
   const saleCols=[["Fecha","date"],["Cliente","text"],["Artículo","text"],["Condición","text"],["Valor","number"],["Comisión","number"]];
-  if(kind==="cobrador")detail("cobros","Detalle de comisiones s/ cobros del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
-  detail("ventas","Detalle de ventas manuales externas a CL Nexus a cancelar en el presente período",saleCols,earned,5);
-  detail("pendientes","Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);
+  if(kind==="cobrador"&&!seller)detail("cobros","Detalle de comisiones de cobros externos del presente período",[["Fecha","date"],["Día","text"],["Cobro","number"],["Comisión","number"],["Observaciones","text"]],earned,3);
+  if(!collector){detail("ventas","Detalle de ventas manuales externas a CL Nexus a cancelar en el presente período",saleCols,earned,5);detail("pendientes","Detalle de ventas pendientes de cancelar comisiones",saleCols,pending,5);}
   const grand=addSection("Totales de ventas y comisiones del formato");salesGrand={};for(const [key,label] of [["value","Valor total de ventas"],["commission","Comisión total (incluye pendientes)"]]){const line=document.createElement("div");line.className="cln-adm-pay-field";const span=document.createElement("span");span.textContent=label;const out=document.createElement("output");salesGrand[key]=out;line.append(span,out);grand.append(line);}const explain=document.createElement("p");explain.textContent="Las comisiones pendientes se muestran en este total informativo, pero no se suman al salario líquido.";grand.append(explain);
   for(const [key,label] of [["anticipos","Anticipos"],["faltantes","Faltantes"],["hurtos","Hurtos"],["articulos","Artículos"],["varios","Varios"]])detail(key,label,key==="anticipos"?[["Fecha","date"],["Detalle","text"],["Valor","number"]]:[["Detalle","text"],["Valor","number"]],discounts,key==="anticipos"?2:1);
   recalc();
@@ -1496,7 +1496,7 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
   save.onclick=async()=>{if(!active()||save.disabled)return;let data;try{data={base:manual.map(cents),fecha_ingreso:entry.value||null,secciones:Object.fromEntries(Object.entries(sections).map(([k,rows])=>[k,rows.map(fields=>fields.map(input=>input.type==="number"?cents(input):(input.value.trim()||null))).filter(row=>row.some(v=>v!==null))]))};}catch(e){result.textContent=String(e.message||e);return;}
    if(!confirm("¿Guardar este borrador del período seleccionado? No liquida salarios."))return;
    const disabled=[...workspace.querySelectorAll("input,button")];const prior=disabled.map(el=>el.disabled);disabled.forEach(el=>el.disabled=true);
-   try{const response=await rpc(kind,data,revision);if(!active())return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");revision=response.data.revision;dirty=false;paidSeq++;paidCents=response.data.comisiones_pagadas_centavos==null?null:Number(response.data.comisiones_pagadas_centavos);paidVerified=true;showTotals(response.data.totales);result.textContent="Guardado y verificado en servidor · Revisión "+revision;}catch(e){if(active())result.textContent="No se pudo guardar: "+String(e.message||e);}finally{if(active()){disabled.forEach((el,i)=>el.disabled=prior[i]);}}};
+   try{const response=await rpc(kind,data,revision);if(!active())return;if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");revision=response.data.revision;dirty=false;paidSeq++;paidCents=response.data.comisiones_pagadas_centavos==null?null:Number(response.data.comisiones_pagadas_centavos);collectionCents=response.data.comisiones_cobros_centavos==null?null:Number(response.data.comisiones_cobros_centavos);collectedCents=response.data.cobros_centavos==null?null:Number(response.data.cobros_centavos);paidVerified=true;showTotals(response.data.totales);result.textContent="Guardado y verificado en servidor · Revisión "+revision;}catch(e){if(active())result.textContent="No se pudo guardar: "+String(e.message||e);}finally{if(active()){disabled.forEach((el,i)=>el.disabled=prior[i]);}}};
  }
  async function load(){
   const msg=document.createElement("p");msg.textContent="Cargando planilla…";workspace.replaceChildren(msg);
@@ -1507,7 +1507,7 @@ function clnOpenPayrollDraft(panel,active,person,contribution,personId,range){
    if(!active())return;
    for(const response of [combined,legacy])if(response.error||!Number.isInteger(response.data?.revision))throw Error(response.error?.message||"Respuesta inválida");
    if(combined.data.revision>0&&legacy.data.revision>0)throw Error("Existen dos borradores previos. Requieren conciliación antes de editar.");
-   const kind=legacy.data.revision>0?"vendedor":"cobrador";
+   const kind=legacy.data.revision>0?"vendedor":combined.data.revision>0?"cobrador":seller?"vendedor":"cobrador";
    build(kind,kind==="vendedor"?legacy.data:combined.data);
   }catch(e){if(active()){msg.textContent="No se pudo cargar la planilla: "+String(e.message||e);const retry=document.createElement("button");retry.type="button";retry.className="g2";retry.textContent="Reintentar";retry.onclick=()=>void load();workspace.append(retry);}}
  }
@@ -1532,7 +1532,7 @@ function clnOpenPayrollCommissions(panel,active,personId,personName,range,onRefr
    const {data,error}=await SB.rpc("cln_consultar_comisiones_planilla",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_pagina:page});
    if(!active())return;if(error||typeof data?.vinculado!=="boolean")throw Error(error?.message||"Respuesta inválida");
    if(pending){const verified=(data.filas||[]).find(x=>x.contrato_id===pending.p_contrato&&x.estado==="pagada");if(verified){pending=null;}}
-   content.replaceChildren();more=!!data.hay_mas;void onRefresh();
+   content.replaceChildren();more=!!data.hay_mas;void onRefresh(data);
    if(!data.vinculado){
     msg.textContent="Esta persona todavía no está vinculada a un vendedor.";
     const select=document.createElement("select");select.setAttribute("aria-label","Vendedor para vincular");
@@ -1597,7 +1597,7 @@ function clnOpenAdministrativeProjection(id,token,status){
  const fields={
  libro:[["venta","N°"],["fecha","Fecha"],["cliente","Cliente"],["articulo","Artículo"],["total","Valor","money"],["prima","Prima","money"],["ruta","Ruta"],["vendedor","Vendedor"],["modalidad","Modalidad"],["contrato","Contrato"],["origen","Origen"],["estado","Estado"]],
  rutas:[["ruta","Ruta"],["cliente","Cliente"],["contrato","Contrato"],["frecuencia","Frecuencia"],["dia_cobro","Día de cobro"],["plan","Plan"],["fecha_plan","Fecha del plan"],["cuota","Cuota","money"],["total","Venta","money"],["prima_recibida","Prima recibida","money"],["abonos","Abonos","money"],["saldo_pendiente","Saldo pendiente","money"]],
- planillas:[["vendedor","Vendedor"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión registrada","money"]]
+ planillas:[["vendedor","Trabajador"],["contratos","Contratos"],["ventas_confirmadas","Ventas confirmadas","money"],["comision_registrada","Comisión por ventas","money"]]
  }[kind];
  const form=document.createElement("form");form.className="cln-adm-filters";
  const dates=new Intl.DateTimeFormat("en-CA",{timeZone:"America/El_Salvador",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
@@ -1617,11 +1617,13 @@ function clnOpenAdministrativeProjection(id,token,status){
  const payrollSearch=document.createElement("input");payrollSearch.type="search";payrollSearch.placeholder="Buscar por nombre o apellido";payrollSearch.setAttribute("aria-label","Buscar persona en planillas");payrollSearch.className="cln-payroll-search";
  const searchArea=document.createElement("div");searchArea.className="cln-payroll-search-area";
  const resultsCount=document.createElement("p");resultsCount.setAttribute("role","status");
- if(kind==="planillas"){searchArea.append(payrollSearch,resultsCount);clnHubDetail.append(form,searchArea,detailPanel,list,pager);pager.hidden=true;}
+ const workforceFilter=document.createElement("select");workforceFilter.setAttribute("aria-label","Grupo de trabajadores");for(const [value,label] of [["actual","Trabajadores actuales"],["vendedor","Vendedores actuales"],["cobrador","Cobradores actuales"],["antiguo","Trabajadores antiguos"]]){const option=document.createElement("option");option.value=value;option.textContent=label;workforceFilter.append(option);}
+ if(kind==="planillas"){searchArea.append(workforceFilter,payrollSearch,resultsCount);clnHubDetail.append(form,searchArea,detailPanel,list,pager);pager.hidden=true;}
  else clnHubDetail.append(form,list,pager,detailPanel);
  let page=0,busy=false,more=false,activeRange={from:from.value,to:to.value},timer=null,payrollRows=[],payrollOpen=false,payrollDirty=false;
  const normalizeName=x=>String(x??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("es-SV").trim();
- function filterPayroll(){const words=normalizeName(payrollSearch.value).split(/\s+/).filter(Boolean);const matches=payrollRows.filter(r=>words.every(w=>normalizeName(r.vendedor).includes(w)));resultsCount.textContent=matches.length+" de "+payrollRows.length+" personas";draw(matches);}
+ function filterPayroll(){const words=normalizeName(payrollSearch.value).split(/\s+/).filter(Boolean);const group=workforceFilter.value;const scoped=payrollRows.filter(r=>group==="antiguo"?r.estado_laboral!=="actual":r.estado_laboral==="actual"&&(group==="actual"||r.cargo_actual===group));const matches=scoped.filter(r=>words.every(w=>normalizeName(r.vendedor+" "+(r.nombre_original||"")).includes(w)));resultsCount.textContent=matches.length+" de "+scoped.length+" personas";draw(matches);}
+ workforceFilter.onchange=filterPayroll;
  payrollSearch.oninput=filterPayroll;
  const active=()=>token===nexusViewEpoch&&!moduleHub.hidden&&!!SB_UID&&!!SB_WID;
  const money=new Intl.NumberFormat("es-SV",{style:"currency",currency:"USD"});
@@ -1657,7 +1659,7 @@ function clnOpenAdministrativeProjection(id,token,status){
   const period=document.createElement("p");period.textContent="Período: "+range.from+" a "+range.to;detailPanel.append(period);
   const contribution=document.createElement("p");contribution.textContent="Ventas confirmadas: "+(row.ventas_confirmadas==null?"—":money.format(Number(row.ventas_confirmadas)))+" · Comisión registrada: "+(row.comision_registrada==null?"—":money.format(Number(row.comision_registrada)));detailPanel.append(contribution);
   const single=document.createElement("section");single.className="cln-single-payroll";detailPanel.append(single);
-  clnOpenPayrollDraft(single,valid,row.vendedor,row.comision_registrada,row.persona_id,range);
+  clnOpenPayrollDraft(single,valid,row.vendedor,row.comision_registrada,row.persona_id,range,row);
  }
  function showPayments(row){
   if(pendingPayment){status.textContent="Hay un abono pendiente de verificar; reintentá la misma operación antes de cambiar de contrato.";return;}
@@ -1666,7 +1668,7 @@ function clnOpenAdministrativeProjection(id,token,status){
   const paymentForm=document.createElement("form");paymentForm.className="cln-adm-filters";
   const add=(label,type)=>{const wrap=document.createElement("label");wrap.textContent=label;const input=document.createElement("input");input.type=type;input.required=true;wrap.append(input);paymentForm.append(wrap);return input;};
   const amount=add("Monto","number");amount.min="0.01";amount.step="0.01";amount.max=String(row.saldo_pendiente);
-  const date=add("Fecha","date");date.value=today;const collector=add("Cobrador","text");collector.maxLength=200;
+  const date=add("Fecha","date");date.value=today;const collectorLabel=document.createElement("label");collectorLabel.textContent="Cobrador";const collector=document.createElement("select");collector.required=true;const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleccioná un cobrador actual";collector.append(placeholder);collectorLabel.append(collector);paymentForm.append(collectorLabel);
   const submit=document.createElement("button");submit.type="submit";submit.className="g2";submit.textContent="Registrar abono";paymentForm.append(submit);detailPanel.append(paymentForm);
   const history=document.createElement("div");detailPanel.append(history);let historyPage=0,historySeq=0;
   async function paymentsHistory(){
@@ -1686,9 +1688,9 @@ function clnOpenAdministrativeProjection(id,token,status){
   }
   paymentForm.onsubmit=async e=>{
    e.preventDefault();if(!active()||submit.disabled)return;
-   if(!pendingPayment){if(!confirm("¿Registrar el abono de "+money.format(Number(amount.value))+"?"))return;
+   if(!pendingPayment){if(!collector.value){status.textContent="Seleccioná un cobrador actual.";return;}if(!confirm("¿Registrar el abono de "+money.format(Number(amount.value))+" y acreditar su comisión del 10 % a "+collector.value+"?"))return;
     pendingPayment={p_contrato:row.contrato_id,p_op:crypto.randomUUID(),p_monto:Number(amount.value),p_fecha:date.value,p_cobrador:collector.value.trim()};}
-   submit.disabled=true;for(const input of [amount,date,collector])input.readOnly=true;
+   submit.disabled=true;for(const input of [amount,date])input.readOnly=true;collector.disabled=true;
    try{
     const {data,error}=await SB.rpc("cln_registrar_abono",pendingPayment);
     if(error||!data)throw Error(error?.message||"Resultado no verificado");
@@ -1701,7 +1703,7 @@ function clnOpenAdministrativeProjection(id,token,status){
    }catch(err){if(active()){status.textContent="Abono no verificado: "+String(err.message||err)+". Podés reintentar la misma operación.";submit.textContent="Reintentar mismo abono";}}
    finally{submit.disabled=false;}
   };
-  void paymentsHistory();
+  void paymentsHistory();void (async()=>{try{const {data,error}=await SB.rpc("cln_cobradores_actuales");if(!active()||seq!==selection)return;if(error||!Array.isArray(data))throw Error(error?.message||"Catálogo no disponible");for(const x of data){const opt=document.createElement("option");opt.value=x.nombre;opt.textContent=x.nombre;collector.append(opt);}}catch(e){if(active()&&seq===selection)status.textContent="No se pudieron cargar cobradores: "+String(e.message||e);}})();
  }
  async function load(){
   if(!active()||busy)return;busy=true;refresh.disabled=true;prev.disabled=true;next.disabled=true;
@@ -2717,7 +2719,7 @@ async function openIndependentModule(id){
    vendorChoice.hidden=true;vendorChoice.setAttribute("aria-label","Elegir vendedor con el mismo nombre");
    draftForm.append(vendorChoice);
    const sellerFeedback=document.createElement("small");sellerFeedback.className="cln-field-helper";
-   sellerFeedback.textContent="Escribí un nombre o elegí uno de las sugerencias. El contrato aparecerá en su historial; los vendedores nuevos se registran al guardar.";
+   sellerFeedback.textContent="Escribí un nombre o elegí uno de las sugerencias. El contrato aparecerá en su historial y planilla. Elegí uno de los vendedores actuales.";
    draftForm.append(sellerFeedback);
    const fillSelect=(select,items,label)=>{
     select.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=label;select.append(blank);
@@ -2781,13 +2783,13 @@ async function openIndependentModule(id){
    const route=field("Ruta");
    const collectionDay=field("Día de cobro");
    const alternate=field("Receptor alterno");
-   const commission=field("Comisión total","number",true);commission.min="0";commission.step="0.01";commission.value="0";
+   const commission=field("Comisión total (9 %)","number",true);commission.min="0";commission.step="0.01";commission.value="0";commission.readOnly=true;
    const deposit=field("Prima","number",true);deposit.min="0";deposit.step="0.01";deposit.value="0";
    const depositReceived=document.createElement("label");
    const depositCheckbox=document.createElement("input");depositCheckbox.type="checkbox";depositReceived.append(depositCheckbox,document.createTextNode(" Prima recibida"));draftForm.append(depositReceived);
    const detailsTitle=document.createElement("h5");detailsTitle.textContent="Artículos del contrato";draftForm.append(detailsTitle);
    const details=document.createElement("div");draftForm.append(details);
-   const contractLines=[];
+   const contractLines=[];const recalcContractCommission=()=>{let total=0,previous=0;for(const line of contractLines){const price=Number(line.price.value),qty=Number(line.qty.value);if(Number.isFinite(price)&&Number.isInteger(qty)&&qty>0&&price>=0){total+=Math.round(price*100)*qty;}const next=Math.round(total*9/100);line.lineCommission.value=((next-previous)/100).toFixed(2);previous=next;}commission.value=(previous/100).toFixed(2);};
    // Catálogo accesible para admin y secretaria sin exponer existencias administrativas.
    const inventory=await nexusReader.list("contractInventory");
    if(token!==nexusViewEpoch||moduleHub.hidden)return;
@@ -2798,12 +2800,12 @@ async function openIndependentModule(id){
     fillSelect(item,inventory,"Seleccionar artículo");
     const qty=document.createElement("input");qty.type="number";qty.required=true;qty.min="1";qty.step="1";qty.placeholder="Cantidad";
     const price=document.createElement("input");price.type="number";price.required=true;price.min="0";price.step="0.01";price.placeholder="Precio a crédito";
-    const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea";
+    const lineCommission=document.createElement("input");lineCommission.type="number";lineCommission.required=true;lineCommission.min="0";lineCommission.step="0.01";lineCommission.value="0";lineCommission.placeholder="Comisión por línea (9 %)";lineCommission.readOnly=true;
     const remove=document.createElement("button");remove.type="button";remove.className="g2";remove.textContent="Quitar";
     const location=document.createElement("select");location.required=true;location.setAttribute("aria-label","Ubicación de entrega");for(const [value,label] of [["","Elegir ubicación"],["1","Oficina"],["2","Bodega"]]){const option=document.createElement("option");option.value=value;option.textContent=label;location.append(option)}
     const line={wrap,item,qty,price,lineCommission,location};contractLines.push(line);
-    remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove()};
-    wrap.append(item,qty,price,lineCommission,location,remove);details.append(wrap);
+    remove.onclick=()=>{if(contractLines.length<=1)return;contractLines.splice(contractLines.indexOf(line),1);wrap.remove();recalcContractCommission()};
+    qty.addEventListener("input",recalcContractCommission);price.addEventListener("input",recalcContractCommission);wrap.append(item,qty,price,lineCommission,location,remove);details.append(wrap);recalcContractCommission();
     if(clnHubDetail.contains(wrap))clnEnhanceArticleSearch(wrap);
    };
    addDetail.onclick=newDetail;newDetail();draftForm.append(addDetail);
@@ -2830,6 +2832,7 @@ async function openIndependentModule(id){
     if(sellerEntered.length<2||sellerEntered.length>200){
      status.textContent="Escribí el nombre completo del vendedor.";vendor.focus();return;
     }
+    recalcContractCommission();if(!contractSellers.some(item=>comparable(item.nombre)===comparable(sellerEntered))){status.textContent="Elegí un vendedor actual del catálogo.";vendor.focus();return;}
     const contractDetails=contractLines.map(line=>({
      item_id:line.item.value,cantidad:Number(line.qty.value),
      precio_credito_unitario:Number(line.price.value),comision_linea:Number(line.lineCommission.value)
@@ -2860,7 +2863,7 @@ async function openIndependentModule(id){
     if(params.p_saldo_inicial!==null&&Math.abs(params.p_saldo_inicial-(total-params.p_prima))>0.009){
      status.textContent="El saldo inicial debe ser el total de artículos menos la prima.";return;
     }
-    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si no existen, se registrarán el cliente o vendedor. El servidor confirmará el contrato, la venta y el descuento de inventario en una sola operación."))return;
+    if(!confirm("¿Guardar el contrato de "+fullName+" (DUI terminado en "+duiDigits.slice(-4)+") a nombre del vendedor "+sellerEntered+"? Si el cliente no existe, se registrará. La comisión del vendedor se calcula al 9 %. El servidor confirmará el contrato, la venta y el descuento de inventario en una sola operación."))return;
     draftButton.disabled=true;status.textContent="Comprobando cliente y vendedor…";
     try{
      if(!window.CLNexusActions)throw Error("Motor de operaciones no disponible");
@@ -2919,12 +2922,7 @@ async function openIndependentModule(id){
      }else if(matches.length===1){
       params.p_vendedor_id=matches[0].id;
      }else{
-      status.textContent="Registrando vendedor "+sellerEntered+"…";
-      const createdVendor=await actions.execute("createSeller",{p_nombre:sellerEntered});
-      if(token!==nexusViewEpoch||moduleHub.hidden)throw Error("La sesión cambió después de registrar al vendedor. Comprobá el estado antes de reintentar.");
-      params.p_vendedor_id=String(createdVendor);
-      contractSellers.push({id:String(createdVendor),nombre:sellerEntered});
-      paintContractSellerSuggestions();
+      throw Error("El vendedor no está incluido en el catálogo actual.");
      }
      status.textContent="Guardando contrato de "+fullName+"…";
      const integratedPayload=JSON.stringify({p_contrato:params,p_ubicaciones:locationsByItem});
