@@ -748,7 +748,7 @@ S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};
 let APP_READY=false, debtViewEpoch=0;
 function loadPrivate(){if(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))throw Error("Caché de Deudas bloqueada");S=load();SY.pend=lsGet("cp_pend")==="1";APP_READY=true;render();sv("Cargado");if(LOADWARN)setTimeout(()=>toast(LOADWARN,1),300)}
 function hidePrivate(){debtViewEpoch++;SY.pushing=false;document.getElementById("debtBackToNexus").hidden=true;document.getElementById("debtHistoryBtn").hidden=true;document.getElementById("clnModuleHistoryDialog")?.close();APP_READY=false;document.getElementById("privateApp").hidden=true;document.getElementById("privateApp").inert=true;document.getElementById("bnav").hidden=true;document.getElementById("bnav").inert=true;document.getElementById("main").replaceChildren();document.getElementById("alert").replaceChildren();document.getElementById("nav").replaceChildren();document.getElementById("bnav").replaceChildren();if(dlg.open)dlg.close();dlg.replaceChildren();S={v:2,rev:0,ts:0,gen:0,log:[],tx:[],debts:[],del:{}};SY.known={};SY.pend=lsGet("cp_pend")==="1";clearTimeout(SY.timer)}
-function showPrivate(){if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked())))return;document.getElementById("debtBackToNexus").hidden=false;document.getElementById("debtHistoryBtn").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
+function showPrivate(){if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked())))return;document.getElementById("debtBackToNexus").hidden=false;document.getElementById("debtHistoryBtn").hidden=false;if(typeof debtBackupButton!=="undefined")debtBackupButton.hidden=false;debtRecoveryButton.hidden=false;debtCloudBackupButton.hidden=false;document.getElementById("privateApp").hidden=false;document.getElementById("privateApp").inert=false;document.getElementById("bnav").hidden=false;document.getElementById("bnav").inert=false}
 dlg.addEventListener("close",()=>{dlg.dataset.m=""});
 window.addEventListener("storage",e=>{if(!APP_READY||(DEBT_GATE_ENABLED&&(!debtGate||!debtGate.isUnlocked()))||e.key!=="cp_v2"||!e.newValue)return;let o=null;try{o=norm(JSON.parse(e.newValue))}catch(x){}if(!o)return;const g=merge(S,o,SY.known);
   if(g.changedLocal){S=g.m;S.rev=Math.max(S.rev||0,o.rev||0)+1;tellNotes(g.notes);persist(false);uiRefresh()}});
@@ -973,6 +973,36 @@ debtBackupButton.onclick=async()=>{
  finally{debtBackupButton.disabled=false}
 };
 
+// Separate read-only cloud backup. Never write to Supabase.
+const debtCloudBackupButton=document.createElement("button");
+debtCloudBackupButton.type="button";debtCloudBackupButton.className="g2";debtCloudBackupButton.textContent="Exportar respaldo cifrado de la nube";debtCloudBackupButton.hidden=true;
+document.getElementById("privateApp").querySelector("header").append(debtCloudBackupButton);
+debtCloudBackupButton.onclick=async()=>{
+ if(debtCloudBackupButton.disabled)return;
+ const epoch=debtViewEpoch,uid=SB_UID,wid=SB_WID,controller=debtController;
+ const valid=()=>APP_READY&&!!uid&&!!wid&&SB_UID===uid&&SB_WID===wid&&epoch===debtViewEpoch&&controller===debtController&&controller?.state()==="open";
+ debtCloudBackupButton.disabled=true;
+ try{
+  if(!valid()||!await controller.verify()||!valid())throw Error("Autoriza Deudas para respaldar la nube");
+  const pass=prompt("Respaldo cifrado del estado guardado en la nube. No incluye cambios locales pendientes. Frase de respaldo de al menos 12 caracteres; conserva la frase por separado.");
+  if(pass===null)return;
+  if(pass.length<12)throw Error("La frase debe tener al menos 12 caracteres");
+  if(!valid()||!await controller.verify()||!valid())throw Error("Autorización caducada");
+  const snap=await cloudSnapshot();
+  if(!valid()||!snap.exists)throw Error("No existe un estado guardado en la nube");
+  const j=snap.data().j;
+  if(typeof j!=="string"||!norm(JSON.parse(j)))throw Error("El estado de la nube no pasó la validación");
+  const backup={format:"debt-legacy-backup-v1",createdAt:new Date().toISOString(),source:"cloud_snapshot",entries:{cp_v2:j}};
+  const encrypted=await window.DebtEncryptedBackup.encryptBackup(backup,pass);
+  const verified=await window.DebtEncryptedBackup.decryptBackup(encrypted,pass);
+  if(JSON.stringify(verified)!==JSON.stringify(backup)||!norm(JSON.parse(verified.entries.cp_v2)))throw Error("Respaldo no verificado");
+  if(!valid()||!await controller.verify()||!valid())throw Error("Autorización caducada antes de exportar");
+  const url=URL.createObjectURL(new Blob([JSON.stringify(encrypted)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="deudas-nube-cifrada-"+backup.createdAt.slice(0,10)+".json";document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast("Respaldo cifrado de la nube preparado. Verifica el archivo descargado. Conserva además la copia local si hay cambios pendientes.");
+ }catch(e){toast("No se pudo respaldar la nube: "+String(e.message||e),1);}
+ finally{debtCloudBackupButton.disabled=false;}
+};
+
 // Recovery preview is deliberately read-only: never import into a live synced session.
 const debtRecoveryInput=document.createElement("input");
 debtRecoveryInput.type="file";debtRecoveryInput.accept=".json,application/json";debtRecoveryInput.hidden=true;
@@ -999,7 +1029,9 @@ debtRecoveryInput.onchange=async()=>{
   if(!APP_READY||!SB_UID||(DEBT_GATE_ENABLED&&(!debtController||!await debtController.verify())))throw Error("Autorización caducada");
   const keys=Object.keys(backup.entries);
   const pending=backup.entries.cp_pend==="1";
-  alert("Respaldo válido. Claves presentes: "+keys.length+". Indicador de cambios pendientes: "+(pending?"SÍ":"no confirmado")+". No se ha restaurado ni modificado ningún dato.");
+  let validState=false;for(const k of ["cp_v2","cp_v2_bak","cp_prev"]){try{if(backup.entries[k]&&norm(JSON.parse(backup.entries[k])))validState=true;}catch(_){}}
+  if(backup.source==="cloud_snapshot"&&(!validState||keys.length!==1||!backup.entries.cp_v2))throw Error("El estado de la nube no es recuperable");
+  alert("Cifrado verificado. Origen: "+(backup.source==="cloud_snapshot"?"nube":"copia local")+". Claves: "+keys.length+". Estado de Deudas v2 válido: "+(validState?"SÍ":"NO; requiere revisión")+". Cambios locales pendientes: "+(pending?"SÍ":"no confirmado")+". No se ha restaurado ni modificado ningún dato.");
  }catch(e){toast("No se pudo verificar el respaldo: "+(e.message||e),1)}
  finally{debtRecoveryButton.disabled=false;debtRecoveryInput.value=""}
 };
