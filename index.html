@@ -1491,6 +1491,7 @@ function clnOpenPayrollCommissions(panel,active,personId,personName,range){
   try{
    const {data,error}=await SB.rpc("cln_consultar_comisiones_planilla",{p_persona:personId,p_desde:range.from,p_hasta:range.to,p_pagina:page});
    if(!active())return;if(error||typeof data?.vinculado!=="boolean")throw Error(error?.message||"Respuesta inválida");
+   if(pending){const verified=(data.filas||[]).find(x=>x.contrato_id===pending.p_contrato&&x.estado==="pagada");if(verified){pending=null;}}
    content.replaceChildren();more=!!data.hay_mas;
    if(!data.vinculado){
     msg.textContent="Esta persona todavía no está vinculada a un vendedor.";
@@ -1546,7 +1547,7 @@ function clnOpenPayrollCommissions(panel,active,personId,personName,range){
     wrap.append(table);content.append(wrap);
    }
   }catch(e){if(active()){content.replaceChildren();msg.textContent="No se pudo consultar: "+String(e.message||e);more=false;}}
-  finally{busy=false;if(active()){prev.disabled=page===0;next.disabled=!more;refresh.disabled=false;}}
+  finally{busy=false;if(active()){prev.disabled=!!pending||page===0;next.disabled=!!pending||!more;refresh.disabled=false;}}
  }
  prev.onclick=()=>{if(!busy&&!pending&&page>0){page--;void load();}};next.onclick=()=>{if(!busy&&!pending&&more){page++;void load();}};refresh.onclick=()=>{if(!busy)void load();};void load();
 }
